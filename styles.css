@@ -1570,6 +1570,12 @@ tr:hover td {
   border-left: 3px solid var(--success);
 }
 
+.event-celebration {
+  background-color: var(--warning-bg);
+  color: var(--warning);
+  border-left: 3px solid var(--warning);
+}
+
 .event-leave {
   background-color: var(--primary-bg);
   color: var(--primary);

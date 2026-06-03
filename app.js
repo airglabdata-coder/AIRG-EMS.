@@ -137,6 +137,20 @@ const DEFAULT_NATIONAL_HOLIDAYS = [
   { date: '2026-12-25', name: 'Christmas' }
 ];
 
+const DEFAULT_CELEBRATION_DAYS = [
+  { date: '2026-01-12', name: 'National Youth Day' },
+  { date: '2026-01-24', name: 'National Girl Child Day' },
+  { date: '2026-02-28', name: 'National Science Day' },
+  { date: '2026-03-08', name: 'International Women\'s Day' },
+  { date: '2026-05-11', name: 'National Technology Day' },
+  { date: '2026-07-29', name: 'Gurupornima' },
+  { date: '2026-09-05', name: 'Teacher\'s Day' },
+  { date: '2026-09-15', name: 'Engineer\'s Day' },
+  { date: '2026-11-11', name: 'National Education Day' },
+  { date: '2026-11-14', name: 'Children\'s Day' },
+  { date: '2026-11-19', name: 'International Men\'s Day' }
+];
+
 // --- State Management ---
 let state = {
   currentRole: 'employee', // 'employee' or 'hr'
@@ -159,6 +173,7 @@ let state = {
 
   // Calendar State
   nationalHolidays: [],
+  celebrationDays: [],
   calendarYear: 2026,
   calendarMonth: 5 // June (0-indexed)
 };
@@ -217,6 +232,26 @@ function init() {
     localStorage.setItem('ems_national_holidays', JSON.stringify(DEFAULT_NATIONAL_HOLIDAYS));
   }
 
+  const storedCelebrationsStr = localStorage.getItem('ems_celebration_days');
+  let needToResetCelebrations = false;
+  if (storedCelebrationsStr) {
+    try {
+      const storedCelebrations = JSON.parse(storedCelebrationsStr);
+      const hasGurupornima = storedCelebrations.some(c => c.name.toLowerCase() === 'gurupornima');
+      if (!hasGurupornima || storedCelebrations.length !== DEFAULT_CELEBRATION_DAYS.length) {
+        needToResetCelebrations = true;
+      }
+    } catch (e) {
+      needToResetCelebrations = true;
+    }
+  } else {
+    needToResetCelebrations = true;
+  }
+
+  if (needToResetCelebrations) {
+    localStorage.setItem('ems_celebration_days', JSON.stringify(DEFAULT_CELEBRATION_DAYS));
+  }
+
   state.employees = JSON.parse(localStorage.getItem('ems_employees'));
   state.requests = JSON.parse(localStorage.getItem('ems_requests'));
   state.projects = JSON.parse(localStorage.getItem('ems_projects'));
@@ -226,6 +261,7 @@ function init() {
   state.announcements = JSON.parse(localStorage.getItem('ems_announcements'));
   state.notices = JSON.parse(localStorage.getItem('ems_notices'));
   state.nationalHolidays = JSON.parse(localStorage.getItem('ems_national_holidays'));
+  state.celebrationDays = JSON.parse(localStorage.getItem('ems_celebration_days'));
 
   // Bind role toggles
   document.getElementById('btn-role-employee').addEventListener('click', () => setRole('employee'));
@@ -2093,7 +2129,17 @@ function renderCalendar() {
       eventsContainer.appendChild(hEl);
     });
 
-    // B. Fetch Approved Employee Leaves
+    // B. Fetch Celebration Days
+    const celebrations = state.celebrationDays.filter(c => c.date === dateStr);
+    celebrations.forEach(c => {
+      const cEl = document.createElement('div');
+      cEl.className = 'calendar-event event-celebration';
+      cEl.title = `Celebration Day: ${c.name}`;
+      cEl.textContent = `✨ ${c.name}`;
+      eventsContainer.appendChild(cEl);
+    });
+
+    // C. Fetch Approved Employee Leaves
     const leaves = state.requests.filter(req => {
       if (req.status !== 'approved') return false;
       const matchRange = (dateStr >= req.startDate && dateStr <= req.endDate);
