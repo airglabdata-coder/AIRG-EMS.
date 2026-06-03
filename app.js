@@ -102,8 +102,21 @@ const DEFAULT_TASKS = [
   { id: 'TSK405', projectId: 'PRJ305', projectName: 'Onboarding Redesign', desc: 'Review leave policy draft', assigneeId: 'EMP001', assigneeName: 'Sarah Jenkins', dueDate: '2026-05-28', priority: 'Low', status: 'Completed' },
   { id: 'TSK406', projectId: 'PRJ301', projectName: 'Next-Gen Engine', desc: 'Implement unit tests for leave logic', assigneeId: 'EMP002', assigneeName: 'Alex Rivera', dueDate: '2026-06-25', priority: 'Low', status: 'Pending' }
 ];
-
 const DEFAULT_DEPARTMENTS = ['Engineering', 'Design', 'Sales', 'Marketing', 'Human Resources'];
+
+const DEFAULT_CHATS = [
+  { id: 'MSG001', senderId: 'EMP001', senderName: 'Sarah Jenkins', receiverId: 'group', content: 'Welcome everyone to the new company communications channel!', timestamp: '2026-06-01T09:00:00.000Z' },
+  { id: 'MSG002', senderId: 'EMP002', senderName: 'Alex Rivera', receiverId: 'group', content: 'Thanks Sarah! Excited to use this space.', timestamp: '2026-06-01T09:15:00.000Z' }
+];
+
+const DEFAULT_ANNOUNCEMENTS = [
+  { id: 'ANN001', title: 'Q3 Goal Planning Alignment', content: 'Our Q3 alignment meeting is scheduled for next Monday at 10 AM. Please ensure your project sheets are updated.', senderName: 'Sarah Jenkins', timestamp: '2026-06-02T10:00:00.000Z' },
+  { id: 'ANN002', title: 'New Employee Roster Portal Online', content: 'We have updated our internal leave roster system. You can now toggle your panels dynamically. Let HR know if you find any styling issues.', senderName: 'Sarah Jenkins', timestamp: '2026-06-01T08:30:00.000Z' }
+];
+
+const DEFAULT_NOTICES = [
+  { id: 'NTC001', title: 'HR Compliance Roster Check', content: 'Please review your profile details in the Employee Roster to ensure your email matches company specifications.', targetEmployeeIds: ['EMP002', 'EMP003', 'EMP004'], senderName: 'Sarah Jenkins', timestamp: '2026-06-02T11:00:00.000Z' }
+];
 
 // --- State Management ---
 let state = {
@@ -115,7 +128,15 @@ let state = {
   tasks: [],
   departments: [],
   selectedRequestIdForModal: null,
-  modalActionType: null // 'approve' or 'reject'
+  modalActionType: null, // 'approve' or 'reject'
+  
+  // Communications State
+  chats: [],
+  announcements: [],
+  notices: [],
+  activeCommTab: 'chats', // 'chats', 'announcements', 'notices'
+  activeChatType: 'group', // 'group' or 'direct'
+  activeChatTargetId: null // employeeId for direct messages
 };
 
 // --- Initialization ---
@@ -142,12 +163,24 @@ function init() {
   if (!localStorage.getItem('ems_departments')) {
     localStorage.setItem('ems_departments', JSON.stringify(DEFAULT_DEPARTMENTS));
   }
+  if (!localStorage.getItem('ems_chats')) {
+    localStorage.setItem('ems_chats', JSON.stringify(DEFAULT_CHATS));
+  }
+  if (!localStorage.getItem('ems_announcements')) {
+    localStorage.setItem('ems_announcements', JSON.stringify(DEFAULT_ANNOUNCEMENTS));
+  }
+  if (!localStorage.getItem('ems_notices')) {
+    localStorage.setItem('ems_notices', JSON.stringify(DEFAULT_NOTICES));
+  }
 
   state.employees = JSON.parse(localStorage.getItem('ems_employees'));
   state.requests = JSON.parse(localStorage.getItem('ems_requests'));
   state.projects = JSON.parse(localStorage.getItem('ems_projects'));
   state.tasks = JSON.parse(localStorage.getItem('ems_tasks'));
   state.departments = JSON.parse(localStorage.getItem('ems_departments'));
+  state.chats = JSON.parse(localStorage.getItem('ems_chats'));
+  state.announcements = JSON.parse(localStorage.getItem('ems_announcements'));
+  state.notices = JSON.parse(localStorage.getItem('ems_notices'));
 
   // Bind role toggles
   document.getElementById('btn-role-employee').addEventListener('click', () => setRole('employee'));
@@ -161,6 +194,20 @@ function init() {
   const taskForm = document.getElementById('task-assignment-form');
   if (taskForm) {
     taskForm.addEventListener('submit', handleTaskAssignmentSubmit);
+  }
+
+  // Bind Chat / Announcement / Notice submissions
+  const chatForm = document.getElementById('chat-message-form');
+  if (chatForm) {
+    chatForm.addEventListener('submit', handleChatMessageSubmit);
+  }
+  const annForm = document.getElementById('announcement-creation-form');
+  if (annForm) {
+    annForm.addEventListener('submit', handleAnnouncementSubmit);
+  }
+  const noticeForm = document.getElementById('notice-creation-form');
+  if (noticeForm) {
+    noticeForm.addEventListener('submit', handleNoticeSubmit);
   }
 
   // Filter task assignee dropdown when project changes
@@ -255,7 +302,11 @@ function init() {
         // Refresh active views
         const activeMenuItem = document.querySelector('.menu-item.active');
         const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'dashboard';
-        renderEmployeeDashboard(currentView);
+        if (currentView === 'communications') {
+          renderCommunicationsHub();
+        } else {
+          renderEmployeeDashboard(currentView);
+        }
       }
     });
   }
@@ -421,15 +472,29 @@ function switchView(viewName) {
   // Toggle Layout visibility
   const empContainer = document.getElementById('employee-view-container');
   const hrContainer = document.getElementById('hr-view-container');
+  const commContainer = document.getElementById('communications-view-container');
 
-  if (state.currentRole === 'employee') {
-    empContainer.style.display = 'flex';
-    hrContainer.style.display = 'none';
-    renderEmployeeDashboard(viewName);
+  if (viewName === 'communications') {
+    if (empContainer) empContainer.style.display = 'none';
+    if (hrContainer) hrContainer.style.display = 'none';
+    if (commContainer) commContainer.style.display = 'block';
+    
+    // Update Page Header Label
+    const titleLabel = document.getElementById('page-title-label');
+    if (titleLabel) titleLabel.textContent = 'Communications Hub';
+    
+    renderCommunicationsHub();
   } else {
-    empContainer.style.display = 'none';
-    hrContainer.style.display = 'flex';
-    renderHRDashboard(viewName);
+    if (commContainer) commContainer.style.display = 'none';
+    if (state.currentRole === 'employee') {
+      if (empContainer) empContainer.style.display = 'flex';
+      if (hrContainer) hrContainer.style.display = 'none';
+      renderEmployeeDashboard(viewName);
+    } else {
+      if (empContainer) empContainer.style.display = 'none';
+      if (hrContainer) hrContainer.style.display = 'flex';
+      renderHRDashboard(viewName);
+    }
   }
 }
 
@@ -1491,6 +1556,423 @@ function handleEmpTaskCreationSubmit(e) {
   showToast('Task added successfully!', 'success');
 }
 
+function renderCommunicationsHub() {
+  // Sync tab active classes
+  const tabs = ['chats', 'announcements', 'notices'];
+  tabs.forEach(tab => {
+    const btn = document.getElementById(`comm-tab-${tab}`);
+    if (btn) {
+      if (tab === state.activeCommTab) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+  });
+
+  // Render left sidebar list and title
+  renderCommSidebar();
+
+  // Render right main pane
+  renderCommMainContent();
+}
+
+function switchCommTab(tabName) {
+  state.activeCommTab = tabName;
+  renderCommunicationsHub();
+}
+
+function renderCommSidebar() {
+  const titleEl = document.getElementById('comm-list-title-label');
+  const itemsBox = document.getElementById('comm-list-items-box');
+  if (!itemsBox) return;
+
+  itemsBox.innerHTML = '';
+
+  if (state.activeCommTab === 'chats') {
+    titleEl.textContent = 'Conversations';
+
+    // 1. Add Group Chat link
+    const isGroupActive = state.activeChatType === 'group';
+    const groupLink = document.createElement('div');
+    groupLink.className = `comm-item-link ${isGroupActive ? 'active' : ''}`;
+    groupLink.onclick = () => {
+      state.activeChatType = 'group';
+      state.activeChatTargetId = null;
+      renderCommunicationsHub();
+    };
+    groupLink.innerHTML = `
+      <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; background: var(--primary-gradient);">📢</div>
+      <div style="font-weight:600;">General Group Chat</div>
+    `;
+    itemsBox.appendChild(groupLink);
+
+    // 2. Add Direct Messages for all other employees
+    const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id);
+    otherEmployees.forEach(emp => {
+      const isDirectActive = state.activeChatType === 'direct' && state.activeChatTargetId === emp.id;
+      const empLink = document.createElement('div');
+      empLink.className = `comm-item-link ${isDirectActive ? 'active' : ''}`;
+      empLink.onclick = () => {
+        state.activeChatType = 'direct';
+        state.activeChatTargetId = emp.id;
+        renderCommunicationsHub();
+      };
+      empLink.innerHTML = `
+        <div class="avatar" style="width:30px; height:30px; font-size:0.75rem;">${emp.avatar}</div>
+        <div>
+          <div style="font-weight:600; font-size:0.85rem;">${emp.name}</div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">${emp.dept}</div>
+        </div>
+      `;
+      itemsBox.appendChild(empLink);
+    });
+
+  } else if (state.activeCommTab === 'announcements') {
+    titleEl.textContent = 'Feeds';
+    const link = document.createElement('div');
+    link.className = 'comm-item-link active';
+    link.innerHTML = `
+      <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; background: var(--warning);">📢</div>
+      <div style="font-weight:600;">Announcements</div>
+    `;
+    itemsBox.appendChild(link);
+
+  } else if (state.activeCommTab === 'notices') {
+    titleEl.textContent = 'Feeds';
+    const link = document.createElement('div');
+    link.className = 'comm-item-link active';
+    link.innerHTML = `
+      <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; background: var(--danger);">🔔</div>
+      <div style="font-weight:600;">HR Notices</div>
+    `;
+    itemsBox.appendChild(link);
+  }
+}
+
+function renderCommMainContent() {
+  const chatPane = document.getElementById('comm-chat-pane');
+  const annPane = document.getElementById('comm-announcements-pane');
+  const noticePane = document.getElementById('comm-notices-pane');
+
+  if (!chatPane || !annPane || !noticePane) return;
+
+  chatPane.style.display = 'none';
+  annPane.style.display = 'none';
+  noticePane.style.display = 'none';
+
+  if (state.activeCommTab === 'chats') {
+    chatPane.style.display = 'flex';
+    renderChatRoom();
+  } else if (state.activeCommTab === 'announcements') {
+    annPane.style.display = 'flex';
+    renderAnnouncements();
+  } else if (state.activeCommTab === 'notices') {
+    noticePane.style.display = 'flex';
+    renderNotices();
+  }
+}
+
+function renderChatRoom() {
+  const headerTitle = document.getElementById('chat-header-title');
+  const messagesContainer = document.getElementById('chat-messages-container');
+  if (!messagesContainer) return;
+
+  messagesContainer.innerHTML = '';
+
+  let filteredMessages = [];
+  if (state.activeChatType === 'group') {
+    headerTitle.textContent = 'General Group Chat';
+    filteredMessages = state.chats.filter(m => m.receiverId === 'group');
+  } else {
+    const targetEmp = state.employees.find(e => e.id === state.activeChatTargetId);
+    headerTitle.textContent = targetEmp ? `Chat with ${targetEmp.name}` : 'Direct Message';
+    filteredMessages = state.chats.filter(m => 
+      (m.senderId === state.currentUser.id && m.receiverId === state.activeChatTargetId) ||
+      (m.senderId === state.activeChatTargetId && m.receiverId === state.currentUser.id)
+    );
+  }
+
+  if (filteredMessages.length === 0) {
+    messagesContainer.innerHTML = `
+      <div class="empty-state" style="margin: auto;">
+        <div class="empty-state-title">No messages yet</div>
+        <p>Send a message below to start the conversation.</p>
+      </div>
+    `;
+  } else {
+    // Sort chronological (oldest first)
+    const sorted = [...filteredMessages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    sorted.forEach(msg => {
+      const isSent = msg.senderId === state.currentUser.id;
+      const row = document.createElement('div');
+      row.className = `message-row ${isSent ? 'sent' : 'received'}`;
+      
+      const timeStr = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      row.innerHTML = `
+        ${(!isSent && state.activeChatType === 'group') ? `<div class="message-sender-name">${msg.senderName}</div>` : ''}
+        <div class="message-bubble">${msg.content}</div>
+        <div class="message-time">${timeStr}</div>
+      `;
+      messagesContainer.appendChild(row);
+    });
+  }
+
+  // Scroll to bottom
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function handleChatMessageSubmit(e) {
+  e.preventDefault();
+  const input = document.getElementById('chat-input-message');
+  if (!input) return;
+  const content = input.value.trim();
+  if (!content) return;
+
+  const newMsg = {
+    id: `MSG${String(state.chats.length + 1).padStart(3, '0')}`,
+    senderId: state.currentUser.id,
+    senderName: state.currentUser.name,
+    receiverId: state.activeChatType === 'group' ? 'group' : state.activeChatTargetId,
+    content: content,
+    timestamp: new Date().toISOString()
+  };
+
+  state.chats.push(newMsg);
+  localStorage.setItem('ems_chats', JSON.stringify(state.chats));
+
+  input.value = '';
+  renderChatRoom();
+}
+
+function renderAnnouncements() {
+  const feedList = document.getElementById('announcements-feed-list');
+  const btnPost = document.getElementById('btn-post-announcement');
+  if (!feedList) return;
+
+  feedList.innerHTML = '';
+
+  // Show post button only to HR role
+  if (state.currentRole === 'hr') {
+    if (btnPost) btnPost.style.display = 'block';
+  } else {
+    if (btnPost) btnPost.style.display = 'none';
+  }
+
+  if (state.announcements.length === 0) {
+    feedList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-title">No announcements</div>
+        <p>Announcements posted by HR will appear here.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Sort newest first
+  const sorted = [...state.announcements].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  sorted.forEach(ann => {
+    const card = document.createElement('div');
+    card.className = 'feed-card';
+    const dateStr = formatDate(ann.timestamp);
+    card.innerHTML = `
+      <div class="feed-card-header">
+        <div class="feed-card-title">${ann.title}</div>
+        <div class="feed-card-meta">
+          <span>By <strong>${ann.senderName}</strong></span>
+          <span>${dateStr}</span>
+        </div>
+      </div>
+      <div class="feed-card-content">${ann.content}</div>
+    `;
+    feedList.appendChild(card);
+  });
+}
+
+function handleAnnouncementSubmit(e) {
+  e.preventDefault();
+  const titleInput = document.getElementById('announcement-title');
+  const contentInput = document.getElementById('announcement-content');
+  if (!titleInput || !contentInput) return;
+
+  const title = titleInput.value.trim();
+  const content = contentInput.value.trim();
+
+  if (!title || !content) {
+    showToast('Please fill out all fields.', 'error');
+    return;
+  }
+
+  const newAnn = {
+    id: `ANN${String(state.announcements.length + 1).padStart(3, '0')}`,
+    title: title,
+    content: content,
+    senderName: state.currentUser.name,
+    timestamp: new Date().toISOString()
+  };
+
+  state.announcements.unshift(newAnn);
+  localStorage.setItem('ems_announcements', JSON.stringify(state.announcements));
+
+  titleInput.value = '';
+  contentInput.value = '';
+  
+  hidePostAnnouncementModal();
+  renderAnnouncements();
+  showToast('Announcement posted successfully!', 'success');
+}
+
+function renderNotices() {
+  const feedList = document.getElementById('notices-feed-list');
+  const btnCreate = document.getElementById('btn-create-notice');
+  const headerLabel = document.getElementById('notice-header-label');
+  if (!feedList) return;
+
+  feedList.innerHTML = '';
+
+  if (state.currentRole === 'hr') {
+    if (btnCreate) btnCreate.style.display = 'block';
+    if (headerLabel) headerLabel.textContent = 'Targeted Notices (All Sent Archives)';
+    
+    // HR sees all notices they sent
+    renderNoticeCards(state.notices);
+  } else {
+    if (btnCreate) btnCreate.style.display = 'none';
+    if (headerLabel) headerLabel.textContent = 'HR Notices For Me';
+
+    // Employee sees notices targeted to them specifically
+    const userNotices = state.notices.filter(n => n.targetEmployeeIds.includes(state.currentUser.id));
+    renderNoticeCards(userNotices);
+  }
+}
+
+function renderNoticeCards(noticesList) {
+  const feedList = document.getElementById('notices-feed-list');
+  if (!feedList) return;
+
+  if (noticesList.length === 0) {
+    feedList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-title">No notices found</div>
+        <p>Any targeted notices will appear here.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Sort newest first
+  const sorted = [...noticesList].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  sorted.forEach(notice => {
+    const card = document.createElement('div');
+    card.className = 'feed-card';
+    const dateStr = formatDate(notice.timestamp);
+    
+    // For HR, show who the notice was sent to
+    let targetsStr = '';
+    if (state.currentRole === 'hr') {
+      const names = notice.targetEmployeeIds.map(id => state.employees.find(e => e.id === id)?.name || id);
+      targetsStr = `<div style="font-size:0.75rem; color:var(--primary); margin-top: 8px;">Sent to: ${names.join(', ')}</div>`;
+    }
+
+    card.innerHTML = `
+      <div class="feed-card-header">
+        <div class="feed-card-title">${notice.title}</div>
+        <div class="feed-card-meta">
+          <span>By <strong>${notice.senderName}</strong></span>
+          <span>${dateStr}</span>
+        </div>
+      </div>
+      <div class="feed-card-content">${notice.content}</div>
+      ${targetsStr}
+    `;
+    feedList.appendChild(card);
+  });
+}
+
+function handleNoticeSubmit(e) {
+  e.preventDefault();
+  const titleInput = document.getElementById('notice-title');
+  const contentInput = document.getElementById('notice-content');
+  if (!titleInput || !contentInput) return;
+
+  const title = titleInput.value.trim();
+  const content = contentInput.value.trim();
+
+  // Get selected employees
+  const checkboxes = document.querySelectorAll('#notice-employee-checkboxes-container input[type="checkbox"]:checked');
+  const targetEmployeeIds = Array.from(checkboxes).map(chk => chk.value);
+
+  if (!title || !content) {
+    showToast('Please fill out title and content fields.', 'error');
+    return;
+  }
+
+  if (targetEmployeeIds.length === 0) {
+    showToast('Please select at least one target employee.', 'error');
+    return;
+  }
+
+  const newNotice = {
+    id: `NTC${String(state.notices.length + 1).padStart(3, '0')}`,
+    title: title,
+    content: content,
+    targetEmployeeIds: targetEmployeeIds,
+    senderName: state.currentUser.name,
+    timestamp: new Date().toISOString()
+  };
+
+  state.notices.unshift(newNotice);
+  localStorage.setItem('ems_notices', JSON.stringify(state.notices));
+
+  titleInput.value = '';
+  contentInput.value = '';
+  
+  hideSendNoticeModal();
+  renderNotices();
+  showToast('Notice sent successfully!', 'success');
+}
+
+function openPostAnnouncementModal() {
+  const form = document.getElementById('announcement-creation-form');
+  if (form) form.reset();
+  document.getElementById('announcement-modal-overlay').classList.add('active');
+}
+
+function hidePostAnnouncementModal() {
+  document.getElementById('announcement-modal-overlay').classList.remove('active');
+}
+
+function openSendNoticeModal() {
+  const form = document.getElementById('notice-creation-form');
+  if (form) form.reset();
+  
+  // Populate the checkbox list of all employees
+  populateNoticeEmployeeCheckboxes();
+  
+  document.getElementById('notice-modal-overlay').classList.add('active');
+}
+
+function hideSendNoticeModal() {
+  document.getElementById('notice-modal-overlay').classList.remove('active');
+}
+
+function populateNoticeEmployeeCheckboxes() {
+  const container = document.getElementById('notice-employee-checkboxes-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  state.employees.forEach(emp => {
+    const item = document.createElement('label');
+    item.className = 'employee-checkbox-item';
+    item.innerHTML = `
+      <input type="checkbox" value="${emp.id}">
+      <span>${emp.name} (${emp.dept} - ${emp.role})</span>
+    `;
+    container.appendChild(item);
+  });
+}
+
 // Global modal/action bindings
 window.cycleTaskStatus = cycleTaskStatus;
 window.toggleTaskCompletion = toggleTaskCompletion;
@@ -1505,6 +1987,13 @@ window.hideEmployeeModal = hideEmployeeModal;
 window.openCreateEmpTaskModal = openCreateEmpTaskModal;
 window.hideEmpTaskModal = hideEmpTaskModal;
 window.handleAssignTaskProjectChange = handleAssignTaskProjectChange;
+
+// Communications exports
+window.switchCommTab = switchCommTab;
+window.openPostAnnouncementModal = openPostAnnouncementModal;
+window.hidePostAnnouncementModal = hidePostAnnouncementModal;
+window.openSendNoticeModal = openSendNoticeModal;
+window.hideSendNoticeModal = hideSendNoticeModal;
 
 // Run application on DOM loaded
 window.addEventListener('DOMContentLoaded', init);

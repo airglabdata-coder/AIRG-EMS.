@@ -1147,3 +1147,308 @@ tr:hover td {
   color: var(--success);
   border: 1px solid var(--success-border);
 }
+
+/* Communications Hub Styling */
+.comm-layout {
+  display: flex;
+  gap: 24px;
+  min-height: calc(100vh - 160px);
+}
+
+@media (max-width: 1024px) {
+  .comm-layout {
+    flex-direction: column;
+  }
+}
+
+.comm-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .comm-sidebar {
+    width: 100%;
+  }
+}
+
+.comm-tabs {
+  display: flex;
+  background-color: var(--bg-tertiary);
+  padding: 4px;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.comm-tab-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  text-align: center;
+  transition: all var(--transition-fast);
+}
+
+.comm-tab-btn.active {
+  background-color: var(--bg-secondary);
+  color: var(--primary);
+  box-shadow: var(--card-shadow);
+}
+
+.comm-list-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.comm-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.comm-item-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--text-secondary);
+}
+
+.comm-item-link:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.comm-item-link.active {
+  background-color: var(--primary-bg);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.comm-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+  height: calc(100vh - 160px);
+}
+
+@media (max-width: 1024px) {
+  .comm-main {
+    height: 500px;
+  }
+}
+
+.comm-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comm-header-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* Chat Messages Pane */
+.chat-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background-color: var(--bg-primary);
+}
+
+.message-row {
+  display: flex;
+  flex-direction: column;
+  max-width: 75%;
+}
+
+.message-row.sent {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.message-row.received {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.message-sender-name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  margin-left: 12px;
+}
+
+.message-row.sent .message-sender-name {
+  margin-left: 0;
+  margin-right: 12px;
+}
+
+.message-bubble {
+  padding: 12px 18px;
+  border-radius: 18px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+}
+
+.message-row.sent .message-bubble {
+  background: var(--primary-gradient);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.message-row.received .message-bubble {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-bottom-left-radius: 4px;
+}
+
+.message-time {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  margin-left: 12px;
+}
+
+.message-row.sent .message-time {
+  margin-left: 0;
+  margin-right: 12px;
+}
+
+/* Chat Input Bar */
+.chat-input-bar {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 12px;
+  background-color: var(--bg-secondary);
+}
+
+.chat-input-bar input {
+  flex: 1;
+}
+
+/* Announcements & Notices Feeds */
+.feed-pane {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.feed-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 20px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform var(--transition-fast);
+}
+
+.feed-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+}
+
+.feed-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px dashed var(--border-color);
+  padding-bottom: 10px;
+}
+
+.feed-card-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+}
+
+.feed-card-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.feed-card-content {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* Targeted checkboxes list in modal */
+.employee-checkbox-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: var(--bg-primary);
+}
+
+.employee-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.employee-checkbox-item input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}

@@ -48,6 +48,14 @@
           <span>Employee Roster</span>
         </a>
       </li>
+      <li>
+        <a href="#" class="menu-item" data-view="communications" id="menu-item-comm">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px; stroke: var(--text-muted);">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          <span>Chat & Notices</span>
+        </a>
+      </li>
     </ul>
     
     <div class="sidebar-footer">
@@ -532,6 +540,69 @@
         </div>
       </div>
 
+      <!-- ================= COMMUNICATIONS HUB ================= -->
+      <div id="communications-view-container" style="display: none; width: 100%;">
+        <div class="comm-layout">
+          <!-- Sidebar Navigation Pane -->
+          <div class="comm-sidebar">
+            <div class="comm-tabs">
+              <button class="comm-tab-btn active" id="comm-tab-chats" onclick="switchCommTab('chats')">Chats</button>
+              <button class="comm-tab-btn" id="comm-tab-announcements" onclick="switchCommTab('announcements')">Announcements</button>
+              <button class="comm-tab-btn" id="comm-tab-notices" onclick="switchCommTab('notices')">HR Notices</button>
+            </div>
+            
+            <div class="card" style="padding: 18px; flex: 1;">
+              <!-- Dynamic List (either chatrooms, announcement stats, or notice instructions) -->
+              <div id="comm-sidebar-list-container">
+                <div class="comm-list-title" id="comm-list-title-label">Conversations</div>
+                <div class="comm-list-items" id="comm-list-items-box">
+                  <!-- Dynamically populated links -->
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Main Work area Pane -->
+          <div class="comm-main">
+            <!-- 1. Chat Room Window Pane -->
+            <div id="comm-chat-pane" class="chat-pane" style="display: flex;">
+              <div class="comm-header">
+                <div class="comm-header-title" id="chat-header-title">General Group Chat</div>
+              </div>
+              <div class="chat-messages" id="chat-messages-container">
+                <!-- Dynamically populated styled message bubbles -->
+              </div>
+              <form id="chat-message-form" class="chat-input-bar">
+                <input type="text" id="chat-input-message" placeholder="Type a message..." required autocomplete="off">
+                <button type="submit" class="btn btn-primary btn-sm" style="padding: 10px 20px;">Send</button>
+              </form>
+            </div>
+            
+            <!-- 2. Announcements Feed Pane -->
+            <div id="comm-announcements-pane" class="feed-pane" style="display: none;">
+              <div class="comm-header" style="border-bottom: none; padding: 0 0 16px 0; display: flex; align-items: center; justify-content: space-between;">
+                <div class="comm-header-title" style="font-size: 1.2rem;">Company Announcements</div>
+                <button class="btn btn-primary btn-sm" id="btn-post-announcement" onclick="openPostAnnouncementModal()" style="display: none;">+ Post Announcement</button>
+              </div>
+              <div id="announcements-feed-list" style="display:flex; flex-direction:column; gap:16px;">
+                <!-- Announcements list -->
+              </div>
+            </div>
+            
+            <!-- 3. Targeted Notices Feed Pane -->
+            <div id="comm-notices-pane" class="feed-pane" style="display: none;">
+              <div class="comm-header" style="border-bottom: none; padding: 0 0 16px 0; display: flex; align-items: center; justify-content: space-between;">
+                <div class="comm-header-title" id="notice-header-label" style="font-size: 1.2rem;">Targeted Notices</div>
+                <button class="btn btn-primary btn-sm" id="btn-create-notice" onclick="openSendNoticeModal()" style="display: none;">+ Send Targeted Notice</button>
+              </div>
+              <div id="notices-feed-list" style="display:flex; flex-direction:column; gap:16px;">
+                <!-- Notices list -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 
@@ -755,6 +826,64 @@
         <div class="modal-footer">
           <button type="button" onclick="hideEmpTaskModal()" class="btn btn-secondary btn-sm">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm">Add Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Post Announcement Modal Overlay -->
+  <div id="announcement-modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Post New Announcement</h3>
+        <button type="button" onclick="hidePostAnnouncementModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="announcement-creation-form">
+        <div class="modal-body">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="announcement-title">Announcement Title</label>
+            <input type="text" id="announcement-title" placeholder="e.g. Q3 Town Hall Scheduled" required>
+          </div>
+          <div class="form-group">
+            <label for="announcement-content">Content Message</label>
+            <textarea id="announcement-content" placeholder="Type your announcement content here..." required style="min-height: 120px;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="hidePostAnnouncementModal()" class="btn btn-secondary btn-sm">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Post Announcement</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Send Targeted HR Notice Modal Overlay -->
+  <div id="notice-modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Send Targeted HR Notice</h3>
+        <button type="button" onclick="hideSendNoticeModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="notice-creation-form">
+        <div class="modal-body">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="notice-title">Notice Title</label>
+            <input type="text" id="notice-title" placeholder="e.g. Mandatory Compliance Review" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="notice-content">Notice Message</label>
+            <textarea id="notice-content" placeholder="Type compliance note or important message details..." required style="min-height: 100px;"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Target Employees (Select Recipient List)</label>
+            <div class="employee-checkbox-list" id="notice-employee-checkboxes-container">
+              <!-- Dynamically populated list of employees with checkboxes -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="hideSendNoticeModal()" class="btn btn-secondary btn-sm">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Send Notice</button>
         </div>
       </form>
     </div>
