@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EMS - Employee Leave Portal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Sidebar Navigation -->
+  <aside id="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-icon">L</div>
+      <div class="brand-text">LeaveFlow</div>
+    </div>
+    
+    <ul class="sidebar-menu">
+      <li>
+        <a href="#" class="menu-item active" data-view="dashboard">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
+          </svg>
+          <span>Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a href="#" class="menu-item" data-view="requests">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>Leave Requests</span>
+        </a>
+      </li>
+      <li>
+        <a href="#" class="menu-item" data-view="tasks" id="menu-item-tasks">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <span>Tasks & Projects</span>
+        </a>
+      </li>
+      <li id="menu-item-roster" style="display: none;">
+        <a href="#" class="menu-item" data-view="roster">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <span>Employee Roster</span>
+        </a>
+      </li>
+    </ul>
+    
+    <div class="sidebar-footer">
+      <p>© 2026 LeaveFlow Portal</p>
+      <p style="font-size:0.7rem; margin-top:4px;">Employee Management System</p>
+    </div>
+  </aside>
+
+  <!-- Main Content Shell -->
+  <main id="main-content">
+    
+    <!-- Top Header -->
+    <header>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <button id="mobile-hamburger" class="hamburger" aria-label="Toggle Sidebar">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="header-title">
+          <h1 id="page-title-label">Leave Dashboard</h1>
+        </div>
+      </div>
+      
+      <div class="header-controls">
+        <!-- Interactive Role Selector -->
+        <div class="role-switcher-container">
+          <button id="btn-role-employee" class="role-btn active" title="Switch to employee panel">Employee</button>
+          <button id="btn-role-hr" class="role-btn" title="Switch to HR view">HR Manager</button>
+        </div>
+
+        <!-- Employee Selector Dropdown (visible in Employee Mode) -->
+        <div id="employee-selector-wrapper" class="employee-select-container" style="display: none; align-items: center; gap: 8px;">
+          <label for="active-employee-select" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Acting As:</label>
+          <select id="active-employee-select" style="padding: 6px 12px; font-size: 0.85rem; width: auto; font-weight: 600; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+            <!-- Options populated dynamically in app.js -->
+          </select>
+        </div>
+
+        <!-- Theme Toggle -->
+        <button id="theme-toggle" class="icon-btn" title="Toggle Dark/Light Mode">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+
+        <!-- User Profile Widget -->
+        <div class="profile-widget">
+          <div id="header-avatar" class="avatar">SJ</div>
+          <div class="profile-info">
+            <div id="header-name" class="profile-name">Sarah Jenkins</div>
+            <div id="header-role" class="profile-role">Human Resources</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content Sections -->
+    <div class="container">
+      
+      <!-- ================= EMPLOYEE PANEL ================= -->
+      <div id="employee-view-container" style="display: flex; flex-direction: column; gap: 32px; width: 100%;">
+        
+        <!-- Employee Dashboard Stats -->
+        <div class="stats-grid">
+          <div class="stats-card stats-primary">
+            <div class="stats-info">
+              <span class="stats-label">Leave Balance</span>
+              <div class="balance-ring-container">
+                <div id="balance-progress-ring" class="circular-progress">
+                  <span id="balance-progress-value" class="circular-progress-value">20</span>
+                </div>
+                <div class="circular-progress-label">days remaining<br>out of 20 max</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="stats-card stats-success">
+            <div class="stats-info">
+              <span class="stats-label">Approved Absent Days</span>
+              <span id="emp-approved-days" class="stats-value">0</span>
+            </div>
+            <div class="stats-icon-container">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+          
+          <div class="stats-card stats-warning">
+            <div class="stats-info">
+              <span class="stats-label">Pending Request Days</span>
+              <span id="emp-pending-days" class="stats-value">0</span>
+            </div>
+            <div class="stats-icon-container">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Employee Views: Form & History -->
+        <div id="emp-dashboard-row" class="dashboard-row">
+          
+          <!-- Submit Leave Request Card -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Request Leave Time
+              </h2>
+            </div>
+            
+            <form id="leave-request-form">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="leave-type">Leave Category</label>
+                  <select id="leave-type" required>
+                    <option value="" disabled selected>Select category...</option>
+                    <option value="Sick">Sick Leave</option>
+                    <option value="Casual">Casual Leave</option>
+                    <option value="Annual">Annual Paid Leave</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label style="opacity: 0;">Days Counter</label>
+                  <div style="display:flex; align-items:center; height: 100%; font-size: 0.85rem; font-weight:600; color: var(--primary);">
+                    Total requested:&nbsp;<span id="calculated-days" style="font-weight: 800; font-size: 1rem;">0 days</span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="start-date">Start Date</label>
+                  <input type="date" id="start-date" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="end-date">End Date</label>
+                  <input type="date" id="end-date" required>
+                  <span id="date-error" style="color: var(--danger); font-size: 0.75rem; display: none; margin-top: 4px;">End date must be after start date</span>
+                </div>
+
+                <div class="form-group full-width">
+                  <label for="reason">Reason for Leave</label>
+                  <textarea id="reason" placeholder="Write a short explanation for your request..." required></textarea>
+                </div>
+              </div>
+
+              <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary">
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                  Submit Application
+                </button>
+              </div>
+            </form>
+          </div>
+          
+          <!-- Quick Status Panel -->
+          <div class="card" style="justify-content: flex-start; gap: 16px;">
+            <div class="card-header">
+              <h2 class="card-title">Leave Flow Guide</h2>
+            </div>
+            <div style="font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary); display:flex; flex-direction:column; gap:12px;">
+              <p>📍 Submit your application specifying dates, leave category, and reasons.</p>
+              <p>⏳ Status defaults to <strong>Pending</strong>. HR receives immediate notification in their dashboard.</p>
+              <p>📈 Upon HR approval, leave balance is automatically adjusted, and absence count rises.</p>
+              <p>❌ If rejected, reason for denial is noted in comments.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Full Request History Grid -->
+        <div id="emp-requests-table-card" class="card" style="display: none;">
+          <div class="card-header">
+            <h2 class="card-title">My Leave Request History</h2>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Leave Dates</th>
+                  <th>Duration</th>
+                  <th>Status</th>
+                  <th>Applicant Reason</th>
+                  <th>HR Remarks / Comments</th>
+                </tr>
+              </thead>
+              <tbody id="employee-requests-tbody">
+                <!-- Injected via app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Employee Tasks and Projects Card -->
+        <div id="emp-tasks-card" class="card" style="display: none;">
+          <div style="display: grid; grid-template-columns: 1fr; gap: 32px;">
+            <!-- Department Projects Section -->
+            <div>
+              <div class="card-header" style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
+                <h2 class="card-title">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  My Department's Projects
+                </h2>
+              </div>
+              <div id="emp-projects-grid" class="project-grid">
+                <!-- Dynamically populated project cards -->
+              </div>
+            </div>
+
+            <!-- Employee To-Do List Section -->
+            <div>
+              <div class="card-header" style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
+                <h2 class="card-title">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--success);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  My Assigned Tasks & To-Do List
+                </h2>
+                <button class="btn btn-primary btn-sm" onclick="openCreateEmpTaskModal()">+ Add Task</button>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Task Description</th>
+                      <th>Project</th>
+                      <th>Priority</th>
+                      <th>Due Date</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="emp-tasks-tbody">
+                    <!-- Dynamically populated list of tasks -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ================= HR MANAGER PANEL ================= -->
+      <div id="hr-view-container" style="display: none; flex-direction: column; gap: 32px; width: 100%;">
+        
+        <!-- HR Dashboard Stats -->
+        <div class="stats-grid">
+          <div class="stats-card stats-info-card">
+            <div class="stats-info">
+              <span class="stats-label">Total Roster size</span>
+              <span id="hr-total-employees" class="stats-value">0</span>
+            </div>
+            <div class="stats-icon-container">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="stats-card stats-warning">
+            <div class="stats-info">
+              <span class="stats-label">Pending Requests Queue</span>
+              <span id="hr-pending-requests" class="stats-value">0</span>
+            </div>
+            <div class="stats-icon-container">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="stats-card stats-danger">
+            <div class="stats-info">
+              <span class="stats-label">Total Days Absent</span>
+              <span id="hr-absent-days" class="stats-value">0</span>
+            </div>
+            <div class="stats-icon-container">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- HR Dashboard Sections -->
+        <div id="hr-dashboard-row" style="display: flex; flex-direction: column; gap: 32px;">
+          
+          <!-- Leave Requests Pending Approval Queue -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--warning);">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Leave Request Approval Queue
+              </h2>
+            </div>
+            
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Category</th>
+                    <th>Leave Dates</th>
+                    <th>Duration</th>
+                    <th>Reason</th>
+                    <th>Submitted</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="hr-queue-tbody">
+                  <!-- Injected via app.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Complete Database / History Archive of Applications -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                All Applied Leaves Archive
+              </h2>
+            </div>
+            
+            <!-- Filters Panel -->
+            <div class="filter-bar">
+              <div class="search-input-wrapper">
+                <input type="text" id="hr-search" placeholder="Search by name or department...">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              
+              <div class="filter-selects">
+                <select id="filter-type">
+                  <option value="all">All Leave Types</option>
+                  <option value="Sick">Sick Leave</option>
+                  <option value="Casual">Casual Leave</option>
+                  <option value="Annual">Annual Paid Leave</option>
+                </select>
+                
+                <select id="filter-status">
+                  <option value="all">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Category</th>
+                    <th>Leave Dates</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                    <th>Reason</th>
+                    <th>HR Remarks / Comments</th>
+                  </tr>
+                </thead>
+                <tbody id="hr-all-tbody">
+                  <!-- Injected via app.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Roster Panel / Absence Tracking -->
+        <div id="hr-roster-card" class="card" style="display: none;">
+          <div class="card-header">
+            <h2 class="card-title">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+              </svg>
+              Employee Absence & Leave Utilization Tracker
+            </h2>
+            <div style="display: flex; gap: 12px;">
+              <button class="btn btn-primary btn-sm" onclick="openCreateDeptModal()">+ Add Department</button>
+              <button class="btn btn-primary btn-sm" onclick="openCreateEmployeeModal()">+ Add Employee</button>
+            </div>
+          </div>
+          <p class="text-muted" style="margin-top:-10px; font-size:0.85rem;">View absence metrics and track how many days employees have spent on approved leave relative to their 20-day annual maximum allowance limit.</p>
+          <div id="hr-roster-list" class="roster-list">
+            <!-- Injected via app.js -->
+          </div>
+        </div>
+
+        <!-- HR Tasks and Projects Card -->
+        <div id="hr-tasks-card" class="card" style="display: none;">
+          <div style="display: grid; grid-template-columns: 1fr; gap: 32px;">
+            
+            <!-- Projects Administration Panel -->
+            <div>
+              <div class="card-header" style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
+                <h2 class="card-title">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v12m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  Projects Directory (All Departments)
+                </h2>
+                <button class="btn btn-primary btn-sm" onclick="openCreateProjectModal()">+ Add New Project</button>
+              </div>
+              <div id="hr-projects-grid" class="project-grid">
+                <!-- Dynamically populated project cards -->
+              </div>
+            </div>
+
+            <!-- Employee Tasks Board -->
+            <div>
+              <div class="card-header" style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
+                <h2 class="card-title">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--warning);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  All Assigned Employee Tasks
+                </h2>
+                <button class="btn btn-primary btn-sm" onclick="openAssignTaskModal()">+ Assign New Task</button>
+              </div>
+
+              <!-- Tasks Filter Panel -->
+              <div class="filter-bar" style="margin-bottom: 16px;">
+                <div class="search-input-wrapper">
+                  <input type="text" id="hr-task-search" placeholder="Search tasks or assignees...">
+                  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <div class="filter-selects">
+                  <select id="filter-task-project">
+                    <option value="all">All Projects</option>
+                    <!-- Dynamically populated -->
+                  </select>
+                  <select id="filter-task-status">
+                    <option value="all">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Task Description</th>
+                      <th>Project</th>
+                      <th>Assigned To</th>
+                      <th>Priority</th>
+                      <th>Due Date</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="hr-tasks-tbody">
+                    <!-- Dynamically populated list of all tasks -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Action Modal Overlay (Approve/Reject Comment Collector) -->
+  <div id="action-modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-action-title">Approve Leave Request</h3>
+        <button id="btn-close-modal" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="modal-action-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label id="modal-action-label" for="modal-comment">Comments:</label>
+            <textarea id="modal-comment" placeholder="Add remarks..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btn-cancel-modal" class="btn btn-secondary btn-sm">Cancel</button>
+          <button type="submit" id="btn-modal-submit" class="btn btn-primary btn-sm">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Create Project Modal Overlay -->
+  <div id="project-modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Create New Project</h3>
+        <button type="button" onclick="hideProjectModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="project-creation-form">
+        <div class="modal-body">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="project-name">Project Name</label>
+            <input type="text" id="project-name" placeholder="e.g. Next-Gen Mobile App" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="project-dept">Department</label>
+            <select id="project-dept" required>
+              <option value="" disabled selected>Select department...</option>
+              <!-- Dynamically populated options -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="project-status">Project Status</label>
+            <select id="project-status" required>
+              <option value="Planning">Planning</option>
+              <option value="Active" selected>Active</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="hideProjectModal()" class="btn btn-secondary btn-sm">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Create Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Assign Task Modal Overlay -->
+  <div id="task-modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Assign New Task</h3>
+        <button type="button" onclick="hideTaskModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="task-assignment-form">
+        <div class="modal-body">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="task-desc">Task Description</label>
+            <input type="text" id="task-desc" placeholder="e.g. Refactor API controllers" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="task-project-select">Project</label>
+            <select id="task-project-select" required>
+              <option value="" disabled selected>Select project...</option>
+              <!-- Dynamically populated options -->
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="task-assignee-select">Assign Employee</label>
+            <select id="task-assignee-select" required>
+              <option value="" disabled selected>Select employee...</option>
+              <!-- Dynamically populated options -->
+            </select>
+          </div>
+          <div class="form-grid" style="margin-bottom: 12px;">
+            <div class="form-group">
+              <label for="task-due-date">Due Date</label>
+              <input type="date" id="task-due-date" required>
+            </div>
+            <div class="form-group">
+              <label for="task-priority">Priority</label>
+              <select id="task-priority" required>
+                <option value="Low">Low</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="hideTaskModal()" class="btn btn-secondary btn-sm">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Assign Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <!-- Create Department Modal Overlay -->
+  <div id="dept-modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Department</h3>
+        <button type="button" onclick="hideDeptModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="dept-creation-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="dept-name">Department Name</label>
+            <input type="text" id="dept-name" placeholder="e.g. Customer Support" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="hideDeptModal()" class="btn btn-secondary btn-sm">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add Department</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Employee Modal Overlay -->
+  <div id="employee-modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Employee</h3>
+        <button type="button" onclick="hideEmployeeModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="employee-creation-form">
+        <div class="modal-body">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="new-emp-name">Full Name</label>
+            <input type="text" id="new-emp-name" placeholder="e.g. David Kim" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="new-emp-email">Email Address</label>
+            <input type="email" id="new-emp-email" placeholder="e.g. david.k@company.com" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="new-emp-designation">Designation / Job Title</label>
+            <input type="text" id="new-emp-designation" placeholder="e.g. Software Engineer" required>
+          </div>
+          <div class="form-grid" style="margin-bottom: 12px;">
+            <div class="form-group">
+              <label for="new-emp-dept">Department</label>
+              <select id="new-emp-dept" required>
+                <option value="" disabled selected>Select department...</option>
+                <!-- Dynamically populated options -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="new-emp-role">Role</label>
+              <select id="new-emp-role" required>
+                <option value="Employee" selected>Employee</option>
+                <option value="HR">HR Manager</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="new-emp-balance">Starting Leave Balance (days)</label>
+            <input type="number" id="new-emp-balance" min="0" max="30" value="20" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="hideEmployeeModal()" class="btn btn-secondary btn-sm">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add Employee</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Employee Task Modal Overlay -->
+  <div id="emp-task-modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Task</h3>
+        <button type="button" onclick="hideEmpTaskModal()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="emp-task-creation-form">
+        <div class="modal-body">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="emp-task-desc">Task Description</label>
+            <input type="text" id="emp-task-desc" placeholder="e.g. Prepare presentation slides" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="emp-task-project-select">Project</label>
+            <select id="emp-task-project-select">
+              <!-- Dynamically populated department projects + "Personal / Non-Project" option -->
+            </select>
+          </div>
+          <div class="form-grid" style="margin-bottom: 12px;">
+            <div class="form-group">
+              <label for="emp-task-due-date">Due Date</label>
+              <input type="date" id="emp-task-due-date" required>
+            </div>
+            <div class="form-group">
+              <label for="emp-task-priority">Priority</label>
+              <select id="emp-task-priority" required>
+                <option value="Low">Low</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="hideEmpTaskModal()" class="btn btn-secondary btn-sm">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
