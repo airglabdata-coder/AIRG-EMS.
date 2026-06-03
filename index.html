@@ -56,6 +56,14 @@
           <span>Chat & Notices</span>
         </a>
       </li>
+      <li>
+        <a href="#" class="menu-item" data-view="calendar" id="menu-item-calendar">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px; stroke: var(--text-muted);">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>Holiday Calendar</span>
+        </a>
+      </li>
     </ul>
     
     <div class="sidebar-footer">
@@ -598,6 +606,53 @@
               <div id="notices-feed-list" style="display:flex; flex-direction:column; gap:16px;">
                 <!-- Notices list -->
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= HOLIDAY CALENDAR HUB ================= -->
+      <div id="calendar-view-container" style="display: none; width: 100%;">
+        <div class="calendar-container">
+          <div class="calendar-header-bar">
+            <h2 class="calendar-nav-title" id="calendar-month-year-label">June 2026</h2>
+            <div class="calendar-nav-buttons">
+              <button class="btn btn-secondary btn-sm" onclick="changeCalendarMonth(-1)">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px; margin-right: 4px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+                </svg>
+                Previous
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="changeCalendarMonth(1)">
+                Next
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px; margin-left: 4px;">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div class="calendar-grid">
+            <div class="calendar-day-header">Sun</div>
+            <div class="calendar-day-header">Mon</div>
+            <div class="calendar-day-header">Tue</div>
+            <div class="calendar-day-header">Wed</div>
+            <div class="calendar-day-header">Thu</div>
+            <div class="calendar-day-header">Fri</div>
+            <div class="calendar-day-header">Sat</div>
+            
+            <!-- Calendar Day Cells dynamically injected here -->
+            <div id="calendar-days-grid" style="display: contents;"></div>
+          </div>
+          
+          <div class="calendar-legend">
+            <div class="legend-item">
+              <div class="legend-dot event-holiday"></div>
+              <span>National Holidays</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot event-leave"></div>
+              <span>Employee Leaves</span>
             </div>
           </div>
         </div>

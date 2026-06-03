@@ -118,6 +118,20 @@ const DEFAULT_NOTICES = [
   { id: 'NTC001', title: 'HR Compliance Roster Check', content: 'Please review your profile details in the Employee Roster to ensure your email matches company specifications.', targetEmployeeIds: ['EMP002', 'EMP003', 'EMP004'], senderName: 'Sarah Jenkins', timestamp: '2026-06-02T11:00:00.000Z' }
 ];
 
+const DEFAULT_NATIONAL_HOLIDAYS = [
+  { date: '2026-01-01', name: "New Year's Day" },
+  { date: '2026-01-19', name: 'Martin Luther King Jr. Day' },
+  { date: '2026-02-16', name: "Presidents' Day" },
+  { date: '2026-05-25', name: 'Memorial Day' },
+  { date: '2026-06-19', name: 'Juneteenth' },
+  { date: '2026-07-04', name: 'Independence Day' },
+  { date: '2026-09-07', name: 'Labor Day' },
+  { date: '2026-10-12', name: 'Columbus Day' },
+  { date: '2026-11-11', name: 'Veterans Day' },
+  { date: '2026-11-26', name: 'Thanksgiving Day' },
+  { date: '2026-12-25', name: 'Christmas Day' }
+];
+
 // --- State Management ---
 let state = {
   currentRole: 'employee', // 'employee' or 'hr'
@@ -136,7 +150,12 @@ let state = {
   notices: [],
   activeCommTab: 'chats', // 'chats', 'announcements', 'notices'
   activeChatType: 'group', // 'group' or 'direct'
-  activeChatTargetId: null // employeeId for direct messages
+  activeChatTargetId: null, // employeeId for direct messages
+
+  // Calendar State
+  nationalHolidays: [],
+  calendarYear: 2026,
+  calendarMonth: 5 // June (0-indexed)
 };
 
 // --- Initialization ---
@@ -172,6 +191,9 @@ function init() {
   if (!localStorage.getItem('ems_notices')) {
     localStorage.setItem('ems_notices', JSON.stringify(DEFAULT_NOTICES));
   }
+  if (!localStorage.getItem('ems_national_holidays')) {
+    localStorage.setItem('ems_national_holidays', JSON.stringify(DEFAULT_NATIONAL_HOLIDAYS));
+  }
 
   state.employees = JSON.parse(localStorage.getItem('ems_employees'));
   state.requests = JSON.parse(localStorage.getItem('ems_requests'));
@@ -181,6 +203,7 @@ function init() {
   state.chats = JSON.parse(localStorage.getItem('ems_chats'));
   state.announcements = JSON.parse(localStorage.getItem('ems_announcements'));
   state.notices = JSON.parse(localStorage.getItem('ems_notices'));
+  state.nationalHolidays = JSON.parse(localStorage.getItem('ems_national_holidays'));
 
   // Bind role toggles
   document.getElementById('btn-role-employee').addEventListener('click', () => setRole('employee'));
@@ -304,6 +327,8 @@ function init() {
         const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'dashboard';
         if (currentView === 'communications') {
           renderCommunicationsHub();
+        } else if (currentView === 'calendar') {
+          renderCalendar();
         } else {
           renderEmployeeDashboard(currentView);
         }
@@ -473,10 +498,12 @@ function switchView(viewName) {
   const empContainer = document.getElementById('employee-view-container');
   const hrContainer = document.getElementById('hr-view-container');
   const commContainer = document.getElementById('communications-view-container');
+  const calendarContainer = document.getElementById('calendar-view-container');
 
   if (viewName === 'communications') {
     if (empContainer) empContainer.style.display = 'none';
     if (hrContainer) hrContainer.style.display = 'none';
+    if (calendarContainer) calendarContainer.style.display = 'none';
     if (commContainer) commContainer.style.display = 'block';
     
     // Update Page Header Label
@@ -484,8 +511,20 @@ function switchView(viewName) {
     if (titleLabel) titleLabel.textContent = 'Communications Hub';
     
     renderCommunicationsHub();
+  } else if (viewName === 'calendar') {
+    if (empContainer) empContainer.style.display = 'none';
+    if (hrContainer) hrContainer.style.display = 'none';
+    if (commContainer) commContainer.style.display = 'none';
+    if (calendarContainer) calendarContainer.style.display = 'block';
+    
+    // Update Page Header Label
+    const titleLabel = document.getElementById('page-title-label');
+    if (titleLabel) titleLabel.textContent = 'Holiday & Leave Calendar';
+    
+    renderCalendar();
   } else {
     if (commContainer) commContainer.style.display = 'none';
+    if (calendarContainer) calendarContainer.style.display = 'none';
     if (state.currentRole === 'employee') {
       if (empContainer) empContainer.style.display = 'flex';
       if (hrContainer) hrContainer.style.display = 'none';
@@ -1973,6 +2012,123 @@ function populateNoticeEmployeeCheckboxes() {
   });
 }
 
+function renderCalendar() {
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  
+  const year = state.calendarYear;
+  const month = state.calendarMonth;
+
+  // Header Title
+  const headerEl = document.getElementById('calendar-month-year-label');
+  if (headerEl) {
+    headerEl.textContent = `${monthNames[month]} ${year}`;
+  }
+
+  const gridEl = document.getElementById('calendar-days-grid');
+  if (!gridEl) return;
+  gridEl.innerHTML = '';
+
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+
+  // 1. Render Leading Padding Cells
+  for (let i = 0; i < firstDayIndex; i++) {
+    const pad = document.createElement('div');
+    pad.className = 'calendar-padding-cell';
+    gridEl.appendChild(pad);
+  }
+
+  // 2. Render Active Month Cells
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  for (let day = 1; day <= totalDays; day++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const isToday = (todayStr === dateStr);
+
+    const cell = document.createElement('div');
+    cell.className = `calendar-day-cell ${isToday ? 'today' : ''}`;
+    
+    // Day Number
+    const numEl = document.createElement('div');
+    numEl.className = 'calendar-day-number';
+    numEl.textContent = day;
+    cell.appendChild(numEl);
+
+    // Events Container
+    const eventsContainer = document.createElement('div');
+    eventsContainer.className = 'calendar-events-container';
+
+    // A. Fetch National Holidays
+    const holidays = state.nationalHolidays.filter(h => h.date === dateStr);
+    holidays.forEach(h => {
+      const hEl = document.createElement('div');
+      hEl.className = 'calendar-event event-holiday';
+      hEl.title = `National Holiday: ${h.name}`;
+      hEl.textContent = `🎉 ${h.name}`;
+      eventsContainer.appendChild(hEl);
+    });
+
+    // B. Fetch Approved Employee Leaves
+    const leaves = state.requests.filter(req => {
+      if (req.status !== 'approved') return false;
+      const matchRange = (dateStr >= req.startDate && dateStr <= req.endDate);
+      if (!matchRange) return false;
+
+      // Visibility filters
+      if (state.currentRole === 'hr') {
+        return true;
+      } else {
+        return req.employeeId === state.currentUser.id;
+      }
+    });
+
+    leaves.forEach(req => {
+      const lEl = document.createElement('div');
+      lEl.className = 'calendar-event event-leave';
+      if (state.currentRole === 'hr') {
+        lEl.title = `${req.employeeName} - ${req.type} Leave (${req.reason})`;
+        lEl.textContent = `${req.employeeName.split(' ')[0]}: ${req.type}`;
+      } else {
+        lEl.title = `My ${req.type} Leave (${req.reason})`;
+        lEl.textContent = `Leave: ${req.type}`;
+      }
+      eventsContainer.appendChild(lEl);
+    });
+
+    cell.appendChild(eventsContainer);
+    gridEl.appendChild(cell);
+  }
+
+  // 3. Render Trailing Padding Cells to align Grid row
+  const totalCellsSoFar = firstDayIndex + totalDays;
+  const trailingPadding = Math.ceil(totalCellsSoFar / 7) * 7 - totalCellsSoFar;
+  for (let i = 0; i < trailingPadding; i++) {
+    const pad = document.createElement('div');
+    pad.className = 'calendar-padding-cell';
+    gridEl.appendChild(pad);
+  }
+}
+
+function changeCalendarMonth(offset) {
+  let month = state.calendarMonth + offset;
+  let year = state.calendarYear;
+
+  if (month < 0) {
+    month = 11;
+    year -= 1;
+  } else if (month > 11) {
+    month = 0;
+    year += 1;
+  }
+
+  state.calendarMonth = month;
+  state.calendarYear = year;
+  renderCalendar();
+}
+
 // Global modal/action bindings
 window.cycleTaskStatus = cycleTaskStatus;
 window.toggleTaskCompletion = toggleTaskCompletion;
@@ -1994,6 +2150,9 @@ window.openPostAnnouncementModal = openPostAnnouncementModal;
 window.hidePostAnnouncementModal = hidePostAnnouncementModal;
 window.openSendNoticeModal = openSendNoticeModal;
 window.hideSendNoticeModal = hideSendNoticeModal;
+
+// Calendar exports
+window.changeCalendarMonth = changeCalendarMonth;
 
 // Run application on DOM loaded
 window.addEventListener('DOMContentLoaded', init);

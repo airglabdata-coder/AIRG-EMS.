@@ -1452,3 +1452,147 @@ tr:hover td {
   cursor: pointer;
   accent-color: var(--primary);
 }
+
+/* Interactive Calendar Styling */
+.calendar-container {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  padding: 24px;
+  gap: 20px;
+}
+
+.calendar-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+}
+
+.calendar-nav-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.calendar-nav-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+  background-color: var(--bg-tertiary);
+  gap: 1px;
+}
+
+.calendar-day-header {
+  background-color: var(--bg-secondary);
+  color: var(--text-muted);
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.calendar-day-cell {
+  background-color: var(--bg-secondary);
+  min-height: 110px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background-color var(--transition-fast);
+}
+
+.calendar-day-cell:hover {
+  background-color: var(--bg-primary);
+}
+
+.calendar-day-number {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  align-self: flex-end;
+}
+
+.calendar-day-cell.today .calendar-day-number {
+  color: var(--primary);
+  background-color: var(--primary-bg);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.calendar-padding-cell {
+  background-color: var(--bg-primary);
+  opacity: 0.4;
+  min-height: 110px;
+}
+
+.calendar-events-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.calendar-event {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.event-holiday {
+  background-color: var(--success-bg);
+  color: var(--success);
+  border-left: 3px solid var(--success);
+}
+
+.event-leave {
+  background-color: var(--primary-bg);
+  color: var(--primary);
+  border-left: 3px solid var(--primary);
+}
+
+/* Legend items */
+.calendar-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
