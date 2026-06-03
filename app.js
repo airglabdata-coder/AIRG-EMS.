@@ -119,17 +119,22 @@ const DEFAULT_NOTICES = [
 ];
 
 const DEFAULT_NATIONAL_HOLIDAYS = [
-  { date: '2026-01-01', name: "New Year's Day" },
-  { date: '2026-01-19', name: 'Martin Luther King Jr. Day' },
-  { date: '2026-02-16', name: "Presidents' Day" },
-  { date: '2026-05-25', name: 'Memorial Day' },
-  { date: '2026-06-19', name: 'Juneteenth' },
-  { date: '2026-07-04', name: 'Independence Day' },
-  { date: '2026-09-07', name: 'Labor Day' },
-  { date: '2026-10-12', name: 'Columbus Day' },
-  { date: '2026-11-11', name: 'Veterans Day' },
-  { date: '2026-11-26', name: 'Thanksgiving Day' },
-  { date: '2026-12-25', name: 'Christmas Day' }
+  { date: '2026-01-26', name: 'Republic Day' },
+  { date: '2026-02-19', name: 'Shivjayanti' },
+  { date: '2026-03-03', name: 'Dhulivandan' },
+  { date: '2026-03-19', name: 'Gudipadva' },
+  { date: '2026-04-14', name: 'Ambedkar Jayanti' },
+  { date: '2026-05-01', name: 'Maharashtra Din' },
+  { date: '2026-08-15', name: 'Independence Day' },
+  { date: '2026-08-28', name: 'Raksha Bandhan' },
+  { date: '2026-09-05', name: 'Gopalkala' },
+  { date: '2026-09-14', name: 'Ganesh Chaturthi' },
+  { date: '2026-10-02', name: 'Gandhi Jayanti' },
+  { date: '2026-10-20', name: 'Dasara' },
+  { date: '2026-11-09', name: 'Diwali' },
+  { date: '2026-11-10', name: 'Diwali' },
+  { date: '2026-11-11', name: 'Bhai Duj (Bhaubij)' },
+  { date: '2026-12-25', name: 'Christmas' }
 ];
 
 // --- State Management ---
@@ -191,7 +196,24 @@ function init() {
   if (!localStorage.getItem('ems_notices')) {
     localStorage.setItem('ems_notices', JSON.stringify(DEFAULT_NOTICES));
   }
-  if (!localStorage.getItem('ems_national_holidays')) {
+  const storedHolidaysStr = localStorage.getItem('ems_national_holidays');
+  let needToResetHolidays = false;
+  if (storedHolidaysStr) {
+    try {
+      const storedHolidays = JSON.parse(storedHolidaysStr);
+      const hasShivjayanti = storedHolidays.some(h => h.name.toLowerCase() === 'shivjayanti');
+      const hasUSIndependenceDay = storedHolidays.some(h => h.name.toLowerCase() === 'independence day' && h.date === '2026-07-04');
+      if (!hasShivjayanti || hasUSIndependenceDay) {
+        needToResetHolidays = true;
+      }
+    } catch (e) {
+      needToResetHolidays = true;
+    }
+  } else {
+    needToResetHolidays = true;
+  }
+
+  if (needToResetHolidays) {
     localStorage.setItem('ems_national_holidays', JSON.stringify(DEFAULT_NATIONAL_HOLIDAYS));
   }
 
