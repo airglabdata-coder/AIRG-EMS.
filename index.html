@@ -10,39 +10,13 @@
 
   <!-- Sidebar Navigation -->
   <aside id="sidebar">
-    <div class="sidebar-brand" style="flex-direction: column; align-items: flex-start; gap: 8px; padding: 20px 24px;">
-      <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
-        <div class="logo-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #fff;">
-            <polygon points="12 2 22 7 22 17 12 22 2 17 2 7 12 2"/>
-            <polyline points="2 7 12 12 22 7"/>
-            <polyline points="12 22 12 12"/>
-          </svg>
-        </div>
-        <div class="brand-text" style="font-size: 1.3rem;">AIR G</div>
-      </div>
-      <div style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase;">Invent the Impossible</div>
+    <div class="sidebar-brand" style="padding: 20px 24px; display: flex; justify-content: center; align-items: center; border-bottom: 1px solid var(--border-color);">
+      <img src="logo.png" alt="AIR G International" style="max-width: 100%; max-height: 50px; object-fit: contain;">
     </div>
     
     <ul class="sidebar-menu">
       <li>
-        <a href="#" class="menu-item active" data-view="dashboard">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
-          </svg>
-          <span>Dashboard</span>
-        </a>
-      </li>
-      <li>
-        <a href="#" class="menu-item" data-view="requests">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <span>Leave Requests</span>
-        </a>
-      </li>
-      <li>
-        <a href="#" class="menu-item" data-view="tasks" id="menu-item-tasks">
+        <a href="#" class="menu-item active" data-view="tasks" id="menu-item-tasks">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
@@ -63,14 +37,40 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
           <span>Chat & Notices</span>
+          <span class="menu-badge" id="menu-comm-badge" style="display: none;"></span>
         </a>
       </li>
       <li>
-        <a href="#" class="menu-item" data-view="calendar" id="menu-item-calendar">
+        <a href="#" class="menu-item" data-view="reports" id="menu-item-reports">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px; stroke: var(--text-muted);">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span>Daily Reports</span>
+        </a>
+      </li>
+      <li>
+        <a href="#" class="menu-item" data-view="requests">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <span>Holiday Calendar</span>
+          <span>Leave Requests</span>
+        </a>
+      </li>
+
+      <li>
+        <a href="#" class="menu-item" data-view="payslips" id="menu-item-payslips">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px; stroke: var(--text-muted);">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span>Payslip</span>
+        </a>
+      </li>
+      <li>
+        <a href="#" class="menu-item" data-view="reimbursements" id="menu-item-reimbursements">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px; stroke: var(--text-muted);">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Reimbursement</span>
         </a>
       </li>
     </ul>
@@ -101,7 +101,9 @@
         <!-- Interactive Role Selector -->
         <div class="role-switcher-container">
           <button id="btn-role-employee" class="role-btn active" title="Switch to employee panel">Employee</button>
+          <button id="btn-role-techlead" class="role-btn" title="Switch to Tech Lead view">Tech Lead</button>
           <button id="btn-role-hr" class="role-btn" title="Switch to HR view">HR Manager</button>
+          <button id="btn-role-admin" class="role-btn" title="Switch to Admin view">Admin</button>
         </div>
 
         <!-- Employee Selector Dropdown (visible in Employee Mode) -->
@@ -119,6 +121,13 @@
           </svg>
         </button>
 
+        <!-- Logout Button -->
+        <button id="header-logout-btn" class="icon-btn" title="Sign Out" onclick="logout()" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2); background-color: rgba(239, 68, 68, 0.05);">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        </button>
+
         <!-- User Profile Widget -->
         <div class="profile-widget">
           <div id="header-avatar" class="avatar">SJ</div>
@@ -132,20 +141,25 @@
 
     <!-- Content Sections -->
     <div class="container">
+      <!-- Leave Requests Sub-navigation -->
+      <div id="leave-sub-tabs" class="comm-tabs" style="display: none; margin-bottom: 24px; max-width: 450px; width: 100%;">
+        <button class="comm-tab-btn active" id="leave-tab-apply" onclick="switchLeaveSubTab('apply')">My Applications</button>
+        <button class="comm-tab-btn" id="leave-tab-approve" onclick="switchLeaveSubTab('approve')">Manage Approvals</button>
+      </div>
       
       <!-- ================= EMPLOYEE PANEL ================= -->
       <div id="employee-view-container" style="display: flex; flex-direction: column; gap: 32px; width: 100%;">
         
         <!-- Employee Dashboard Stats -->
-        <div class="stats-grid">
+        <div class="stats-grid" id="emp-leave-stats-grid">
           <div class="stats-card stats-primary">
             <div class="stats-info">
-              <span class="stats-label">Leave Balance</span>
+              <span class="stats-label">Paid Leave Balance</span>
               <div class="balance-ring-container">
                 <div id="balance-progress-ring" class="circular-progress">
-                  <span id="balance-progress-value" class="circular-progress-value">20</span>
+                  <span id="balance-progress-value" class="circular-progress-value">0</span>
                 </div>
-                <div class="circular-progress-label">days remaining<br>out of 20 max</div>
+                <div class="circular-progress-label">paid leave days<br>remaining out of <span id="balance-max-value">0</span> accrued</div>
               </div>
             </div>
           </div>
@@ -236,7 +250,7 @@
             </form>
           </div>
           
-          <!-- Quick Status Panel -->
+          <!-- Quick Status Panel (Leave Flow Guide) -->
           <div class="card" style="justify-content: flex-start; gap: 16px;">
             <div class="card-header">
               <h2 class="card-title">Leave Flow Guide</h2>
@@ -273,6 +287,65 @@
             </table>
           </div>
         </div>
+        
+        <!-- Calendar Card -->
+        <div id="emp-calendar-card" class="card" style="display: none; justify-content: flex-start; gap: 16px;">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <h2 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Calendar
+            </h2>
+          </div>
+          
+          <div id="calendar-expanded-content" style="width: 100%;">
+            <div class="calendar-header-bar" style="margin-bottom: 16px;">
+              <h3 class="calendar-nav-title" id="inline-calendar-month-year-label" style="font-size: 1.1rem; font-weight: 700; margin: 0;">June 2026</h3>
+              <div class="calendar-nav-buttons">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="changeInlineCalendarMonth(-1, event)">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px; margin-right: 4px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Prev
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="changeInlineCalendarMonth(1, event)">
+                  Next
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px; margin-left: 4px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div class="calendar-grid">
+              <div class="calendar-day-header">Sun</div>
+              <div class="calendar-day-header">Mon</div>
+              <div class="calendar-day-header">Tue</div>
+              <div class="calendar-day-header">Wed</div>
+              <div class="calendar-day-header">Thu</div>
+              <div class="calendar-day-header">Fri</div>
+              <div class="calendar-day-header">Sat</div>
+              
+              <div id="inline-calendar-days-grid" style="display: contents;"></div>
+            </div>
+            
+            <div class="calendar-legend" style="margin-top: 16px; justify-content: flex-start; gap: 12px; flex-wrap: wrap;">
+              <div class="legend-item">
+                <div class="legend-dot event-holiday"></div>
+                <span style="font-size: 0.75rem;">Holidays</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot event-celebration"></div>
+                <span style="font-size: 0.75rem;">Celebrations</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot event-leave"></div>
+                <span style="font-size: 0.75rem;">Leaves</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- Employee Tasks and Projects Card -->
         <div id="emp-tasks-card" class="card" style="display: none;">
@@ -284,7 +357,7 @@
                   <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
-                  My Department's Projects
+                  My Projects
                 </h2>
               </div>
               <div id="emp-projects-grid" class="project-grid">
@@ -310,9 +383,8 @@
                       <th>Task Description</th>
                       <th>Project</th>
                       <th>Priority</th>
-                      <th>Due Date</th>
+                      <th>Timeline</th>
                       <th>Status</th>
-                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody id="emp-tasks-tbody">
@@ -471,10 +543,9 @@
             </h2>
             <div style="display: flex; gap: 12px;">
               <button class="btn btn-primary btn-sm" onclick="openCreateDeptModal()">+ Add Department</button>
-              <button class="btn btn-primary btn-sm" onclick="openCreateEmployeeModal()">+ Add Employee</button>
             </div>
           </div>
-          <p class="text-muted" style="margin-top:-10px; font-size:0.85rem;">View absence metrics and track how many days employees have spent on approved leave relative to their 20-day annual maximum allowance limit.</p>
+          <p class="text-muted" style="margin-top:-10px; font-size:0.85rem;">View absence metrics and track how many days employees have spent on approved leave relative to their 18-day annual maximum allowance limit (1.5 days accrued per month, excess treated as Leave Without Pay).</p>
           <div id="hr-roster-list" class="roster-list">
             <!-- Injected via app.js -->
           </div>
@@ -527,8 +598,7 @@
                   </select>
                   <select id="filter-task-status">
                     <option value="all">All Statuses</option>
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
+                    <option value="Not Completed">Not Completed</option>
                     <option value="Completed">Completed</option>
                   </select>
                 </div>
@@ -542,13 +612,42 @@
                       <th>Project</th>
                       <th>Assigned To</th>
                       <th>Priority</th>
-                      <th>Due Date</th>
+                      <th>Timeline</th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody id="hr-tasks-tbody">
                     <!-- Dynamically populated list of all tasks -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- My Personal To-Do List Section -->
+            <div id="hr-personal-todo-card">
+              <div class="card-header" style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
+                <h2 class="card-title">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--success);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  My Personal Tasks & To-Do List
+                </h2>
+                <button class="btn btn-primary btn-sm" onclick="openCreateEmpTaskModal()">+ Add Personal Task</button>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Task Description</th>
+                      <th>Project</th>
+                      <th>Priority</th>
+                      <th>Timeline</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="hr-personal-tasks-tbody">
+                    <!-- Dynamically populated list of personal tasks -->
                   </tbody>
                 </table>
               </div>
@@ -564,8 +663,8 @@
           <div class="comm-sidebar">
             <div class="comm-tabs">
               <button class="comm-tab-btn active" id="comm-tab-chats" onclick="switchCommTab('chats')">Chats</button>
-              <button class="comm-tab-btn" id="comm-tab-announcements" onclick="switchCommTab('announcements')">Announcements</button>
-              <button class="comm-tab-btn" id="comm-tab-notices" onclick="switchCommTab('notices')">HR Notices</button>
+              <button class="comm-tab-btn" id="comm-tab-announcements" onclick="switchCommTab('announcements')">Announcements <span class="tab-badge" id="comm-tab-announcements-badge" style="display: none;"></span></button>
+              <button class="comm-tab-btn" id="comm-tab-notices" onclick="switchCommTab('notices')">HR Notices <span class="tab-badge" id="comm-tab-notices-badge" style="display: none;"></span></button>
             </div>
             
             <div class="card" style="padding: 18px; flex: 1;">
@@ -589,9 +688,15 @@
               <div class="chat-messages" id="chat-messages-container">
                 <!-- Dynamically populated styled message bubbles -->
               </div>
-              <form id="chat-message-form" class="chat-input-bar">
-                <input type="text" id="chat-input-message" placeholder="Type a message..." required autocomplete="off">
-                <button type="submit" class="btn btn-primary btn-sm" style="padding: 10px 20px;">Send</button>
+              <form id="chat-message-form" class="chat-input-bar" style="display: flex; gap: 8px; align-items: center;">
+                <input type="file" id="chat-file-input" style="display: none;" onchange="handleChatFileSelected(this)">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('chat-file-input').click()" style="padding: 8px; display: flex; align-items: center; justify-content: center; border-radius: 50%; width: 36px; height: 36px; flex-shrink: 0; background-color: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); cursor: pointer;" title="Attach file">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                </button>
+                <input type="text" id="chat-input-message" placeholder="Type a message..." required autocomplete="off" style="flex: 1; margin: 0;">
+                <button type="submit" class="btn btn-primary btn-sm" style="padding: 10px 20px; flex-shrink: 0;">Send</button>
               </form>
             </div>
             
@@ -670,6 +775,344 @@
           </div>
         </div>
       </div>
+      
+      <!-- ================= DAILY REPORTS HUB ================= -->
+      <div id="reports-view-container" style="display: none; width: 100%;">
+        <div id="reports-employee-section" style="display: none; flex-direction: column; gap: 32px; width: 100%;">
+          <div class="dashboard-row">
+            <!-- Submit Form Card (Left) -->
+            <div style="flex: 1; min-width: 300px;">
+              <div class="card" style="padding: 24px;">
+                <h2 class="card-title" style="margin-bottom: 20px;">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Submit Daily Report
+                </h2>
+                <form id="daily-report-form">
+                  <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="report-date" style="font-weight: 600;">Report Date</label>
+                    <input type="date" id="report-date" required style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="report-details" style="font-weight: 600;">Daily Work Details</label>
+                    <textarea id="report-details" placeholder="Describe the work done today. You can copy-paste screenshots directly into this box..." required style="min-height: 120px; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; resize: vertical;"></textarea>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="report-images" style="font-weight: 600;">Attach Photos & Screenshots</label>
+                    <input type="file" id="report-images" accept="image/*" multiple style="font-size: 0.85rem; width: 100%; color: var(--text-primary);">
+                    <div id="report-images-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;"></div>
+                  </div>
+                  <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Report</button>
+                </form>
+              </div>
+            </div>
+            <!-- Past Reports List Card (Right) -->
+            <div style="flex: 2; min-width: 400px;">
+              <div class="card" style="padding: 24px;">
+                <h2 class="card-title" style="margin-bottom: 20px;">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--success);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  My Submitted Reports
+                </h2>
+                <div class="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Work Summary</th>
+                        <th>HR Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody id="emp-reports-tbody">
+                      <!-- Dynamically populated reports -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="reports-hr-section" style="display: none; flex-direction: column; gap: 32px; width: 100%;">
+          <div class="card" style="padding: 24px;">
+            <h2 class="card-title" style="margin-bottom: 20px;">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--warning);">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Daily Reports Review Board
+            </h2>
+            
+            <!-- Filters Bar -->
+            <div class="filter-bar" style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;">
+              <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                <label for="filter-report-month" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Filter by Month:</label>
+                <select id="filter-report-month" style="padding: 10px 16px; font-size: 0.9rem; width: 100%; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+                  <option value="all">All Months</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                <label for="filter-report-employee" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Filter by Employee:</label>
+                <select id="filter-report-employee" style="padding: 10px 16px; font-size: 0.9rem; width: 100%; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+                  <option value="all">All Employees</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Employee Name</th>
+                    <th>Department</th>
+                    <th>Work Details Summary</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="hr-reports-tbody">
+                  <!-- Dynamically populated reports -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      </div>
+
+      <!-- ================= PAYSLIPS HUB ================= -->
+      <div id="payslips-view-container" style="display: none; width: 100%;">
+        <!-- Month Selection Bar -->
+        <div class="card" style="margin-bottom: 24px; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; flex-direction: row;">
+          <h2 class="card-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Select Payslip Month
+          </h2>
+          <div>
+            <select id="payslip-month-select" style="padding: 8px 16px; font-size: 0.9rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-weight: 600; cursor: pointer; width: auto; min-width: 180px;">
+              <!-- Populated dynamically via app.js -->
+            </select>
+          </div>
+        </div>
+
+        <!-- HR/Admin Side (Select employee + Edit Salary) -->
+        <div id="payslip-admin-controls" style="display: none; gap: 24px; margin-bottom: 24px; flex-wrap: wrap;">
+          <div class="card" style="flex: 1; min-width: 300px; padding: 24px;">
+            <h3 class="card-title" style="margin-bottom: 16px;">Configure Salary Details</h3>
+            <form id="salary-config-form">
+              <div class="form-group" style="margin-bottom: 12px;">
+                <label for="salary-emp-select">Select Employee</label>
+                <select id="salary-emp-select" style="width: 100%;"></select>
+              </div>
+              <div class="form-grid" style="gap: 12px;">
+                <div class="form-group">
+                  <label for="salary-basic">Basic Pay ($)</label>
+                  <input type="number" id="salary-basic" min="0" required>
+                </div>
+                <div class="form-group">
+                  <label for="salary-hra">House Rent Allowance ($)</label>
+                  <input type="number" id="salary-hra" min="0" required>
+                </div>
+                <div class="form-group">
+                  <label for="salary-other">Other Allowance ($)</label>
+                  <input type="number" id="salary-other" min="0" required>
+                </div>
+                <div class="form-group">
+                  <label for="salary-proftax">Professional Tax ($)</label>
+                  <input type="number" id="salary-proftax" min="0" required>
+                </div>
+                <div class="form-group full-width">
+                  <label for="salary-lwp">Leave Without Pay (Days)</label>
+                  <input type="number" id="salary-lwp" min="0" max="31" required>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary" style="margin-top: 16px; width: 100%;">Save Salary Details</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Payslip Card -->
+        <div class="card" id="payslip-display-card" style="max-width: 800px; margin: 0 auto; padding: 32px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--border-radius); box-shadow: var(--card-shadow);">
+          <!-- Injected via app.js -->
+        </div>
+      </div>
+
+      <!-- ================= REIMBURSEMENTS HUB ================= -->
+      <div id="reimbursements-view-container" style="display: none; width: 100%;">
+        <!-- Employee view: Submit form and history table -->
+        <div id="reimbursement-employee-section" style="display: none; flex-direction: column; gap: 32px; width: 100%;">
+          <div class="dashboard-row">
+            <!-- Submit Form Card (Left) -->
+            <div style="flex: 1; min-width: 300px;">
+              <div class="card" style="padding: 24px;">
+                <h2 class="card-title" style="margin-bottom: 20px;">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Submit Reimbursement Claim
+                </h2>
+                <form id="reimbursement-form">
+                  <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="reimbursement-emp-name" style="font-weight: 600;">Employee Name</label>
+                    <input type="text" id="reimbursement-emp-name" readonly style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-tertiary); color: var(--text-secondary);">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="reimbursement-type" style="font-weight: 600;">Expense Type</label>
+                    <select id="reimbursement-type" required style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);">
+                      <option value="" disabled selected>Select expense type...</option>
+                      <option value="Travel">Travel</option>
+                      <option value="Food">Food</option>
+                    </select>
+                  </div>
+                  <div class="form-grid" style="gap: 12px; margin-bottom: 12px;">
+                    <div class="form-group">
+                      <label for="reimbursement-amount" style="font-weight: 600;">Amount ($)</label>
+                      <input type="number" id="reimbursement-amount" min="1" placeholder="e.g. 150" required style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);">
+                    </div>
+                    <div class="form-group">
+                      <label for="reimbursement-date" style="font-weight: 600;">Date</label>
+                      <input type="date" id="reimbursement-date" required style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);">
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="reimbursement-location" style="font-weight: 600;">Location</label>
+                    <input type="text" id="reimbursement-location" placeholder="e.g. New York office" required style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="reimbursement-purpose" style="font-weight: 600;">Purpose</label>
+                    <textarea id="reimbursement-purpose" placeholder="Describe the purpose of the expense..." required style="min-height: 80px; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; resize: vertical;"></textarea>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-weight: 600;">Attach Multiple Files & Photos</label>
+                    <input type="file" id="reimbursement-files" accept="image/*,application/pdf" multiple style="font-size: 0.85rem; width: 100%; color: var(--text-primary);">
+                    <div id="reimbursement-files-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;"></div>
+                  </div>
+                  <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Claim</button>
+                </form>
+              </div>
+            </div>
+            <!-- Claims History (Right) -->
+            <div style="flex: 2; min-width: 400px;">
+              <div class="card" style="padding: 24px;">
+                <h2 class="card-title" style="margin-bottom: 20px;">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--success);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  My Reimbursement Claims
+                </h2>
+                <div class="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Location</th>
+                        <th>Purpose</th>
+                        <th>Attachments</th>
+                        <th>Status</th>
+                        <th>Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody id="emp-reimbursements-tbody">
+                      <!-- Dynamically populated -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HR/Admin view: Approval Queue and Archive -->
+        <div id="reimbursement-hr-section" style="display: none; flex-direction: column; gap: 32px; width: 100%;">
+          <!-- Approval Queue -->
+          <div class="card">
+            <h2 class="card-title" style="margin-bottom: 20px;">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--warning);">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 110-4h2a2 2 0 110 4m-6 8a2 2 0 100-4 2 2 0 000 4z" />
+              </svg>
+              Reimbursement Claims Approval Queue
+            </h2>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Location</th>
+                    <th>Purpose</th>
+                    <th>Attachments</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="hr-reimbursements-queue-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Archive Table -->
+          <div class="card">
+            <h2 class="card-title" style="margin-bottom: 20px;">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              All Reimbursements Archive
+            </h2>
+            <!-- Filters -->
+            <div class="filter-bar" style="margin-bottom: 16px;">
+              <div class="search-input-wrapper">
+                <input type="text" id="hr-reimbursement-search" placeholder="Search by name or purpose...">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <div class="filter-selects">
+                <select id="filter-reimbursement-type">
+                  <option value="all">All Expense Types</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Food">Food</option>
+                </select>
+                <select id="filter-reimbursement-status">
+                  <option value="all">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Location</th>
+                    <th>Purpose</th>
+                    <th>Attachments</th>
+                    <th>Status</th>
+                    <th>HR Remarks</th>
+                  </tr>
+                </thead>
+                <tbody id="hr-reimbursements-all-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
 
     </div>
   </main>
@@ -719,13 +1162,33 @@
               <!-- Dynamically populated options -->
             </select>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="project-tech-lead">Tech Lead</label>
+            <select id="project-tech-lead" required>
+              <option value="" disabled selected>Select tech lead...</option>
+              <!-- Dynamically populated options -->
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
             <label for="project-status">Project Status</label>
             <select id="project-status" required>
               <option value="Planning">Planning</option>
               <option value="Active" selected>Active</option>
               <option value="Completed">Completed</option>
             </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="project-due-date">Due Date</label>
+            <input type="date" id="project-due-date" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="project-description">Project Description</label>
+            <textarea id="project-description" placeholder="e.g. Next-Generation Engine for processing company tasks" style="width: 100%; height: 60px; font-size: 0.85rem; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); outline: none; resize: vertical;"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="project-files">Project Files (Upload Images/Documents)</label>
+            <input type="file" id="project-files" multiple style="font-size: 0.85rem; color: var(--text-primary); width: 100%;">
+            <div id="project-files-preview" style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);"></div>
           </div>
         </div>
         <div class="modal-footer">
@@ -746,8 +1209,17 @@
       <form id="task-assignment-form">
         <div class="modal-body">
           <div class="form-group" style="margin-bottom: 12px;">
-            <label for="task-desc">Task Description</label>
+            <label for="task-desc">Task Title</label>
             <input type="text" id="task-desc" placeholder="e.g. Refactor API controllers" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="task-details">Detailed Description</label>
+            <textarea id="task-details" placeholder="Add detailed descriptions or copy-paste screenshots here..." style="min-height: 80px; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);"></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="task-images">Upload/Attach Images & Screenshots</label>
+            <input type="file" id="task-images" accept="image/*" multiple style="font-size: 0.85rem; width: 100%; color: var(--text-primary);">
+            <div id="task-images-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;"></div>
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
             <label for="task-project-select">Project</label>
@@ -765,17 +1237,21 @@
           </div>
           <div class="form-grid" style="margin-bottom: 12px;">
             <div class="form-group">
+              <label for="task-start-date">Start Date</label>
+              <input type="date" id="task-start-date" required>
+            </div>
+            <div class="form-group">
               <label for="task-due-date">Due Date</label>
               <input type="date" id="task-due-date" required>
             </div>
-            <div class="form-group">
-              <label for="task-priority">Priority</label>
-              <select id="task-priority" required>
-                <option value="Low">Low</option>
-                <option value="Medium" selected>Medium</option>
-                <option value="High">High</option>
-              </select>
-            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="task-priority">Priority</label>
+            <select id="task-priority" required>
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
           </div>
         </div>
         <div class="modal-footer">
@@ -817,6 +1293,10 @@
       <form id="employee-creation-form">
         <div class="modal-body">
           <div class="form-group" style="margin-bottom: 12px;">
+            <label for="new-emp-id">Employee ID</label>
+            <input type="text" id="new-emp-id" placeholder="e.g. EMP016" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
             <label for="new-emp-name">Full Name</label>
             <input type="text" id="new-emp-name" placeholder="e.g. David Kim" required>
           </div>
@@ -828,25 +1308,49 @@
             <label for="new-emp-designation">Designation / Job Title</label>
             <input type="text" id="new-emp-designation" placeholder="e.g. Software Engineer" required>
           </div>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="new-emp-password">Portal Password</label>
+            <input type="password" id="new-emp-password" placeholder="Set user portal password" required value="password123">
+          </div>
           <div class="form-grid" style="margin-bottom: 12px;">
             <div class="form-group">
-              <label for="new-emp-dept">Department</label>
-              <select id="new-emp-dept" required>
-                <option value="" disabled selected>Select department...</option>
-                <!-- Dynamically populated options -->
-              </select>
+              <label for="new-emp-aadhar">Aadhar Card Document (Image)</label>
+              <input type="file" id="new-emp-aadhar" accept="image/*" style="font-size: 0.85rem; color: var(--text-primary);">
+              <div id="new-emp-aadhar-preview" style="margin-top: 8px; display: none;">
+                <img id="new-emp-aadhar-img" src="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color);" />
+              </div>
             </div>
             <div class="form-group">
-              <label for="new-emp-role">Role</label>
-              <select id="new-emp-role" required>
-                <option value="Employee" selected>Employee</option>
-                <option value="HR">HR Manager</option>
-              </select>
+              <label for="new-emp-pan">PAN Card Document (Image)</label>
+              <input type="file" id="new-emp-pan" accept="image/*" style="font-size: 0.85rem; color: var(--text-primary);">
+              <div id="new-emp-pan-preview" style="margin-top: 8px; display: none;">
+                <img id="new-emp-pan-img" src="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color);" />
+              </div>
             </div>
           </div>
-          <div class="form-group">
-            <label for="new-emp-balance">Starting Leave Balance (days)</label>
-            <input type="number" id="new-emp-balance" min="0" max="30" value="20" required>
+          <div class="form-grid" style="margin-bottom: 12px;">
+            <div class="form-group">
+              <label for="new-emp-bank-acc">Bank Account Document (Image)</label>
+              <input type="file" id="new-emp-bank-acc" accept="image/*" style="font-size: 0.85rem; color: var(--text-primary);">
+              <div id="new-emp-bank-acc-preview" style="margin-top: 8px; display: none;">
+                <img id="new-emp-bank-acc-img" src="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color);" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="new-emp-bank-ifsc">IFSC Code & Bank Name Doc (Image)</label>
+              <input type="file" id="new-emp-bank-ifsc" accept="image/*" style="font-size: 0.85rem; color: var(--text-primary);">
+              <div id="new-emp-bank-ifsc-preview" style="margin-top: 8px; display: none;">
+                <img id="new-emp-bank-ifsc-img" src="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color);" />
+              </div>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="new-emp-photo">Employee Image (Photo)</label>
+            <input type="file" id="new-emp-photo" accept="image/*" style="font-size: 0.85rem; color: var(--text-primary);">
+            <div id="new-emp-photo-preview" style="margin-top: 8px; display: none;">
+              <img id="new-emp-photo-img" src="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 50%; border: 1px solid var(--border-color);" />
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -867,8 +1371,17 @@
       <form id="emp-task-creation-form">
         <div class="modal-body">
           <div class="form-group" style="margin-bottom: 12px;">
-            <label for="emp-task-desc">Task Description</label>
+            <label for="emp-task-desc">Task Title</label>
             <input type="text" id="emp-task-desc" placeholder="e.g. Prepare presentation slides" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="emp-task-details">Detailed Description</label>
+            <textarea id="emp-task-details" placeholder="Add detailed descriptions or copy-paste screenshots here..." style="min-height: 80px; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);"></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="emp-task-images">Upload/Attach Images & Screenshots</label>
+            <input type="file" id="emp-task-images" accept="image/*" multiple style="font-size: 0.85rem; width: 100%; color: var(--text-primary);">
+            <div id="emp-task-images-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;"></div>
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
             <label for="emp-task-project-select">Project</label>
@@ -878,17 +1391,21 @@
           </div>
           <div class="form-grid" style="margin-bottom: 12px;">
             <div class="form-group">
+              <label for="emp-task-start-date">Start Date</label>
+              <input type="date" id="emp-task-start-date" required>
+            </div>
+            <div class="form-group">
               <label for="emp-task-due-date">Due Date</label>
               <input type="date" id="emp-task-due-date" required>
             </div>
-            <div class="form-group">
-              <label for="emp-task-priority">Priority</label>
-              <select id="emp-task-priority" required>
-                <option value="Low">Low</option>
-                <option value="Medium" selected>Medium</option>
-                <option value="High">High</option>
-              </select>
-            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="emp-task-priority">Priority</label>
+            <select id="emp-task-priority" required>
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
           </div>
         </div>
         <div class="modal-footer">
@@ -912,9 +1429,14 @@
             <label for="announcement-title">Announcement Title</label>
             <input type="text" id="announcement-title" placeholder="e.g. Q3 Town Hall Scheduled" required>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom: 12px;">
             <label for="announcement-content">Content Message</label>
             <textarea id="announcement-content" placeholder="Type your announcement content here..." required style="min-height: 120px;"></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="announcement-images">Attach Files / Images / Documents</label>
+            <input type="file" id="announcement-images" multiple style="font-size: 0.85rem; width: 100%; color: var(--text-primary);">
+            <div id="announcement-images-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;"></div>
           </div>
         </div>
         <div class="modal-footer">
@@ -924,7 +1446,7 @@
       </form>
     </div>
   </div>
-
+ 
   <!-- Send Targeted HR Notice Modal Overlay -->
   <div id="notice-modal-overlay" class="modal-overlay">
     <div class="modal">
@@ -942,8 +1464,14 @@
             <label for="notice-content">Notice Message</label>
             <textarea id="notice-content" placeholder="Type compliance note or important message details..." required style="min-height: 100px;"></textarea>
           </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="notice-images">Attach Files / Images / Documents</label>
+            <input type="file" id="notice-images" multiple style="font-size: 0.85rem; width: 100%; color: var(--text-primary);">
+            <div id="notice-images-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;"></div>
+          </div>
           <div class="form-group">
             <label>Target Employees (Select Recipient List)</label>
+            <input type="text" id="notice-employee-search" placeholder="Search by name or department..." style="margin-bottom: 8px; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-size: 0.85rem;">
             <div class="employee-checkbox-list" id="notice-employee-checkboxes-container">
               <!-- Dynamically populated list of employees with checkboxes -->
             </div>
@@ -954,6 +1482,76 @@
           <button type="submit" class="btn btn-primary btn-sm">Send Notice</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Full Image Viewer Modal Overlay -->
+  <div id="image-viewer-modal-overlay" class="modal-overlay" onclick="hideImageViewerModal()" style="z-index: 1000; background: rgba(0,0,0,0.85);">
+    <div onclick="event.stopPropagation()" style="position: relative; max-width: 90%; max-height: 90%; background: none; box-shadow: none; display: flex; align-items: center; justify-content: center; margin: auto;">
+      <button type="button" onclick="hideImageViewerModal()" style="position: absolute; top: -40px; right: 0; background:none; border:none; color:#fff; cursor:pointer; font-size:2.5rem;">&times;</button>
+      <img id="full-viewer-image" src="" style="max-width: 100%; max-height: 85vh; border-radius: var(--border-radius); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: var(--modal-shadow); object-fit: contain;">
+    </div>
+  </div>
+
+  <!-- ================= LOGIN PAGE OVERLAY ================= -->
+  <div id="login-container">
+    <div class="login-card">
+      <div class="login-header" style="text-align: center; margin-bottom: 24px;">
+        <img src="logo.png" alt="AIR G International" style="max-width: 180px; max-height: 80px; object-fit: contain; margin-bottom: 16px;">
+        <p class="text-muted">Employee Portal Sign In</p>
+      </div>
+
+      <form id="login-form">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="login-email">Email Address</label>
+          <input type="email" id="login-email" placeholder="e.g. sarah.j@company.com" required style="width: 100%;">
+        </div>
+        <div class="form-group" style="margin-bottom: 24px;">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" required style="width: 100%;">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-weight: 600;">Sign In</button>
+      </form>
+
+      <div class="login-divider">
+        <span>or quick sign in as</span>
+      </div>
+
+      <div class="demo-login-grid">
+        <div class="demo-card" onclick="quickLogin('admin@company.com')">
+          <div class="demo-avatar" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff;">RB</div>
+          <div class="demo-info">
+            <span class="demo-name">Richard Boss</span>
+            <span class="demo-role">Administrator</span>
+          </div>
+        </div>
+        <div class="demo-card" onclick="quickLogin('sarah.j@company.com')">
+          <div class="demo-avatar" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff;">SJ</div>
+          <div class="demo-info">
+            <span class="demo-name">Sarah Jenkins</span>
+            <span class="demo-role">HR Manager</span>
+          </div>
+        </div>
+        <div class="demo-card" onclick="quickLogin('elena.r@company.com')">
+          <div class="demo-avatar" style="background: linear-gradient(135deg, #10b981, #059669); color: #fff;">ER</div>
+          <div class="demo-info">
+            <span class="demo-name">Elena Rostova</span>
+            <span class="demo-role">Tech Lead</span>
+          </div>
+        </div>
+        <div class="demo-card" onclick="quickLogin('alex.r@company.com')">
+          <div class="demo-avatar" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #fff;">AR</div>
+          <div class="demo-info">
+            <span class="demo-name">Alex Rivera</span>
+            <span class="demo-role">Engineer</span>
+          </div>
+        </div>
+      </div>
+      
+      <div style="margin-top: 24px; text-align: center; font-size: 0.85rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 8px;">
+        <div>Need a new account?</div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openCreateEmployeeModal()" style="width: 100%; padding: 8px; font-weight: 600;">Register / Add Employee</button>
+      </div>
     </div>
   </div>
 
