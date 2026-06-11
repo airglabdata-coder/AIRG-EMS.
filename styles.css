@@ -321,6 +321,19 @@ header {
   display: flex;
   align-items: center;
   gap: 12px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--border-radius-sm);
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.profile-widget:hover {
+  background-color: var(--bg-tertiary);
+  transform: translateY(-1px);
+}
+
+.profile-widget:active {
+  transform: translateY(0);
 }
 
 .avatar {
@@ -698,6 +711,30 @@ tr.month-group-header-row:hover td {
   background-color: var(--danger-bg);
   color: var(--danger);
   border: 1px solid var(--danger-border);
+}
+
+.badge-open {
+  background-color: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid var(--warning-border);
+}
+
+.badge-inprogress {
+  background-color: var(--primary-bg);
+  color: var(--primary);
+  border: 1px solid var(--primary-glow);
+}
+
+.badge-resolved {
+  background-color: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+}
+
+.badge-closed {
+  background-color: var(--bg-tertiary);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
 }
 
 /* Employee Roster List & Absence Bars */
@@ -1746,8 +1783,9 @@ body.auth-view {
   background: radial-gradient(circle at 10% 20%, rgba(14, 165, 233, 0.08) 0%, rgba(0, 0, 0, 0) 50%),
               radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.08) 0%, rgba(0, 0, 0, 0) 50%),
               var(--bg-primary);
-  justify-content: center;
-  align-items: center;
+  height: auto;
+  min-height: 100vh;
+  overflow-y: auto;
 }
 
 body.auth-view #sidebar,
@@ -1758,10 +1796,9 @@ body.auth-view #main-content {
 #login-container {
   display: none;
   width: 100%;
-  padding: 20px;
-  justify-content: center;
-  align-items: center;
+  padding: 40px 20px;
   min-height: 100vh;
+  box-sizing: border-box;
 }
 
 body.auth-view #login-container {
@@ -1776,6 +1813,7 @@ body.auth-view #login-container {
   box-shadow: var(--modal-shadow);
   border-radius: var(--border-radius);
   padding: 32px;
+  margin: auto;
   animation: fadeIn var(--transition-normal) ease-out;
 }
 

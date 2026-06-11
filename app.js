@@ -10,24 +10,184 @@ window.onerror = function(message, source, lineno, colno, error) {
   return false;
 };
 
+// --- Central Database Sync Layer ---
+const originalSetItem = localStorage.setItem;
+let isSyncingToServer = false;
+let syncTimeout = null;
+
+localStorage.setItem = function(key, value) {
+  originalSetItem.call(localStorage, key, value);
+  if (key.startsWith('ems_') && key !== 'ems_logged_in_user' && key !== 'ems_theme' && !key.startsWith('ems_read_')) {
+    triggerBackendSync();
+  }
+};
+
+function triggerBackendSync() {
+  if (isSyncingToServer) return;
+  if (syncTimeout) clearTimeout(syncTimeout);
+  
+  syncTimeout = setTimeout(() => {
+    const cleanState = {
+      employees: JSON.parse(localStorage.getItem('ems_employees') || '[]'),
+      requests: JSON.parse(localStorage.getItem('ems_requests') || '[]'),
+      projects: JSON.parse(localStorage.getItem('ems_projects') || '[]'),
+      tasks: JSON.parse(localStorage.getItem('ems_tasks') || '[]'),
+      departments: JSON.parse(localStorage.getItem('ems_departments') || '[]'),
+      chats: JSON.parse(localStorage.getItem('ems_chats') || '[]'),
+      dailyReports: JSON.parse(localStorage.getItem('ems_reports') || '[]'),
+      announcements: JSON.parse(localStorage.getItem('ems_announcements') || '[]'),
+      notices: JSON.parse(localStorage.getItem('ems_notices') || '[]'),
+      reimbursements: JSON.parse(localStorage.getItem('ems_reimbursements') || '[]'),
+      tickets: JSON.parse(localStorage.getItem('ems_tickets') || '[]'),
+      nationalHolidays: JSON.parse(localStorage.getItem('ems_national_holidays') || '[]'),
+      celebrationDays: JSON.parse(localStorage.getItem('ems_celebration_days') || '[]'),
+      smsNotifications: JSON.parse(localStorage.getItem('ems_notifications') || '[]')
+    };
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cleanState)
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        state.lastSyncedTimestamp = data.timestamp;
+      }
+    })
+    .catch(err => {
+      console.error('Failed to sync to database server:', err);
+    });
+  }, 300);
+}
+
+async function fetchCentralizedState() {
+  try {
+    const res = await fetch('/api/sync');
+    const data = await res.json();
+    
+    if (data && data.state && !data.empty) {
+      isSyncingToServer = true;
+      const s = data.state;
+      if (s.employees) originalSetItem.call(localStorage, 'ems_employees', JSON.stringify(s.employees));
+      if (s.requests) originalSetItem.call(localStorage, 'ems_requests', JSON.stringify(s.requests));
+      if (s.projects) originalSetItem.call(localStorage, 'ems_projects', JSON.stringify(s.projects));
+      if (s.tasks) originalSetItem.call(localStorage, 'ems_tasks', JSON.stringify(s.tasks));
+      if (s.departments) originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(s.departments));
+      if (s.chats) originalSetItem.call(localStorage, 'ems_chats', JSON.stringify(s.chats));
+      if (s.dailyReports) originalSetItem.call(localStorage, 'ems_reports', JSON.stringify(s.dailyReports));
+      if (s.announcements) originalSetItem.call(localStorage, 'ems_announcements', JSON.stringify(s.announcements));
+      if (s.notices) originalSetItem.call(localStorage, 'ems_notices', JSON.stringify(s.notices));
+      if (s.reimbursements) originalSetItem.call(localStorage, 'ems_reimbursements', JSON.stringify(s.reimbursements));
+      if (s.tickets) originalSetItem.call(localStorage, 'ems_tickets', JSON.stringify(s.tickets));
+      if (s.nationalHolidays) originalSetItem.call(localStorage, 'ems_national_holidays', JSON.stringify(s.nationalHolidays));
+      if (s.celebrationDays) originalSetItem.call(localStorage, 'ems_celebration_days', JSON.stringify(s.celebrationDays));
+      if (s.smsNotifications) originalSetItem.call(localStorage, 'ems_notifications', JSON.stringify(s.smsNotifications));
+      
+      state.lastSyncedTimestamp = data.timestamp;
+      isSyncingToServer = false;
+    }
+  } catch (err) {
+    console.error('Failed to load state from database server:', err);
+  }
+}
+
+function initSyncPolling() {
+  setInterval(async () => {
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+      return;
+    }
+    const openModals = document.querySelectorAll('.modal-overlay.active');
+    if (openModals.length > 0) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/sync');
+      const data = await res.json();
+      
+      if (data && data.state && !data.empty && data.timestamp !== state.lastSyncedTimestamp) {
+        isSyncingToServer = true;
+        const s = data.state;
+        state.employees = s.employees || state.employees;
+        state.requests = s.requests || state.requests;
+        state.projects = s.projects || state.projects;
+        state.tasks = s.tasks || state.tasks;
+        state.departments = s.departments || state.departments;
+        state.chats = s.chats || state.chats;
+        state.dailyReports = s.dailyReports || state.dailyReports;
+        state.announcements = s.announcements || state.announcements;
+        state.notices = s.notices || state.notices;
+        state.reimbursements = s.reimbursements || state.reimbursements;
+        state.tickets = s.tickets || state.tickets;
+        state.nationalHolidays = s.nationalHolidays || state.nationalHolidays;
+        state.celebrationDays = s.celebrationDays || state.celebrationDays;
+        state.smsNotifications = s.smsNotifications || state.smsNotifications;
+        
+        state.lastSyncedTimestamp = data.timestamp;
+        
+        if (s.employees) originalSetItem.call(localStorage, 'ems_employees', JSON.stringify(s.employees));
+        if (s.requests) originalSetItem.call(localStorage, 'ems_requests', JSON.stringify(s.requests));
+        if (s.projects) originalSetItem.call(localStorage, 'ems_projects', JSON.stringify(s.projects));
+        if (s.tasks) originalSetItem.call(localStorage, 'ems_tasks', JSON.stringify(s.tasks));
+        if (s.departments) originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(s.departments));
+        if (s.chats) originalSetItem.call(localStorage, 'ems_chats', JSON.stringify(s.chats));
+        if (s.dailyReports) originalSetItem.call(localStorage, 'ems_reports', JSON.stringify(s.dailyReports));
+        if (s.announcements) originalSetItem.call(localStorage, 'ems_announcements', JSON.stringify(s.announcements));
+        if (s.notices) originalSetItem.call(localStorage, 'ems_notices', JSON.stringify(s.notices));
+        if (s.reimbursements) originalSetItem.call(localStorage, 'ems_reimbursements', JSON.stringify(s.reimbursements));
+        if (s.tickets) originalSetItem.call(localStorage, 'ems_tickets', JSON.stringify(s.tickets));
+        if (s.nationalHolidays) originalSetItem.call(localStorage, 'ems_national_holidays', JSON.stringify(s.nationalHolidays));
+        if (s.celebrationDays) originalSetItem.call(localStorage, 'ems_celebration_days', JSON.stringify(s.celebrationDays));
+        if (s.smsNotifications) originalSetItem.call(localStorage, 'ems_notifications', JSON.stringify(s.smsNotifications));
+        
+        isSyncingToServer = false;
+        
+        const activeMenuItem = document.querySelector('.menu-item.active');
+        const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
+        
+        if (currentView === 'communications') {
+          renderCommunicationsHub();
+        } else if (currentView === 'calendar') {
+          renderCalendar();
+        } else if (currentView === 'payslips') {
+          renderPayslips();
+        } else if (currentView === 'reimbursements') {
+          renderReimbursements();
+        } else if (currentView === 'tickets') {
+          renderTickets();
+        } else if (currentView === 'reports') {
+          renderDailyReports();
+        } else {
+          renderEmployeeDashboard(currentView);
+        }
+        updateCommMenuBadges();
+      }
+    } catch (err) {
+      console.error('Polling sync failed:', err);
+    }
+  }, 5000);
+}
+
 
 // --- Constants & Seed Data ---
 const DEFAULT_EMPLOYEES = [
-  { id: 'EMP001', name: 'Sarah Jenkins', dept: 'Human Resources', email: 'sarah.j@company.com', role: 'HR', balance: 20, absent: 0, avatar: 'SJ', aadhar: '4532 9812 7345', pan: 'AWQPJ4812K', bankAcc: '918273645012', bankIfsc: 'HDFC0001234 (HDFC Bank)', password: 'password123' },
-  { id: 'EMP002', name: 'Alex Rivera', dept: 'Engineering', email: 'alex.r@company.com', role: 'Employee', balance: 15, absent: 5, avatar: 'AR', aadhar: '7721 8839 0019', pan: 'BPLXR9921D', bankAcc: '1092837465', bankIfsc: 'SBIN0000123 (SBI)', password: 'password123' },
-  { id: 'EMP003', name: 'Priya Patel', dept: 'Design', email: 'priya.p@company.com', role: 'Employee', balance: 12, absent: 8, avatar: 'PP', aadhar: '6654 3321 0098', pan: 'CLKPP4821A', bankAcc: '883726152431', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123' },
-  { id: 'EMP004', name: 'Marcus Chen', dept: 'Sales', email: 'marcus.c@company.com', role: 'Employee', balance: 18, absent: 2, avatar: 'MC', aadhar: '9001 8837 2212', pan: 'DNMCM0091K', bankAcc: '445362718290', bankIfsc: 'BARB0POWAI (Bank of Baroda)', password: 'password123' },
-  { id: 'EMP005', name: 'Chloe Dupont', dept: 'Marketing', email: 'chloe.d@company.com', role: 'Employee', balance: 19, absent: 1, avatar: 'CD', aadhar: '2234 8876 5432', pan: 'ZPLCD9928H', bankAcc: '776253412098', bankIfsc: 'AXIS0000789 (Axis Bank)', password: 'password123' },
-  { id: 'EMP006', name: 'David Kim', dept: 'Engineering', email: 'david.k@company.com', role: 'Employee', balance: 20, absent: 0, avatar: 'DK', aadhar: '8872 1192 3345', pan: 'TYPDK0192L', bankAcc: '334251609872', bankIfsc: 'SBIN0000123 (SBI)', password: 'password123' },
-  { id: 'EMP007', name: 'Elena Rostova', dept: 'Engineering', email: 'elena.r@company.com', role: 'Tech Lead', balance: 18, absent: 2, avatar: 'ER', aadhar: '4452 9901 8834', pan: 'QWERP1209M', bankAcc: '556273819023', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123' },
-  { id: 'EMP008', name: 'Emily Wong', dept: 'Design', email: 'emily.w@company.com', role: 'Employee', balance: 17, absent: 3, avatar: 'EW', aadhar: '1109 8834 7721', pan: 'UIOPW4482R', bankAcc: '998273645019', bankIfsc: 'HDFC0001234 (HDFC Bank)', password: 'password123' },
-  { id: 'EMP009', name: 'Jason Mwangi', dept: 'Sales', email: 'jason.m@company.com', role: 'Employee', balance: 14, absent: 6, avatar: 'JM', aadhar: '5532 9901 8823', pan: 'PLKJM9012W', bankAcc: '667283910293', bankIfsc: 'KKBK0000881 (Kotak)', password: 'password123' },
-  { id: 'EMP010', name: 'Sofia Al-Jamil', dept: 'Marketing', email: 'sofia.a@company.com', role: 'Employee', balance: 18, absent: 2, avatar: 'SA', aadhar: '7765 4432 1098', pan: 'MNBVS9921X', bankAcc: '223412098734', bankIfsc: 'AXIS0000789 (Axis Bank)', password: 'password123' },
-  { id: 'EMP011', name: 'Richard Boss', dept: 'Administration', email: 'admin@company.com', role: 'Admin', balance: 20, absent: 0, avatar: 'RB', aadhar: '1111 2222 3333', pan: 'ADMIR1111B', bankAcc: '1234567890', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123' },
-  { id: 'EMP012', name: 'Liam Carter', dept: 'Design', email: 'liam.c@company.com', role: 'Tech Lead', balance: 20, absent: 0, avatar: 'LC', aadhar: '1122 3344 5566', pan: 'ABCDE1234F', bankAcc: '9988776655', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123' },
-  { id: 'EMP013', name: 'Sophia Vance', dept: 'Sales', email: 'sophia.v@company.com', role: 'Tech Lead', balance: 20, absent: 0, avatar: 'SV', aadhar: '2233 4455 6677', pan: 'FGHIJ5678K', bankAcc: '8877665544', bankIfsc: 'HDFC0001234 (HDFC Bank)', password: 'password123' },
-  { id: 'EMP014', name: 'Oliver Brooks', dept: 'Marketing', email: 'oliver.b@company.com', role: 'Tech Lead', balance: 20, absent: 0, avatar: 'OB', aadhar: '3344 5566 7788', pan: 'LMNOP9012Q', bankAcc: '7766554433', bankIfsc: 'AXIS0000789 (Axis Bank)', password: 'password123' },
-  { id: 'EMP015', name: 'Emma Stone', dept: 'Human Resources', email: 'emma.s@company.com', role: 'Tech Lead', balance: 20, absent: 0, avatar: 'ES', aadhar: '4455 6677 8899', pan: 'RSTUV3456W', bankAcc: '6655443322', bankIfsc: 'SBIN0000123 (SBI)', password: 'password123' }
+  { id: 'EMP001', name: 'Sarah Jenkins', dept: 'Human Resources', email: 'sarah.j@company.com', role: 'HR', balance: 20, absent: 0, avatar: 'SJ', aadhar: '4532 9812 7345', pan: 'AWQPJ4812K', bankAcc: '918273645012', bankIfsc: 'HDFC0001234 (HDFC Bank)', password: 'password123', phone: '+91 98765 43210' },
+  { id: 'EMP002', name: 'Alex Rivera', dept: 'Engineering', email: 'alex.r@company.com', role: 'Employee', balance: 15, absent: 5, avatar: 'AR', aadhar: '7721 8839 0019', pan: 'BPLXR9921D', bankAcc: '1092837465', bankIfsc: 'SBIN0000123 (SBI)', password: 'password123', phone: '+91 87654 32109' },
+  { id: 'EMP003', name: 'Priya Patel', dept: 'Design', email: 'priya.p@company.com', role: 'Employee', balance: 12, absent: 8, avatar: 'PP', aadhar: '6654 3321 0098', pan: 'CLKPP4821A', bankAcc: '883726152431', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123', phone: '+91 76543 21098' },
+  { id: 'EMP004', name: 'Marcus Chen', dept: 'Sales', email: 'marcus.c@company.com', role: 'Employee', balance: 18, absent: 2, avatar: 'MC', aadhar: '9001 8837 2212', pan: 'DNMCM0091K', bankAcc: '445362718290', bankIfsc: 'BARB0POWAI (Bank of Baroda)', password: 'password123', phone: '+91 65432 10987' },
+  { id: 'EMP005', name: 'Chloe Dupont', dept: 'Marketing', email: 'chloe.d@company.com', role: 'Employee', balance: 19, absent: 1, avatar: 'CD', aadhar: '2234 8876 5432', pan: 'ZPLCD9928H', bankAcc: '776253412098', bankIfsc: 'AXIS0000789 (Axis Bank)', password: 'password123', phone: '+91 54321 09876' },
+  { id: 'EMP006', name: 'David Kim', dept: 'Engineering', email: 'david.k@company.com', role: 'Employee', balance: 20, absent: 0, avatar: 'DK', aadhar: '8872 1192 3345', pan: 'TYPDK0192L', bankAcc: '334251609872', bankIfsc: 'SBIN0000123 (SBI)', password: 'password123', phone: '+91 43210 98765' },
+  { id: 'EMP007', name: 'Elena Rostova', dept: 'Engineering', email: 'elena.r@company.com', role: 'Tech Lead', balance: 18, absent: 2, avatar: 'ER', aadhar: '4452 9901 8834', pan: 'QWERP1209M', bankAcc: '556273819023', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123', phone: '+91 32109 87654' },
+  { id: 'EMP008', name: 'Emily Wong', dept: 'Design', email: 'emily.w@company.com', role: 'Employee', balance: 17, absent: 3, avatar: 'EW', aadhar: '1109 8834 7721', pan: 'UIOPW4482R', bankAcc: '998273645019', bankIfsc: 'HDFC0001234 (HDFC Bank)', password: 'password123', phone: '+91 21098 76543' },
+  { id: 'EMP009', name: 'Jason Mwangi', dept: 'Sales', email: 'jason.m@company.com', role: 'Employee', balance: 14, absent: 6, avatar: 'JM', aadhar: '5532 9901 8823', pan: 'PLKJM9012W', bankAcc: '667283910293', bankIfsc: 'KKBK0000881 (Kotak)', password: 'password123', phone: '+91 10987 65432' },
+  { id: 'EMP010', name: 'Sofia Al-Jamil', dept: 'Marketing', email: 'sofia.a@company.com', role: 'Employee', balance: 18, absent: 2, avatar: 'SA', aadhar: '7765 4432 1098', pan: 'MNBVS9921X', bankAcc: '223412098734', bankIfsc: 'AXIS0000789 (Axis Bank)', password: 'password123', phone: '+91 98765 01234' },
+  { id: 'EMP011', name: 'Richard Boss', dept: 'Administration', email: 'admin@company.com', role: 'Admin', balance: 20, absent: 0, avatar: 'RB', aadhar: '1111 2222 3333', pan: 'ADMIR1111B', bankAcc: '1234567890', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123', phone: '+91 87654 01235' },
+  { id: 'EMP012', name: 'Liam Carter', dept: 'Design', email: 'liam.c@company.com', role: 'Tech Lead', balance: 20, absent: 0, avatar: 'LC', aadhar: '1122 3344 5566', pan: 'ABCDE1234F', bankAcc: '9988776655', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123', phone: '+91 76543 01236' },
+  { id: 'EMP013', name: 'Sophia Vance', dept: 'Sales', email: 'sophia.v@company.com', role: 'Tech Lead', balance: 20, absent: 0, avatar: 'SV', aadhar: '2233 4455 6677', pan: 'FGHIJ5678K', bankAcc: '8877665544', bankIfsc: 'HDFC0001234 (HDFC Bank)', password: 'password123', phone: '+91 65432 01237' },
+  { id: 'EMP014', name: 'Oliver Brooks', dept: 'Marketing', email: 'oliver.b@company.com', role: 'Tech Lead', balance: 20, absent: 0, avatar: 'OB', aadhar: '3344 5566 7788', pan: 'LMNOP9012Q', bankAcc: '7766554433', bankIfsc: 'AXIS0000789 (Axis Bank)', password: 'password123', phone: '+91 54321 01238' },
+  { id: 'EMP015', name: 'Emma Stone', dept: 'Human Resources', email: 'emma.s@company.com', role: 'Tech Lead', balance: 20, absent: 0, avatar: 'ES', aadhar: '4455 6677 8899', pan: 'RSTUV3456W', bankAcc: '6655443322', bankIfsc: 'SBIN0000123 (SBI)', password: 'password123', phone: '+91 43210 01239' }
 ];
 
 const DEFAULT_REQUESTS = [
@@ -36,7 +196,7 @@ const DEFAULT_REQUESTS = [
     employeeId: 'EMP002',
     employeeName: 'Alex Rivera',
     dept: 'Engineering',
-    type: 'Sick',
+    type: 'Sick Leave (SL)',
     startDate: '2026-05-10',
     endDate: '2026-05-14',
     duration: 5,
@@ -50,7 +210,7 @@ const DEFAULT_REQUESTS = [
     employeeId: 'EMP003',
     employeeName: 'Priya Patel',
     dept: 'Design',
-    type: 'Annual',
+    type: 'Earned Leave (EL) / Privilege Leave',
     startDate: '2026-05-18',
     endDate: '2026-05-25',
     duration: 8,
@@ -64,7 +224,7 @@ const DEFAULT_REQUESTS = [
     employeeId: 'EMP004',
     employeeName: 'Marcus Chen',
     dept: 'Sales',
-    type: 'Casual',
+    type: 'Casual Leave (CL)',
     startDate: '2026-06-08',
     endDate: '2026-06-09',
     duration: 2,
@@ -78,7 +238,7 @@ const DEFAULT_REQUESTS = [
     employeeId: 'EMP005',
     employeeName: 'Chloe Dupont',
     dept: 'Marketing',
-    type: 'Casual',
+    type: 'Casual Leave (CL)',
     startDate: '2026-05-05',
     endDate: '2026-05-05',
     duration: 1,
@@ -92,7 +252,7 @@ const DEFAULT_REQUESTS = [
     employeeId: 'EMP002',
     employeeName: 'Alex Rivera',
     dept: 'Engineering',
-    type: 'Annual',
+    type: 'Earned Leave (EL) / Privilege Leave',
     startDate: '2026-06-20',
     endDate: '2026-06-22',
     duration: 3,
@@ -135,6 +295,121 @@ const DEFAULT_NOTICES = [
   { id: 'NTC001', title: 'HR Compliance Roster Check', content: 'Please review your profile details in the Employee Roster to ensure your email matches company specifications.', targetEmployeeIds: ['EMP002', 'EMP003', 'EMP004'], senderName: 'Sarah Jenkins', timestamp: '2026-06-02T11:00:00.000Z' }
 ];
 
+const DEFAULT_TICKETS = [
+  {
+    id: 'TCK001',
+    employeeId: 'EMP002',
+    employeeName: 'Alex Rivera',
+    title: 'VPN access issues during remote work',
+    description: 'I cannot connect to the Mumbai server. Getting credentials error even though my password is correct. Checked with colleague who is connected fine.',
+    category: 'IT Support',
+    priority: 'High',
+    status: 'In Progress',
+    assignedToId: 'EMP011',
+    assignedToName: 'Richard Boss',
+    targetRole: 'admin',
+    targetDept: '',
+    createdAt: '2026-06-05T09:00:00.000Z',
+    updatedAt: '2026-06-05T11:15:00.000Z',
+    replies: [
+      {
+        senderId: 'EMP002',
+        senderName: 'Alex Rivera',
+        content: 'Hi IT team, please look into this. It is blocking my database updates.',
+        timestamp: '2026-06-05T09:00:00.000Z'
+      },
+      {
+        senderId: 'EMP011',
+        senderName: 'Richard Boss',
+        content: 'Hi Alex, I have checked with the network admin. They are resetting your credentials. Can you try again in 15 minutes?',
+        timestamp: '2026-06-05T11:15:00.000Z'
+      }
+    ],
+    attachments: []
+  },
+  {
+    id: 'TCK002',
+    employeeId: 'EMP003',
+    employeeName: 'Priya Patel',
+    title: 'Clarification regarding casual leave accrual policy',
+    description: 'Hi, I see that casual leaves accrue 1.5 days per month. Does it carry forward to next year, or will it expire in December?',
+    category: 'HR Support',
+    priority: 'Low',
+    status: 'Resolved',
+    assignedToId: 'EMP001',
+    assignedToName: 'Sarah Jenkins',
+    targetRole: 'hr',
+    targetDept: '',
+    createdAt: '2026-06-03T14:20:00.000Z',
+    updatedAt: '2026-06-04T10:00:00.000Z',
+    replies: [
+      {
+        senderId: 'EMP003',
+        senderName: 'Priya Patel',
+        content: 'Just want to verify this for vacation planning.',
+        timestamp: '2026-06-03T14:20:00.000Z'
+      },
+      {
+        senderId: 'EMP001',
+        senderName: 'Sarah Jenkins',
+        content: 'Hi Priya, all accrued leaves carry forward up to a maximum of 18 days per year. Anything beyond 18 days will lapse at the end of the year.',
+        timestamp: '2026-06-04T10:00:00.000Z'
+      }
+    ],
+    attachments: []
+  },
+  {
+    id: 'TCK003',
+    employeeId: 'EMP004',
+    employeeName: 'Marcus Chen',
+    title: 'Desk AC vents are blowing hot air',
+    description: 'The AC vent directly above desk 14 is blowing hot air. It is getting very uncomfortable to work. Please check with maintenance.',
+    category: 'Facilities',
+    priority: 'Medium',
+    status: 'Open',
+    assignedToId: 'EMP011',
+    assignedToName: 'Richard Boss',
+    targetRole: 'admin',
+    targetDept: '',
+    createdAt: '2026-06-08T10:00:00.000Z',
+    updatedAt: '2026-06-08T10:00:00.000Z',
+    replies: [
+      {
+        senderId: 'EMP004',
+        senderName: 'Marcus Chen',
+        content: 'Please look into this soon. Thanks.',
+        timestamp: '2026-06-08T10:00:00.000Z'
+      }
+    ],
+    attachments: []
+  },
+  {
+    id: 'TCK004',
+    employeeId: 'EMP002',
+    employeeName: 'Alex Rivera',
+    title: 'Git repository access blocker',
+    description: 'I cannot push to the Next-Gen Engine repository. It says permission denied. Elena, could you verify if my GitHub username is in the engineering group access list?',
+    category: 'Technical Blocker',
+    priority: 'High',
+    status: 'Open',
+    assignedToId: 'EMP007',
+    assignedToName: 'Elena Rostova',
+    targetRole: 'techlead',
+    targetDept: 'Engineering',
+    createdAt: '2026-06-08T11:00:00.000Z',
+    updatedAt: '2026-06-08T11:00:00.000Z',
+    replies: [
+      {
+        senderId: 'EMP002',
+        senderName: 'Alex Rivera',
+        content: 'Elena, I need this to check in the latest auth tests.',
+        timestamp: '2026-06-08T11:00:00.000Z'
+      }
+    ],
+    attachments: []
+  }
+];
+
 const DEFAULT_NATIONAL_HOLIDAYS = [
   { date: '2026-01-26', name: 'Republic Day' },
   { date: '2026-02-19', name: 'Shivjayanti' },
@@ -173,6 +448,7 @@ let currentAttachedImagesHR = [];
 let currentAttachedImagesReport = [];
 let currentAttachedImagesAnnouncement = [];
 let currentAttachedImagesNotice = [];
+let currentAttachedImagesTicket = [];
 let currentUploadedProjectFiles = [];
 let currentAttachedReimbursementFiles = [];
 let currentUploadedEmployeePhoto = null;
@@ -221,6 +497,9 @@ let state = {
   departments: [],
   selectedRequestIdForModal: null,
   modalActionType: null, // 'approve' or 'reject'
+  tickets: [],
+  selectedTicketIdForModal: null,
+  activeTicketSubTab: 'my',
 
   // Communications State
   chats: [],
@@ -726,7 +1005,8 @@ function compressImage(dataUrl, maxWidth, maxHeight, quality, callback) {
 
 
 // --- Initialization ---
-function init() {
+async function init() {
+  await fetchCentralizedState();
   // Load or seed data
   if (!localStorage.getItem('ems_employees')) {
     localStorage.setItem('ems_employees', JSON.stringify(DEFAULT_EMPLOYEES));
@@ -774,6 +1054,20 @@ function init() {
           }, 0);
           const newId = `EMP${String(maxIdNum + 1).padStart(3, '0')}`;
           stored.push({ ...TL, id: newId });
+          updated = true;
+        }
+      });
+
+      // Ensure all employees have phone numbers (self-healing migration)
+      stored.forEach((emp, index) => {
+        if (!emp.phone) {
+          const defaultPhones = [
+            "+91 98765 43210", "+91 87654 32109", "+91 76543 21098", "+91 65432 10987",
+            "+91 54321 09876", "+91 43210 98765", "+91 32109 87654", "+91 21098 76543",
+            "+91 10987 65432", "+91 98765 01234", "+91 87654 01235", "+91 76543 01236",
+            "+91 65432 01237", "+91 54321 01238", "+91 43210 01239"
+          ];
+          emp.phone = defaultPhones[index % defaultPhones.length];
           updated = true;
         }
       });
@@ -908,6 +1202,7 @@ function init() {
   state.chats = JSON.parse(localStorage.getItem('ems_chats'));
   state.announcements = JSON.parse(localStorage.getItem('ems_announcements'));
   state.notices = JSON.parse(localStorage.getItem('ems_notices'));
+  state.smsNotifications = JSON.parse(localStorage.getItem('ems_notifications') || '[]');
   state.nationalHolidays = JSON.parse(localStorage.getItem('ems_national_holidays'));
   state.celebrationDays = JSON.parse(localStorage.getItem('ems_celebration_days'));
 
@@ -992,6 +1287,17 @@ function init() {
     localStorage.setItem('ems_reports', JSON.stringify(state.dailyReports));
   }
 
+  // Load and seed Support Tickets
+  try {
+    state.tickets = JSON.parse(localStorage.getItem('ems_tickets') || '[]');
+  } catch (e) {
+    state.tickets = [];
+  }
+  if (state.tickets.length === 0) {
+    state.tickets = DEFAULT_TICKETS;
+    localStorage.setItem('ems_tickets', JSON.stringify(state.tickets));
+  }
+
   // Bind role toggles
   document.getElementById('btn-role-employee').addEventListener('click', () => setRole('employee'));
   document.getElementById('btn-role-techlead').addEventListener('click', () => setRole('techlead'));
@@ -1016,6 +1322,30 @@ function init() {
   setupFileInputListener('emp-task-images', 'emp-task-images-preview', currentAttachedImagesEmp);
   setupPasteListener('task-details', 'task-images-preview', currentAttachedImagesHR);
   setupFileInputListener('task-images', 'task-images-preview', currentAttachedImagesHR);
+
+  // Set up ticket upload & paste listeners
+  setupPasteListener('ticket-description', 'ticket-attachments-preview', currentAttachedImagesTicket);
+  setupFileInputListener('ticket-attachments', 'ticket-attachments-preview', currentAttachedImagesTicket);
+
+  // Bind ticket form submissions
+  const ticketForm = document.getElementById('ticket-creation-form');
+  if (ticketForm) {
+    ticketForm.addEventListener('submit', handleTicketFormSubmit);
+  }
+  const ticketReplyForm = document.getElementById('ticket-chat-reply-form');
+  if (ticketReplyForm) {
+    ticketReplyForm.addEventListener('submit', handleTicketReplyFormSubmit);
+  }
+  
+  // Bind ticket filters
+  const ticketSearch = document.getElementById('ticket-agent-search');
+  if (ticketSearch) ticketSearch.addEventListener('input', renderTickets);
+  const ticketFilterCat = document.getElementById('ticket-filter-category');
+  if (ticketFilterCat) ticketFilterCat.addEventListener('change', renderTickets);
+  const ticketFilterPrio = document.getElementById('ticket-filter-priority');
+  if (ticketFilterPrio) ticketFilterPrio.addEventListener('change', renderTickets);
+  const ticketFilterStatus = document.getElementById('ticket-filter-status');
+  if (ticketFilterStatus) ticketFilterStatus.addEventListener('change', renderTickets);
 
   // Set up employee registration photo upload listener
   const photoInput = document.getElementById('new-emp-photo');
@@ -1274,6 +1604,12 @@ function init() {
   if (btnCancelModal) btnCancelModal.addEventListener('click', hideModal);
   if (modalForm) modalForm.addEventListener('submit', handleModalSubmit);
 
+  // Profile Modal Setup
+  const profileWidget = document.querySelector('.profile-widget');
+  if (profileWidget) {
+    profileWidget.addEventListener('click', showProfileModal);
+  }
+
   // Set Theme Toggle
   const themeToggle = document.getElementById('theme-toggle');
   themeToggle.addEventListener('click', () => {
@@ -1311,6 +1647,8 @@ function init() {
           renderPayslips();
         } else if (currentView === 'reimbursements') {
           renderReimbursements();
+        } else if (currentView === 'tickets') {
+          renderTickets();
         } else {
           renderEmployeeDashboard(currentView);
         }
@@ -1377,6 +1715,7 @@ function init() {
 
   setupDateLimits();
   checkAuthSession();
+  initSyncPolling();
 }
 
 function updateThemeIcon(theme) {
@@ -1667,6 +2006,7 @@ function switchView(viewName) {
   const reportsContainer = document.getElementById('reports-view-container');
   const payslipsContainer = document.getElementById('payslips-view-container');
   const reimbursementsContainer = document.getElementById('reimbursements-view-container');
+  const ticketsContainer = document.getElementById('tickets-view-container');
 
   if (viewName === 'communications') {
     if (empContainer) empContainer.style.display = 'none';
@@ -1675,6 +2015,7 @@ function switchView(viewName) {
     if (reportsContainer) reportsContainer.style.display = 'none';
     if (payslipsContainer) payslipsContainer.style.display = 'none';
     if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
+    if (ticketsContainer) ticketsContainer.style.display = 'none';
     if (commContainer) commContainer.style.display = 'block';
 
     // Update Page Header Label
@@ -1689,6 +2030,7 @@ function switchView(viewName) {
     if (reportsContainer) reportsContainer.style.display = 'none';
     if (payslipsContainer) payslipsContainer.style.display = 'none';
     if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
+    if (ticketsContainer) ticketsContainer.style.display = 'none';
     if (calendarContainer) calendarContainer.style.display = 'block';
 
     // Update Page Header Label
@@ -1703,6 +2045,7 @@ function switchView(viewName) {
     if (calendarContainer) calendarContainer.style.display = 'none';
     if (payslipsContainer) payslipsContainer.style.display = 'none';
     if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
+    if (ticketsContainer) ticketsContainer.style.display = 'none';
     if (reportsContainer) reportsContainer.style.display = 'block';
 
     // Update Page Header Label
@@ -1717,6 +2060,7 @@ function switchView(viewName) {
     if (calendarContainer) calendarContainer.style.display = 'none';
     if (reportsContainer) reportsContainer.style.display = 'none';
     if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
+    if (ticketsContainer) ticketsContainer.style.display = 'none';
     if (payslipsContainer) payslipsContainer.style.display = 'block';
 
     // Update Page Header Label
@@ -1731,6 +2075,7 @@ function switchView(viewName) {
     if (calendarContainer) calendarContainer.style.display = 'none';
     if (reportsContainer) reportsContainer.style.display = 'none';
     if (payslipsContainer) payslipsContainer.style.display = 'none';
+    if (ticketsContainer) ticketsContainer.style.display = 'none';
     if (reimbursementsContainer) reimbursementsContainer.style.display = 'block';
 
     // Update Page Header Label
@@ -1738,12 +2083,28 @@ function switchView(viewName) {
     if (titleLabel) titleLabel.textContent = 'Reimbursements';
 
     renderReimbursements();
+  } else if (viewName === 'tickets') {
+    if (empContainer) empContainer.style.display = 'none';
+    if (hrContainer) hrContainer.style.display = 'none';
+    if (commContainer) commContainer.style.display = 'none';
+    if (calendarContainer) calendarContainer.style.display = 'none';
+    if (reportsContainer) reportsContainer.style.display = 'none';
+    if (payslipsContainer) payslipsContainer.style.display = 'none';
+    if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
+    if (ticketsContainer) ticketsContainer.style.display = 'block';
+
+    // Update Page Header Label
+    const titleLabel = document.getElementById('page-title-label');
+    if (titleLabel) titleLabel.textContent = 'Support Tickets';
+
+    renderTickets();
   } else {
     if (commContainer) commContainer.style.display = 'none';
     if (calendarContainer) calendarContainer.style.display = 'none';
     if (reportsContainer) reportsContainer.style.display = 'none';
     if (payslipsContainer) payslipsContainer.style.display = 'none';
     if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
+    if (ticketsContainer) ticketsContainer.style.display = 'none';
     
     const isLeadOrHR = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin');
     const leaveSubTabs = document.getElementById('leave-sub-tabs');
@@ -2444,6 +2805,19 @@ function handleLeaveFormSubmit(e) {
   state.requests.unshift(newReq);
   localStorage.setItem('ems_requests', JSON.stringify(state.requests));
 
+  // Trigger SMS notifications for HR and Admin users
+  state.employees.forEach(emp => {
+    if ((emp.role === 'HR' || emp.role === 'Admin') && emp.id !== state.currentUser.id) {
+      if (emp.phone) {
+        triggerSMSNotification(
+          emp.phone,
+          `New Leave Request: ${state.currentUser.name} (${state.currentUser.dept}) requested ${type} leave for ${duration} days (${startDateStr} to ${endDateStr}). Reason: "${reason}"`,
+          emp.name
+        );
+      }
+    }
+  });
+
   // Reset form
   document.getElementById('leave-request-form').reset();
   document.getElementById('calculated-days').textContent = '0 days';
@@ -2488,6 +2862,73 @@ function hideModal() {
   state.modalActionType = null;
 }
 
+function showProfileModal() {
+  const emp = state.employees.find(e => e.id === state.currentUser.id) || state.currentUser;
+  if (!emp) return;
+
+  const overlay = document.getElementById('profile-modal-overlay');
+  if (!overlay) return;
+
+  // Render Avatar
+  const avatarEl = document.getElementById('profile-modal-avatar');
+  if (avatarEl) {
+    if (emp.photo) {
+      avatarEl.innerHTML = `<img src="${emp.photo}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
+    } else {
+      avatarEl.innerHTML = emp.avatar;
+    }
+  }
+
+  // Set header info
+  const nameEl = document.getElementById('profile-modal-name');
+  if (nameEl) nameEl.textContent = emp.name;
+
+  const desigEl = document.getElementById('profile-modal-designation');
+  if (desigEl) desigEl.textContent = emp.designation || emp.role;
+
+  // Populate input fields (readonly ones)
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  setVal('profile-edit-id', emp.id);
+  setVal('profile-edit-role', emp.role);
+  setVal('profile-edit-dept', emp.dept || '');
+
+  // Populate editable fields
+  setVal('profile-edit-email', emp.email);
+  setVal('profile-edit-phone', emp.phone || '');
+  setVal('profile-edit-aadhar', emp.aadhar || '');
+  setVal('profile-edit-pan', emp.pan || '');
+  setVal('profile-edit-bank-acc', emp.bankAcc || '');
+  setVal('profile-edit-bank-ifsc', emp.bankIfsc || '');
+
+  overlay.classList.add('active');
+}
+
+function hideProfileModal() {
+  const overlay = document.getElementById('profile-modal-overlay');
+  if (overlay) {
+    overlay.classList.remove('active');
+  }
+}
+
+function handleProfileSave(e) {
+  e.preventDefault();
+  const emp = state.employees.find(e => e.id === state.currentUser.id);
+  if (!emp) return;
+
+  emp.email = document.getElementById('profile-edit-email').value.trim() || emp.email;
+  emp.phone = document.getElementById('profile-edit-phone').value.trim() || emp.phone;
+  emp.aadhar = document.getElementById('profile-edit-aadhar').value.trim() || emp.aadhar;
+  emp.pan = document.getElementById('profile-edit-pan').value.trim() || emp.pan;
+  emp.bankAcc = document.getElementById('profile-edit-bank-acc').value.trim() || emp.bankAcc;
+  emp.bankIfsc = document.getElementById('profile-edit-bank-ifsc').value.trim() || emp.bankIfsc;
+
+  localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+  state.currentUser = emp;
+
+  hideProfileModal();
+  showToast('Profile updated successfully!', 'success');
+}
+
 function handleModalSubmit(e) {
   e.preventDefault();
   const comment = document.getElementById('modal-comment').value.trim();
@@ -2526,6 +2967,18 @@ function processAction(requestId, action, comment) {
   // Save changes to localStorage
   localStorage.setItem('ems_requests', JSON.stringify(state.requests));
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+
+  // Trigger SMS notification for the leave applicant
+  const targetEmp = state.employees.find(emp => emp.id === req.employeeId);
+  if (targetEmp && targetEmp.phone) {
+    const statusText = action === 'approve' ? 'APPROVED' : 'REJECTED';
+    const commentSuffix = comment ? ` Remarks: "${comment}"` : '';
+    triggerSMSNotification(
+      targetEmp.phone,
+      `Leave Request Update: Your request for ${req.duration} days of ${req.type} leave (${req.startDate} to ${req.endDate}) has been ${statusText} by ${state.currentUser.name}.${commentSuffix}`,
+      targetEmp.name
+    );
+  }
 
   // Refresh view
   renderHRDashboard('requests');
@@ -3771,6 +4224,7 @@ function handleEmployeeCreationSubmit(e) {
   const balanceEl = document.getElementById('new-emp-balance');
   const balance = balanceEl ? parseInt(balanceEl.value) : 20;
   const designation = document.getElementById('new-emp-designation') ? document.getElementById('new-emp-designation').value.trim() : '';
+  const phone = document.getElementById('new-emp-phone') ? document.getElementById('new-emp-phone').value.trim() : '';
 
   const aadhar = currentUploadedAadharFile || '';
   const pan = currentUploadedPanFile || '';
@@ -3778,7 +4232,7 @@ function handleEmployeeCreationSubmit(e) {
   const bankIfsc = currentUploadedBankIfscFile || '';
   const password = document.getElementById('new-emp-password') ? document.getElementById('new-emp-password').value : 'password123';
 
-  if (!id || !name || !email || !dept || !role || isNaN(balance)) {
+  if (!id || !name || !email || !dept || !role || !phone || isNaN(balance)) {
     showToast('Please fill out all fields.', 'error');
     return;
   }
@@ -3803,6 +4257,7 @@ function handleEmployeeCreationSubmit(e) {
     absent: 0,
     avatar: initials,
     designation: designation,
+    phone: phone,
     aadhar: aadhar,
     pan: pan,
     bankAcc: bankAcc,
@@ -4104,7 +4559,7 @@ function renderCommunicationsHub() {
   }
 
   // Sync tab active classes
-  const tabs = ['chats', 'announcements', 'notices'];
+  const tabs = ['chats', 'announcements', 'notices', 'sms'];
   tabs.forEach(tab => {
     const btn = document.getElementById(`comm-tab-${tab}`);
     if (btn) {
@@ -4196,6 +4651,15 @@ function renderCommSidebar() {
       <div style="font-weight:600;">HR Notices</div>
     `;
     itemsBox.appendChild(link);
+  } else if (state.activeCommTab === 'sms') {
+    titleEl.textContent = 'Logs';
+    const link = document.createElement('div');
+    link.className = 'comm-item-link active';
+    link.innerHTML = `
+      <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; background: var(--primary);">📱</div>
+      <div style="font-weight:600;">SMS Log History</div>
+    `;
+    itemsBox.appendChild(link);
   }
 }
 
@@ -4203,12 +4667,14 @@ function renderCommMainContent() {
   const chatPane = document.getElementById('comm-chat-pane');
   const annPane = document.getElementById('comm-announcements-pane');
   const noticePane = document.getElementById('comm-notices-pane');
+  const smsPane = document.getElementById('comm-sms-pane');
 
   if (!chatPane || !annPane || !noticePane) return;
 
   chatPane.style.display = 'none';
   annPane.style.display = 'none';
   noticePane.style.display = 'none';
+  if (smsPane) smsPane.style.display = 'none';
 
   if (state.activeCommTab === 'chats') {
     chatPane.style.display = 'flex';
@@ -4219,6 +4685,9 @@ function renderCommMainContent() {
   } else if (state.activeCommTab === 'notices') {
     noticePane.style.display = 'flex';
     renderNotices();
+  } else if (state.activeCommTab === 'sms') {
+    if (smsPane) smsPane.style.display = 'flex';
+    renderSMSLogs();
   }
 }
 
@@ -4317,6 +4786,7 @@ function handleChatMessageSubmit(e) {
 
   state.chats.push(newMsg);
   localStorage.setItem('ems_chats', JSON.stringify(state.chats));
+  triggerChatNotification(newMsg);
 
   input.value = '';
   renderChatRoom();
@@ -4345,6 +4815,7 @@ function handleChatFileSelected(input) {
 
     state.chats.push(newMsg);
     localStorage.setItem('ems_chats', JSON.stringify(state.chats));
+    triggerChatNotification(newMsg);
     input.value = '';
     renderChatRoom();
   };
@@ -4425,6 +4896,17 @@ function handleAnnouncementSubmit(e) {
 
   state.announcements.unshift(newAnn);
   localStorage.setItem('ems_announcements', JSON.stringify(state.announcements));
+
+  // Trigger SMS notifications for all employees (excluding sender)
+  state.employees.forEach(emp => {
+    if (emp.phone && emp.id !== state.currentUser.id) {
+      triggerSMSNotification(
+        emp.phone,
+        `New Announcement: "${newAnn.title}" - ${newAnn.content.substring(0, 100)}${newAnn.content.length > 100 ? '...' : ''}`,
+        emp.name
+      );
+    }
+  });
 
   // Mark as read for the sender
   if (state.currentUser) {
@@ -4552,6 +5034,18 @@ function handleNoticeSubmit(e) {
 
   state.notices.unshift(newNotice);
   localStorage.setItem('ems_notices', JSON.stringify(state.notices));
+
+  // Trigger SMS notifications for target employees
+  targetEmployeeIds.forEach(empId => {
+    const targetEmp = state.employees.find(emp => emp.id === empId);
+    if (targetEmp && targetEmp.phone) {
+      triggerSMSNotification(
+        targetEmp.phone,
+        `HR Notice: "${newNotice.title}" - ${newNotice.content.substring(0, 100)}${newNotice.content.length > 100 ? '...' : ''}`,
+        targetEmp.name
+      );
+    }
+  });
 
   // Mark as read for the sender
   if (state.currentUser) {
@@ -5421,6 +5915,19 @@ function handleDailyReportSubmit(e) {
     return;
   }
 
+  // Trigger SMS notifications for HR and Admin users
+  state.employees.forEach(emp => {
+    if ((emp.role === 'HR' || emp.role === 'Admin') && emp.id !== state.currentUser.id) {
+      if (emp.phone) {
+        triggerSMSNotification(
+          emp.phone,
+          `New Daily Report Submitted: ${state.currentUser.name} (${state.currentUser.dept}) sent a report for ${dateVal}. Details: ${detailsVal.substring(0, 100)}${detailsVal.length > 100 ? '...' : ''}`,
+          emp.name
+        );
+      }
+    }
+  });
+
   currentAttachedImagesReport.length = 0;
   const preview = document.getElementById('report-images-preview');
   if (preview) preview.innerHTML = '';
@@ -5484,6 +5991,16 @@ function saveHRRemarks(reportId, event) {
     return;
   }
 
+  // Trigger SMS notification for the report's owner
+  const targetEmp = state.employees.find(emp => emp.id === report.employeeId);
+  if (targetEmp && targetEmp.phone) {
+    triggerSMSNotification(
+      targetEmp.phone,
+      `Daily Report Reviewed: Your report for ${report.date} was reviewed by ${state.currentUser.name}. Remarks: "${remarksText}"`,
+      targetEmp.name
+    );
+  }
+
   state.editingReportId = null;
   renderDailyReports();
   showToast('Report remarks updated successfully.', 'success');
@@ -5508,6 +6025,16 @@ function setReportStarRating(reportId, rating, event) {
 
   if (clampedRating > 0) {
     showToast(`Awarded ${clampedRating}/10 stars to daily report!`, 'success');
+    
+    // Trigger SMS notification for report's owner
+    const targetEmp = state.employees.find(emp => emp.id === report.employeeId);
+    if (targetEmp && targetEmp.phone) {
+      triggerSMSNotification(
+        targetEmp.phone,
+        `Daily Report Rated: Your report for ${report.date} was awarded a ${clampedRating}/10 star rating by ${state.currentUser.name}.`,
+        targetEmp.name
+      );
+    }
   } else {
     showToast('Star rating removed from daily report.', 'success');
   }
@@ -6381,6 +6908,623 @@ function logout() {
 
 window.quickLogin = quickLogin;
 window.logout = logout;
+
+// ==========================================
+// --- SUPPORT TICKET SYSTEM MODULE ---
+// ==========================================
+
+function renderTickets() {
+  const isAgent = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin');
+  
+  const subTabs = document.getElementById('ticket-sub-tabs');
+  const empSection = document.getElementById('ticket-employee-section');
+  const agentSection = document.getElementById('ticket-agent-section');
+
+  if (isAgent) {
+    if (subTabs) subTabs.style.display = 'flex';
+    
+    // Update sub-tabs active classes
+    const myTab = document.getElementById('ticket-tab-my');
+    const manageTab = document.getElementById('ticket-tab-manage');
+    if (myTab && manageTab) {
+      myTab.classList.toggle('active', state.activeTicketSubTab === 'my');
+      manageTab.classList.toggle('active', state.activeTicketSubTab === 'manage');
+    }
+
+    if (state.activeTicketSubTab === 'manage') {
+      if (empSection) empSection.style.display = 'none';
+      if (agentSection) agentSection.style.display = 'flex';
+      renderAgentTickets();
+    } else {
+      if (agentSection) agentSection.style.display = 'none';
+      if (empSection) empSection.style.display = 'flex';
+      renderEmployeeTickets();
+    }
+  } else {
+    if (subTabs) subTabs.style.display = 'none';
+    state.activeTicketSubTab = 'my';
+    if (agentSection) agentSection.style.display = 'none';
+    if (empSection) empSection.style.display = 'flex';
+    renderEmployeeTickets();
+  }
+}
+
+function switchTicketSubTab(tab) {
+  state.activeTicketSubTab = tab;
+  renderTickets();
+}
+
+// 1. Employee view rendering
+function renderEmployeeTickets() {
+  const userId = state.currentUser.id;
+  const userTickets = state.tickets.filter(t => t.employeeId === userId);
+
+  // Update Stats
+  const total = userTickets.length;
+  const pending = userTickets.filter(t => t.status === 'Open' || t.status === 'In Progress').length;
+  const resolved = userTickets.filter(t => t.status === 'Resolved' || t.status === 'Closed').length;
+
+  const totalEl = document.getElementById('ticket-emp-total');
+  const pendingEl = document.getElementById('ticket-emp-pending');
+  const resolvedEl = document.getElementById('ticket-emp-resolved');
+  if (totalEl) totalEl.textContent = total;
+  if (pendingEl) pendingEl.textContent = pending;
+  if (resolvedEl) resolvedEl.textContent = resolved;
+
+  // History Table
+  const tbody = document.getElementById('ticket-employee-tbody');
+  if (!tbody) return;
+
+  if (userTickets.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">No support tickets raised yet.</td></tr>`;
+    return;
+  }
+
+  // Sort: newest first
+  const sortedTickets = [...userTickets].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+  tbody.innerHTML = sortedTickets.map(t => {
+    const statusClass = `badge badge-${t.status.toLowerCase().replace(' ', '')}`;
+    const formattedDate = new Date(t.updatedAt).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+    const assigneeName = t.assignedToName || '<span style="color: var(--text-muted); font-style: italic;">Unassigned</span>';
+
+    return `
+      <tr>
+        <td><strong>${t.id}</strong></td>
+        <td>${t.category}</td>
+        <td>${escapeHTML(t.title)}</td>
+        <td><span class="badge ${getPriorityBadgeClass(t.priority)}">${t.priority}</span></td>
+        <td><span class="${statusClass}">${t.status}</span></td>
+        <td>${assigneeName}</td>
+        <td>${formattedDate}</td>
+        <td>
+          <button class="btn btn-secondary btn-xs" onclick="openTicketDetails('${t.id}')">View Details</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Helper to escape HTML tags
+function escapeHTML(str) {
+  if (!str) return '';
+  return str.replace(/[&<>'"]/g, 
+    tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+  );
+}
+
+// Priority Badge Class Helper
+function getPriorityBadgeClass(priority) {
+  switch (priority) {
+    case 'Critical': return 'badge-rejected'; // red
+    case 'High': return 'badge-rejected'; // red/orange
+    case 'Medium': return 'badge-pending'; // yellow
+    case 'Low': return 'badge-approved'; // green
+    default: return 'badge-pending';
+  }
+}
+
+function getDepartmentTechLead(dept) {
+  const tl = state.employees.find(emp => emp.role === 'Tech Lead' && emp.dept === dept);
+  if (tl) return tl;
+  const defaults = {
+    'Engineering': { id: 'EMP007', name: 'Elena Rostova' },
+    'Design': { id: 'EMP012', name: 'Liam Carter' },
+    'Sales': { id: 'EMP013', name: 'Sophia Vance' },
+    'Marketing': { id: 'EMP014', name: 'Oliver Brooks' },
+    'Human Resources': { id: 'EMP015', name: 'Emma Stone' }
+  };
+  return defaults[dept] || { id: 'EMP011', name: 'Richard Boss' };
+}
+
+// 2. Agent / Admin view rendering
+function renderAgentTickets() {
+  const query = (document.getElementById('ticket-agent-search')?.value || '').toLowerCase().trim();
+  const filterCat = document.getElementById('ticket-filter-category')?.value || 'all';
+  const filterPrio = document.getElementById('ticket-filter-priority')?.value || 'all';
+  const filterStatus = document.getElementById('ticket-filter-status')?.value || 'all';
+
+  const userRole = state.currentRole; // 'hr', 'techlead', 'admin'
+  const userDept = state.currentUser.dept;
+
+  // Base role-specific visibility routing
+  let visibleTickets = state.tickets.filter(t => {
+    // Admin sees all tickets
+    if (userRole === 'admin') return true;
+
+    // Tech Lead only sees technical blockers from their own department (or assigned to them)
+    if (userRole === 'techlead') {
+      const isTechLeadAssignee = (t.assignedToId === state.currentUser.id);
+      const isDeptBlocker = (t.category === 'Technical Blocker' && t.targetDept === userDept);
+      return isTechLeadAssignee || isDeptBlocker;
+    }
+
+    // HR only sees HR support and Finance tickets (or assigned to them)
+    if (userRole === 'hr') {
+      const isHRAssignee = (t.assignedToId === state.currentUser.id);
+      const isHRCategory = (t.targetRole === 'hr' || t.category === 'HR Support' || t.category === 'Finance');
+      return isHRAssignee || isHRCategory;
+    }
+
+    return false;
+  });
+
+  // Apply search and dropdown filters
+  let filtered = visibleTickets.filter(t => {
+    const matchesSearch = t.id.toLowerCase().includes(query) || 
+                          t.employeeName.toLowerCase().includes(query) || 
+                          t.title.toLowerCase().includes(query) ||
+                          t.description.toLowerCase().includes(query);
+    const matchesCat = (filterCat === 'all' || t.category === filterCat);
+    const matchesPrio = (filterPrio === 'all' || t.priority === filterPrio);
+    const matchesStatus = (filterStatus === 'all' || t.status === filterStatus);
+
+    return matchesSearch && matchesCat && matchesPrio && matchesStatus;
+  });
+
+  // Calculate stats based on VISIBLE tickets
+  const totalOpen = visibleTickets.filter(t => t.status === 'Open' || t.status === 'In Progress').length;
+  const totalUnassigned = visibleTickets.filter(t => !t.assignedToId && (t.status === 'Open' || t.status === 'In Progress')).length;
+  const totalCritical = visibleTickets.filter(t => (t.priority === 'Critical' || t.priority === 'High') && (t.status === 'Open' || t.status === 'In Progress')).length;
+
+  const openEl = document.getElementById('ticket-agent-open');
+  const unassignedEl = document.getElementById('ticket-agent-unassigned');
+  const criticalEl = document.getElementById('ticket-agent-critical');
+  if (openEl) openEl.textContent = totalOpen;
+  if (unassignedEl) unassignedEl.textContent = totalUnassigned;
+  if (criticalEl) criticalEl.textContent = totalCritical;
+
+  const tbody = document.getElementById('ticket-agent-tbody');
+  if (!tbody) return;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">No support tickets found matching the filters.</td></tr>`;
+    return;
+  }
+
+  // Sort: newest first
+  const sortedTickets = [...filtered].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+  tbody.innerHTML = sortedTickets.map(t => {
+    const statusClass = `badge badge-${t.status.toLowerCase().replace(' ', '')}`;
+    const formattedDate = new Date(t.createdAt).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+    const assigneeName = t.assignedToName || '<span style="color: var(--warning); font-style: italic;">Unassigned</span>';
+
+    return `
+      <tr>
+        <td><strong>${t.id}</strong></td>
+        <td>${escapeHTML(t.employeeName)}</td>
+        <td>${t.category}</td>
+        <td>${escapeHTML(t.title)}</td>
+        <td><span class="badge ${getPriorityBadgeClass(t.priority)}">${t.priority}</span></td>
+        <td><span class="${statusClass}">${t.status}</span></td>
+        <td>${assigneeName}</td>
+        <td>${formattedDate}</td>
+        <td>
+          <button class="btn btn-primary btn-xs" onclick="openTicketDetails('${t.id}')">Manage</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// 3. New Ticket Submission
+function handleTicketFormSubmit(e) {
+  e.preventDefault();
+
+  const titleInput = document.getElementById('ticket-title');
+  const catInput = document.getElementById('ticket-category');
+  const prioInput = document.getElementById('ticket-priority');
+  const descInput = document.getElementById('ticket-description');
+
+  if (!titleInput || !catInput || !prioInput || !descInput) return;
+
+  // Determine routing rules based on category
+  const category = catInput.value;
+  let targetRole = 'admin';
+  let targetDept = '';
+  let assignedToId = '';
+  let assignedToName = '';
+
+  if (category === 'Technical Blocker') {
+    targetRole = 'techlead';
+    targetDept = state.currentUser.dept || 'Engineering';
+    const tl = getDepartmentTechLead(targetDept);
+    assignedToId = tl.id;
+    assignedToName = tl.name;
+  } else if (category === 'HR Support') {
+    targetRole = 'hr';
+    assignedToId = 'EMP001';
+    assignedToName = 'Sarah Jenkins';
+  } else {
+    // IT Support, Facilities, Finance
+    targetRole = 'admin';
+    assignedToId = 'EMP011';
+    assignedToName = 'Richard Boss';
+  }
+
+  // Find next sequential ID
+  const maxIdNum = state.tickets.reduce((max, t) => {
+    const match = t.id.match(/^TCK(\d+)$/);
+    return match ? Math.max(max, parseInt(match[1])) : max;
+  }, 0);
+  const newId = `TCK${String(maxIdNum + 1).padStart(3, '0')}`;
+
+  const newTicket = {
+    id: newId,
+    employeeId: state.currentUser.id,
+    employeeName: state.currentUser.name,
+    title: titleInput.value.trim(),
+    description: descInput.value.trim(),
+    category: category,
+    priority: prioInput.value,
+    status: 'Open',
+    assignedToId: assignedToId,
+    assignedToName: assignedToName,
+    targetRole: targetRole,
+    targetDept: targetDept,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    replies: [
+      {
+        senderId: state.currentUser.id,
+        senderName: state.currentUser.name,
+        content: descInput.value.trim(),
+        timestamp: new Date().toISOString()
+      }
+    ],
+    attachments: [...currentAttachedImagesTicket]
+  };
+
+  state.tickets.push(newTicket);
+  
+  if (safeSaveTickets()) {
+    showToast(`Ticket ${newId} raised successfully!`, 'success');
+    
+    // Reset form
+    titleInput.value = '';
+    catInput.selectedIndex = 0;
+    prioInput.value = 'Medium';
+    descInput.value = '';
+    currentAttachedImagesTicket = [];
+    const previewContainer = document.getElementById('ticket-attachments-preview');
+    if (previewContainer) previewContainer.innerHTML = '';
+    
+    renderTickets();
+  }
+}
+
+function safeSaveTickets() {
+  try {
+    localStorage.setItem('ems_tickets', JSON.stringify(state.tickets));
+    return true;
+  } catch (error) {
+    console.error('Failed to save tickets to localStorage:', error);
+    showToast('Storage quota exceeded! Attached images may be too large.', 'error');
+    try {
+      state.tickets = JSON.parse(localStorage.getItem('ems_tickets') || '[]');
+    } catch (e) {}
+    return false;
+  }
+}
+
+// 4. Modal management & Interactions
+function openTicketDetails(ticketId) {
+  const ticket = state.tickets.find(t => t.id === ticketId);
+  if (!ticket) return;
+
+  state.selectedTicketIdForModal = ticketId;
+
+  // Set modal details
+  document.getElementById('ticket-modal-title').textContent = `${ticket.id}: ${ticket.title}`;
+  document.getElementById('ticket-modal-id').textContent = ticket.id;
+  document.getElementById('ticket-modal-creator').textContent = ticket.employeeName;
+  document.getElementById('ticket-modal-category').textContent = ticket.category;
+  
+  const priorityBadge = document.getElementById('ticket-modal-priority');
+  priorityBadge.textContent = ticket.priority;
+  priorityBadge.className = `badge ${getPriorityBadgeClass(ticket.priority)}`;
+  
+  const statusBadge = document.getElementById('ticket-modal-status');
+  statusBadge.textContent = ticket.status;
+  statusBadge.className = `badge badge-${ticket.status.toLowerCase().replace(' ', '')}`;
+
+  document.getElementById('ticket-modal-assignee').textContent = ticket.assignedToName || 'Unassigned';
+  document.getElementById('ticket-modal-desc').textContent = ticket.description;
+
+  // Render attachments inside the modal description block
+  const attachmentsContainer = document.getElementById('ticket-modal-attachments-container');
+  if (attachmentsContainer) {
+    attachmentsContainer.innerHTML = renderAttachmentsHTML(ticket.attachments, ticket.id);
+  }
+
+  // Display Agent Controls only to HR/TechLead/Admin
+  const isAgent = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin');
+  const agentControls = document.getElementById('ticket-modal-agent-controls');
+  if (agentControls) {
+    agentControls.style.display = isAgent ? 'flex' : 'none';
+  }
+
+  // Set the correct value for status dropdown
+  const statusChangeDropdown = document.getElementById('ticket-status-change');
+  if (statusChangeDropdown) {
+    statusChangeDropdown.value = ticket.status;
+  }
+
+  // Disable/Enable Assign to self based on assignment
+  const btnAssignSelf = document.getElementById('btn-ticket-assign-self');
+  if (btnAssignSelf) {
+    if (ticket.assignedToId === state.currentUser.id) {
+      btnAssignSelf.textContent = 'Assigned to You';
+      btnAssignSelf.disabled = true;
+    } else {
+      btnAssignSelf.textContent = 'Assign to Me';
+      btnAssignSelf.disabled = false;
+    }
+  }
+
+  // Render chat messages
+  renderTicketChatMessages(ticket);
+
+  // Show Modal
+  const modalOverlay = document.getElementById('ticket-details-modal-overlay');
+  if (modalOverlay) modalOverlay.classList.add('active');
+}
+
+function hideTicketDetailsModal() {
+  const modalOverlay = document.getElementById('ticket-details-modal-overlay');
+  if (modalOverlay) modalOverlay.classList.remove('active');
+  state.selectedTicketIdForModal = null;
+}
+
+function renderTicketChatMessages(ticket) {
+  const container = document.getElementById('ticket-chat-messages');
+  if (!container) return;
+
+  container.innerHTML = ticket.replies.map(reply => {
+    const isMe = (reply.senderId === state.currentUser.id);
+    const chatBubbleClass = isMe ? 'chat-message chat-message-sent' : 'chat-message chat-message-received';
+    const formattedTime = new Date(reply.timestamp).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+    
+    const bubbleStyle = isMe 
+      ? 'align-self: flex-end; background: var(--primary); color: #fff; border-radius: 12px 12px 0 12px; padding: 8px 12px; max-width: 80%;'
+      : 'align-self: flex-start; background: var(--bg-tertiary); color: var(--text-primary); border-radius: 12px 12px 12px 0; padding: 8px 12px; max-width: 80%; border: 1px solid var(--border-color);';
+
+    return `
+      <div style="display: flex; flex-direction: column; width: 100%; margin-bottom: 4px;">
+        <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 2px; align-self: ${isMe ? 'flex-end' : 'flex-start'};">
+          ${escapeHTML(reply.senderName)} • <span style="font-weight: 400; font-size: 0.65rem;">${formattedTime}</span>
+        </div>
+        <div style="${bubbleStyle}">
+          <p style="font-size: 0.85rem; margin: 0; white-space: pre-wrap;">${escapeHTML(reply.content)}</p>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Scroll to bottom
+  container.scrollTop = container.scrollHeight;
+}
+
+// 5. Agent action: Assign to Self
+function handleTicketAssignSelf() {
+  const ticketId = state.selectedTicketIdForModal;
+  if (!ticketId) return;
+
+  const ticket = state.tickets.find(t => t.id === ticketId);
+  if (!ticket) return;
+
+  ticket.assignedToId = state.currentUser.id;
+  ticket.assignedToName = state.currentUser.name;
+  
+  if (ticket.status === 'Open') {
+    ticket.status = 'In Progress';
+  }
+  
+  ticket.updatedAt = new Date().toISOString();
+
+  if (safeSaveTickets()) {
+    showToast(`Assigned ticket ${ticketId} to yourself.`, 'success');
+    openTicketDetails(ticketId);
+    renderTickets();
+  }
+}
+
+// 6. Agent action: Change status
+function handleTicketStatusChange(newStatus) {
+  const ticketId = state.selectedTicketIdForModal;
+  if (!ticketId) return;
+
+  const ticket = state.tickets.find(t => t.id === ticketId);
+  if (!ticket) return;
+
+  const oldStatus = ticket.status;
+  ticket.status = newStatus;
+  ticket.updatedAt = new Date().toISOString();
+
+  ticket.replies.push({
+    senderId: 'SYSTEM',
+    senderName: 'System Log',
+    content: `Ticket status changed from "${oldStatus}" to "${newStatus}".`,
+    timestamp: new Date().toISOString()
+  });
+
+  if (safeSaveTickets()) {
+    showToast(`Status updated to ${newStatus}.`, 'success');
+    openTicketDetails(ticketId);
+    renderTickets();
+  }
+}
+
+// 7. Add conversation replies
+function handleTicketReplyFormSubmit(e) {
+  e.preventDefault();
+
+  const ticketId = state.selectedTicketIdForModal;
+  if (!ticketId) return;
+
+  const replyTextarea = document.getElementById('ticket-reply-text');
+  if (!replyTextarea) return;
+
+  const replyText = replyTextarea.value.trim();
+  if (!replyText) return;
+
+  const ticket = state.tickets.find(t => t.id === ticketId);
+  if (!ticket) return;
+
+  ticket.replies.push({
+    senderId: state.currentUser.id,
+    senderName: state.currentUser.name,
+    content: replyText,
+    timestamp: new Date().toISOString()
+  });
+
+  ticket.updatedAt = new Date().toISOString();
+
+  if (safeSaveTickets()) {
+    replyTextarea.value = '';
+    renderTicketChatMessages(ticket);
+    renderTickets();
+  }
+}
+
+// Window/Global bindings for Support Tickets module
+window.renderTickets = renderTickets;
+window.switchTicketSubTab = switchTicketSubTab;
+window.openTicketDetails = openTicketDetails;
+window.hideTicketDetailsModal = hideTicketDetailsModal;
+window.handleTicketAssignSelf = handleTicketAssignSelf;
+window.handleTicketStatusChange = handleTicketStatusChange;
+
+// --- SMS/WhatsApp Notification System helpers ---
+async function sendSMSNotification(to, message) {
+  if (!to) return;
+  try {
+    const response = await fetch('/api/send-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, message })
+    });
+    const data = await response.json();
+    console.log('Notification API response:', data);
+  } catch (e) {
+    console.error('Failed to send notification via API:', e);
+  }
+}
+
+function triggerSMSNotification(phone, message, recipientName = '') {
+  sendSMSNotification(phone, message);
+  const newSMS = {
+    id: `SMS${Date.now()}_${Math.floor(Math.random()*1000)}`,
+    recipientPhone: phone,
+    recipientName: recipientName,
+    message: message,
+    timestamp: new Date().toISOString()
+  };
+  state.smsNotifications = state.smsNotifications || [];
+  state.smsNotifications.unshift(newSMS);
+  localStorage.setItem('ems_notifications', JSON.stringify(state.smsNotifications));
+}
+
+function renderSMSLogs() {
+  const listEl = document.getElementById('sms-logs-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  state.smsNotifications = JSON.parse(localStorage.getItem('ems_notifications') || '[]');
+
+  if (!state.smsNotifications || state.smsNotifications.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state" style="margin: 40px auto; text-align: center;">
+        <div class="empty-state-title" style="font-size: 1.1rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">No notifications sent yet</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">When actions like new announcements, chat messages, daily reports, or leave request updates occur, mock SMS alerts will show up here.</p>
+      </div>
+    `;
+    return;
+  }
+
+  state.smsNotifications.forEach(sms => {
+    const item = document.createElement('div');
+    item.className = 'card';
+    item.style.padding = '16px';
+    item.style.border = '1px solid var(--border-color)';
+    item.style.borderRadius = 'var(--border-radius-sm)';
+    item.style.backgroundColor = 'var(--bg-tertiary)';
+    item.style.display = 'flex';
+    item.style.flexDirection = 'column';
+    item.style.gap = '8px';
+
+    const timeFormatted = new Date(sms.timestamp).toLocaleString();
+
+    item.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.2rem;">📱</span>
+          <strong style="color: var(--primary); font-size: 0.9rem;">To: ${sms.recipientPhone} ${sms.recipientName ? `(${sms.recipientName})` : ''}</strong>
+        </div>
+        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">${timeFormatted}</span>
+      </div>
+      <div style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.4; padding: 4px 0;">
+        ${sms.message}
+      </div>
+      <div style="display: flex; justify-content: flex-end; align-items: center;">
+        <span class="badge badge-completed" style="font-size: 0.7rem; padding: 2px 8px; background-color: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2);">Sent via Gateway</span>
+      </div>
+    `;
+    listEl.appendChild(item);
+  });
+}
+
+function clearSMSLogs() {
+  state.smsNotifications = [];
+  localStorage.setItem('ems_notifications', JSON.stringify([]));
+  renderSMSLogs();
+  showToast('SMS notification logs cleared.', 'success');
+}
+
+function triggerChatNotification(msg) {
+  if (msg.receiverId === 'group') {
+    state.employees.forEach(emp => {
+      if (emp.phone && emp.id !== msg.senderId) {
+        triggerSMSNotification(emp.phone, `Group Chat from ${msg.senderName}: "${msg.content}"`, emp.name);
+      }
+    });
+  } else {
+    const targetEmp = state.employees.find(emp => emp.id === msg.receiverId);
+    if (targetEmp && targetEmp.phone) {
+      triggerSMSNotification(targetEmp.phone, `Direct Chat from ${msg.senderName}: "${msg.content}"`, targetEmp.name);
+    }
+  }
+}
+
+window.clearSMSLogs = clearSMSLogs;
+window.triggerSMSNotification = triggerSMSNotification;
+window.renderSMSLogs = renderSMSLogs;
+window.triggerChatNotification = triggerChatNotification;
+window.showProfileModal = showProfileModal;
+window.hideProfileModal = hideProfileModal;
+window.handleProfileSave = handleProfileSave;
+window.openFullImageViewModalWithData = openFullImageViewModalWithData;
 
 // Run application on DOM loaded
 window.addEventListener('DOMContentLoaded', init);
