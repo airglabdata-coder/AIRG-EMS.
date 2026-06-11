@@ -1714,6 +1714,54 @@ async function init() {
   }
 
   setupDateLimits();
+
+  // Register Service Worker for Web Push notifications
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => {
+        console.log('Service Worker registered successfully with scope:', reg.scope);
+      })
+      .catch(err => {
+        console.error('Service Worker registration failed:', err);
+      });
+  }
+
+  // Setup Push Notification Toggle Button (User-Gesture Compliant)
+  const notifBtn = document.getElementById('notification-toggle-btn');
+  if (notifBtn) {
+    notifBtn.addEventListener('click', async () => {
+      if (!('Notification' in window)) {
+        showToast('Notifications are not supported in this browser.', 'error');
+        return;
+      }
+      if (Notification.permission === 'granted') {
+        showToast('Notifications are already enabled!', 'success');
+        return;
+      }
+      if (Notification.permission === 'denied') {
+        showToast('Notifications are blocked by browser settings. Please reset site permissions in Chrome.', 'warning');
+        return;
+      }
+      
+      showToast('Requesting permission...', 'info');
+      try {
+        const permission = await Notification.requestPermission();
+        updateNotificationButtonState();
+        if (permission === 'granted') {
+          showToast('Notification permission granted!', 'success');
+          if (state.currentUser) {
+            setupPushSubscription(state.currentUser.id);
+          }
+        } else {
+          showToast('Notification permission denied.', 'warning');
+        }
+      } catch (err) {
+        showToast('Failed to request permission: ' + err.message, 'error');
+      }
+    });
+  }
+  updateNotificationButtonState();
+
   checkAuthSession();
   initSyncPolling();
 }
@@ -6896,6 +6944,11 @@ function loginAsUser(user) {
   setRole(targetRole);
 
   updateCommMenuBadges();
+
+  // Register push notifications
+  if (user && 'serviceWorker' in navigator && 'PushManager' in window) {
+    setupPushSubscription(user.id);
+  }
 }
 
 function logout() {
@@ -7517,6 +7570,95 @@ function triggerChatNotification(msg) {
   }
 }
 
+async function setupPushSubscription(employeeId) {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    
+    let permission = Notification.permission;
+    // We update the UI button state
+    updateNotificationButtonState();
+    
+    if (permission !== 'granted') {
+      console.log('Push notifications permission not granted (current status: ' + permission + ').');
+      return;
+    }
+
+    // Fetch VAPID public key from backend
+    const keyRes = await fetch('/api/notifications/vapid-public-key');
+    const keyData = await keyRes.json();
+    if (!keyData || !keyData.publicKey) {
+      console.error('Failed to retrieve VAPID public key from backend.');
+      return;
+    }
+
+    // Subscribe to push service
+    const subscribeOptions = {
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(keyData.publicKey)
+    };
+
+    const subscription = await registration.pushManager.subscribe(subscribeOptions);
+    console.log('Browser successfully subscribed to Web Push:', subscription);
+
+    // Sync subscription with backend database
+    await fetch('/api/notifications/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId, subscription })
+    });
+    console.log('Web Push subscription successfully synchronized with server backend.');
+  } catch (err) {
+    console.error('Failed to configure push notification subscription:', err);
+  }
+}
+
+function updateNotificationButtonState() {
+  const btn = document.getElementById('notification-toggle-btn');
+  const dot = document.getElementById('notification-badge-dot');
+  if (!btn) return;
+  
+  if (!('Notification' in window)) {
+    btn.style.display = 'none';
+    return;
+  }
+  
+  if (Notification.permission === 'granted') {
+    btn.title = 'Notifications Enabled';
+    btn.style.color = '#10b981'; // Green color for success
+    btn.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+    btn.style.backgroundColor = 'rgba(16, 185, 129, 0.05)';
+    if (dot) dot.style.display = 'none';
+  } else if (Notification.permission === 'denied') {
+    btn.title = 'Notifications Blocked (Reset in settings)';
+    btn.style.color = 'var(--danger)'; // Red for warning/denied
+    btn.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+    btn.style.backgroundColor = 'rgba(239, 68, 68, 0.05)';
+    if (dot) dot.style.display = 'block';
+  } else {
+    // Default (not asked yet)
+    btn.title = 'Click to Enable Notifications';
+    btn.style.color = 'var(--warning)'; // Orange/yellow for default state
+    btn.style.borderColor = 'rgba(245, 158, 11, 0.2)';
+    btn.style.backgroundColor = 'rgba(245, 158, 11, 0.05)';
+    if (dot) dot.style.display = 'block';
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 window.clearSMSLogs = clearSMSLogs;
 window.triggerSMSNotification = triggerSMSNotification;
 window.renderSMSLogs = renderSMSLogs;
@@ -7525,6 +7667,8 @@ window.showProfileModal = showProfileModal;
 window.hideProfileModal = hideProfileModal;
 window.handleProfileSave = handleProfileSave;
 window.openFullImageViewModalWithData = openFullImageViewModalWithData;
+window.setupPushSubscription = setupPushSubscription;
+window.updateNotificationButtonState = updateNotificationButtonState;
 
 // Run application on DOM loaded
 window.addEventListener('DOMContentLoaded', init);
