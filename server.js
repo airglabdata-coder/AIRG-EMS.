@@ -27,8 +27,9 @@ let useLocalDB = false;
 
 if (MONGODB_URI) {
   mongoose.connect(MONGODB_URI)
-    .then(() => {
+    .then(async () => {
       console.log('Connected to MongoDB Atlas successfully.');
+      await migrateLocalToMongo();
     })
     .catch(err => {
       console.error('Failed to connect to MongoDB Atlas. Falling back to local file database.', err.message);
@@ -146,6 +147,29 @@ async function saveMongoDBState(stateObj) {
   );
 
   return timestamp;
+}
+
+// Helper to migrate local db.json data to MongoDB Atlas if MongoDB is empty
+async function migrateLocalToMongo() {
+  try {
+    const employeeCount = await models.Employee.countDocuments();
+    if (employeeCount === 0) {
+      console.log('MongoDB Atlas appears to be empty. Checking for local db.json to migrate...');
+      if (fs.existsSync(DB_FILE)) {
+        const fileContent = fs.readFileSync(DB_FILE, 'utf8');
+        const localData = JSON.parse(fileContent);
+        console.log('Found local db.json. Migrating records to MongoDB Atlas...');
+        await saveMongoDBState(localData);
+        console.log('Migration to MongoDB Atlas completed successfully!');
+      } else {
+        console.log('No local db.json found to migrate.');
+      }
+    } else {
+      console.log('MongoDB Atlas already contains data. Skipping migration.');
+    }
+  } catch (err) {
+    console.error('Error during local to MongoDB migration:', err);
+  }
 }
 
 // Endpoint to fetch centralized state
