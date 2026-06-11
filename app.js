@@ -2037,6 +2037,44 @@ function switchLeaveSubTab(tab) {
 }
 
 function switchView(viewName) {
+  // Mark resolved requests as read for employee
+  if (state.currentUser && (viewName === 'dashboard' || viewName === 'requests')) {
+    if (state.currentRole === 'employee' || state.activeLeaveSubTab === 'apply') {
+      const readRequests = JSON.parse(localStorage.getItem(`ems_read_requests_${state.currentUser.id}`) || '[]');
+      let updated = false;
+      (state.requests || []).forEach(r => {
+        if (r.employeeId === state.currentUser.id && r.status !== 'pending') {
+          if (!readRequests.includes(r.id)) {
+            readRequests.push(r.id);
+            updated = true;
+          }
+        }
+      });
+      if (updated) {
+        localStorage.setItem(`ems_read_requests_${state.currentUser.id}`, JSON.stringify(readRequests));
+      }
+    }
+  }
+
+  // Mark reviewed reports as read for employee
+  if (state.currentUser && viewName === 'reports') {
+    if (state.currentRole !== 'hr' && state.currentRole !== 'admin') {
+      const readReports = JSON.parse(localStorage.getItem(`ems_read_reports_${state.currentUser.id}`) || '[]');
+      let updated = false;
+      (state.dailyReports || []).forEach(r => {
+        if (r.employeeId === state.currentUser.id && r.remarks && r.remarks.trim() !== '') {
+          if (!readReports.includes(r.id)) {
+            readReports.push(r.id);
+            updated = true;
+          }
+        }
+      });
+      if (updated) {
+        localStorage.setItem(`ems_read_reports_${state.currentUser.id}`, JSON.stringify(readReports));
+      }
+    }
+  }
+
   // Update menu item highlight
   document.querySelectorAll('.menu-item').forEach(item => {
     if (item.getAttribute('data-view') === viewName) {
@@ -2200,6 +2238,9 @@ function switchView(viewName) {
       }
     }
   }
+
+  // Update all dashboard/menu badges
+  updateAllMenuBadges();
 }
 
 // --- Render Employee Dashboard ---
@@ -4508,7 +4549,82 @@ function handleEmpTaskCreationSubmit(e) {
   showToast('Task added successfully!', 'success');
 }
 
-function updateCommMenuBadges() {
+function getUnreadChatCount(key) {
+  if (!state.currentUser || !state.chats) return 0;
+  const readChats = JSON.parse(localStorage.getItem(`ems_read_chats_${state.currentUser.id}`) || '{}');
+  const lastReadTime = readChats[key];
+  
+  let messages = [];
+  if (key === 'group') {
+    messages = state.chats.filter(m => m.receiverId === 'group' && m.senderId !== state.currentUser.id);
+  } else {
+    messages = state.chats.filter(m => m.senderId === key && m.receiverId === state.currentUser.id);
+  }
+  
+  if (!lastReadTime) {
+    return messages.length;
+  }
+  return messages.filter(m => new Date(m.timestamp) > new Date(lastReadTime)).length;
+}
+
+function getUnreadChatsCount() {
+  if (!state.currentUser || !state.chats) return { group: 0, direct: 0, total: 0 };
+  
+  // 1. Group chat count
+  let unreadGroup = getUnreadChatCount('group');
+  
+  // 2. Direct chats count
+  let unreadDirect = 0;
+  const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id);
+  otherEmployees.forEach(emp => {
+    unreadDirect += getUnreadChatCount(emp.id);
+  });
+  
+  return {
+    group: unreadGroup,
+    direct: unreadDirect,
+    total: unreadGroup + unreadDirect
+  };
+}
+
+function getUnreadReportsCount() {
+  if (!state.currentUser) return 0;
+  const isHRorAdmin = state.currentRole === 'hr' || state.currentRole === 'admin';
+  
+  if (isHRorAdmin) {
+    // Pending reviews count (reports with empty remarks)
+    return (state.dailyReports || []).filter(r => !r.remarks || r.remarks.trim() === '').length;
+  } else {
+    // Count of reviewed reports not yet read by employee
+    const readReports = JSON.parse(localStorage.getItem(`ems_read_reports_${state.currentUser.id}`) || '[]');
+    const myReviewedReports = (state.dailyReports || []).filter(r => 
+      r.employeeId === state.currentUser.id && 
+      r.remarks && 
+      r.remarks.trim() !== ''
+    );
+    return myReviewedReports.filter(r => !readReports.includes(r.id)).length;
+  }
+}
+
+function getUnreadRequestsCount() {
+  if (!state.currentUser) return 0;
+  const isHRorAdmin = state.currentRole === 'hr' || state.currentRole === 'admin';
+  
+  if (isHRorAdmin) {
+    // Pending leave requests count
+    return (state.requests || []).filter(r => r.status === 'pending').length;
+  } else {
+    // Count of approved/rejected requests not yet read by employee
+    const readRequests = JSON.parse(localStorage.getItem(`ems_read_requests_${state.currentUser.id}`) || '[]');
+    const myResolvedRequests = (state.requests || []).filter(r => 
+      r.employeeId === state.currentUser.id && 
+      r.status !== 'pending'
+    );
+    return myResolvedRequests.filter(r => !readRequests.includes(r.id)).length;
+  }
+}
+
+function updateAllMenuBadges() {
   if (!state.currentUser) {
     const menuBadge = document.getElementById('menu-comm-badge');
     if (menuBadge) menuBadge.style.display = 'none';
@@ -4516,17 +4632,20 @@ function updateCommMenuBadges() {
     if (annBadge) annBadge.style.display = 'none';
     const noticesBadge = document.getElementById('comm-tab-notices-badge');
     if (noticesBadge) noticesBadge.style.display = 'none';
+    const chatsBadge = document.getElementById('comm-tab-chats-badge');
+    if (chatsBadge) chatsBadge.style.display = 'none';
+    const reportsBadge = document.getElementById('menu-reports-badge');
+    if (reportsBadge) reportsBadge.style.display = 'none';
+    const requestsBadge = document.getElementById('menu-requests-badge');
+    if (requestsBadge) requestsBadge.style.display = 'none';
     return;
   }
 
-  // 1. Get read lists from localStorage
+  // 1. Get announcements & notices unread
   const readAnn = JSON.parse(localStorage.getItem(`ems_read_announcements_${state.currentUser.id}`) || '[]');
   const readNotices = JSON.parse(localStorage.getItem(`ems_read_notices_${state.currentUser.id}`) || '[]');
-
-  // 2. Count unread announcements
   const unreadAnnCount = state.announcements.filter(ann => !readAnn.includes(ann.id)).length;
 
-  // 3. Count unread notices
   let visibleNotices = [];
   if (state.currentRole === 'hr') {
     visibleNotices = state.notices;
@@ -4535,7 +4654,10 @@ function updateCommMenuBadges() {
   }
   const unreadNoticeCount = visibleNotices.filter(n => !readNotices.includes(n.id)).length;
 
-  // 4. Update tab badges
+  // 2. Get chats unread
+  const chatCounts = getUnreadChatsCount();
+
+  // 3. Update inner tab badges in Communications Hub
   const annBadge = document.getElementById('comm-tab-announcements-badge');
   if (annBadge) {
     if (unreadAnnCount > 0) {
@@ -4556,17 +4678,55 @@ function updateCommMenuBadges() {
     }
   }
 
-  // 5. Update main menu item badge
-  const totalUnread = unreadAnnCount + unreadNoticeCount;
+  const chatsBadge = document.getElementById('comm-tab-chats-badge');
+  if (chatsBadge) {
+    if (chatCounts.total > 0) {
+      chatsBadge.textContent = chatCounts.total;
+      chatsBadge.style.display = 'inline-flex';
+    } else {
+      chatsBadge.style.display = 'none';
+    }
+  }
+
+  // 4. Update main communication menu item badge
+  const totalCommUnread = unreadAnnCount + unreadNoticeCount + chatCounts.total;
   const menuBadge = document.getElementById('menu-comm-badge');
   if (menuBadge) {
-    if (totalUnread > 0) {
-      menuBadge.textContent = totalUnread;
+    if (totalCommUnread > 0) {
+      menuBadge.textContent = totalCommUnread;
       menuBadge.style.display = 'inline-flex';
     } else {
       menuBadge.style.display = 'none';
     }
   }
+
+  // 5. Update Daily Reports menu item badge
+  const reportsUnreadCount = getUnreadReportsCount();
+  const reportsBadge = document.getElementById('menu-reports-badge');
+  if (reportsBadge) {
+    if (reportsUnreadCount > 0) {
+      reportsBadge.textContent = reportsUnreadCount;
+      reportsBadge.style.display = 'inline-flex';
+    } else {
+      reportsBadge.style.display = 'none';
+    }
+  }
+
+  // 6. Update Leave Requests menu item badge
+  const requestsUnreadCount = getUnreadRequestsCount();
+  const requestsBadge = document.getElementById('menu-requests-badge');
+  if (requestsBadge) {
+    if (requestsUnreadCount > 0) {
+      requestsBadge.textContent = requestsUnreadCount;
+      requestsBadge.style.display = 'inline-flex';
+    } else {
+      requestsBadge.style.display = 'none';
+    }
+  }
+}
+
+function updateCommMenuBadges() {
+  updateAllMenuBadges();
 }
 window.updateCommMenuBadges = updateCommMenuBadges;
 
@@ -4653,9 +4813,12 @@ function renderCommSidebar() {
       state.activeChatTargetId = null;
       renderCommunicationsHub();
     };
+    const unreadGroup = getUnreadChatCount('group');
+    const badgeHtml = unreadGroup > 0 ? `<span class="menu-badge" style="display: inline-flex; margin-left: auto; background-color: var(--danger); font-size: 0.7rem; padding: 2px 6px;">${unreadGroup}</span>` : '';
     groupLink.innerHTML = `
       <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; background: var(--primary-gradient);">📢</div>
       <div style="font-weight:600;">General Group Chat</div>
+      ${badgeHtml}
     `;
     itemsBox.appendChild(groupLink);
 
@@ -4670,12 +4833,15 @@ function renderCommSidebar() {
         state.activeChatTargetId = emp.id;
         renderCommunicationsHub();
       };
+      const unreadDM = getUnreadChatCount(emp.id);
+      const dmBadgeHtml = unreadDM > 0 ? `<span class="menu-badge" style="display: inline-flex; margin-left: auto; background-color: var(--danger); font-size: 0.7rem; padding: 2px 6px;">${unreadDM}</span>` : '';
       empLink.innerHTML = `
         <div class="avatar" style="width:30px; height:30px; font-size:0.75rem;">${emp.avatar}</div>
-        <div>
+        <div style="flex: 1;">
           <div style="font-weight:600; font-size:0.85rem;">${emp.name}</div>
           <div style="font-size:0.7rem; color:var(--text-muted);">${emp.dept}</div>
         </div>
+        ${dmBadgeHtml}
       `;
       itemsBox.appendChild(empLink);
     });
@@ -4743,6 +4909,15 @@ function renderChatRoom() {
   const headerTitle = document.getElementById('chat-header-title');
   const messagesContainer = document.getElementById('chat-messages-container');
   if (!messagesContainer) return;
+
+  // Mark current conversation as read
+  const activeKey = state.activeChatType === 'group' ? 'group' : state.activeChatTargetId;
+  if (activeKey && state.currentUser) {
+    const readChats = JSON.parse(localStorage.getItem(`ems_read_chats_${state.currentUser.id}`) || '{}');
+    readChats[activeKey] = new Date().toISOString();
+    localStorage.setItem(`ems_read_chats_${state.currentUser.id}`, JSON.stringify(readChats));
+    setTimeout(updateAllMenuBadges, 100);
+  }
 
   messagesContainer.innerHTML = '';
 
@@ -6956,6 +7131,7 @@ function logout() {
   state.currentUser = null;
   state.currentRole = null;
   showLoginScreen();
+  updateAllMenuBadges();
   showToast('Logged out successfully.', 'info');
 }
 
