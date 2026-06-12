@@ -2536,9 +2536,9 @@ function deleteEmployee(empId, event) {
   const emp = state.employees.find(e => e.id === empId);
   if (!emp) return;
 
-  const isSystemAdmin = emp.role.toLowerCase() === 'admin' || emp.email.toLowerCase() === 'admin@company.com';
-  if (isSystemAdmin) {
-    showToast('The Administrator account cannot be deleted!', 'error');
+  const isPrimaryAdmin = emp.email.toLowerCase() === 'admin@company.com';
+  if (isPrimaryAdmin) {
+    showToast('The Primary Administrator account cannot be deleted!', 'error');
     return;
   }
 
