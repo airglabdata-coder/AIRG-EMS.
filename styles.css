@@ -2021,3 +2021,70 @@ body:not(.auth-view) .employee-select-container {
   vertical-align: middle;
   line-height: 1;
 }
+
+/* Document Preview Cards in Profile Modal */
+.doc-preview-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.doc-image-container {
+  position: relative;
+  width: 100%;
+  height: 110px;
+  border-radius: var(--border-radius-sm);
+  border: 1px dashed var(--border-color);
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.doc-image-container:hover {
+  border-color: var(--primary);
+  box-shadow: var(--glow);
+}
+
+.doc-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.doc-image-container img:hover {
+  transform: scale(1.05);
+}
+
+/* Profile Photo Edit Badge overlay */
+.profile-photo-edit-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: var(--primary);
+  border: 2px solid var(--bg-secondary);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.profile-photo-edit-badge:hover {
+  background: var(--primary-hover);
+  transform: scale(1.1);
+}
+
+[data-theme="dark"] .profile-photo-edit-badge {
+  border-color: var(--bg-secondary);
+}

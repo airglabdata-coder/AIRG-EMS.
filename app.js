@@ -238,6 +238,13 @@ let currentUploadedPanFile = null;
 let currentUploadedBankAccFile = null;
 let currentUploadedBankIfscFile = null;
 
+// Temporary states for editing profile in the modal
+let tempProfilePhoto = null;
+let tempAadharFile = null;
+let tempPanFile = null;
+let tempBankAccFile = null;
+let tempBankIfscFile = null;
+
 const DEFAULT_REPORTS = [];
 
 // --- State Management ---
@@ -1362,6 +1369,119 @@ async function init() {
   const profileWidget = document.querySelector('.profile-widget');
   if (profileWidget) {
     profileWidget.addEventListener('click', showProfileModal);
+  }
+
+  // Profile Modal Document/Photo Upload Listeners
+  const profilePhotoInput = document.getElementById('profile-edit-photo-file');
+  if (profilePhotoInput) {
+    profilePhotoInput.addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+            tempProfilePhoto = compressed;
+            const avatarEl = document.getElementById('profile-modal-avatar');
+            if (avatarEl) {
+              avatarEl.innerHTML = `<img id="profile-edit-avatar-img" src="${compressed}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
+            }
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  const profileAadharInput = document.getElementById('profile-edit-aadhar-file');
+  if (profileAadharInput) {
+    profileAadharInput.addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+            tempAadharFile = compressed;
+            const imgEl = document.getElementById('profile-aadhar-preview-img');
+            const placeholderEl = document.getElementById('profile-aadhar-placeholder');
+            if (imgEl && placeholderEl) {
+              imgEl.src = compressed;
+              imgEl.style.display = 'block';
+              placeholderEl.style.display = 'none';
+            }
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  const profilePanInput = document.getElementById('profile-edit-pan-file');
+  if (profilePanInput) {
+    profilePanInput.addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+            tempPanFile = compressed;
+            const imgEl = document.getElementById('profile-pan-preview-img');
+            const placeholderEl = document.getElementById('profile-pan-placeholder');
+            if (imgEl && placeholderEl) {
+              imgEl.src = compressed;
+              imgEl.style.display = 'block';
+              placeholderEl.style.display = 'none';
+            }
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  const profileBankAccInput = document.getElementById('profile-edit-bank-acc-file');
+  if (profileBankAccInput) {
+    profileBankAccInput.addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+            tempBankAccFile = compressed;
+            const imgEl = document.getElementById('profile-bank-acc-preview-img');
+            const placeholderEl = document.getElementById('profile-bank-acc-placeholder');
+            if (imgEl && placeholderEl) {
+              imgEl.src = compressed;
+              imgEl.style.display = 'block';
+              placeholderEl.style.display = 'none';
+            }
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  const profileBankIfscInput = document.getElementById('profile-edit-bank-ifsc-file');
+  if (profileBankIfscInput) {
+    profileBankIfscInput.addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+            tempBankIfscFile = compressed;
+            const imgEl = document.getElementById('profile-bank-ifsc-preview-img');
+            const placeholderEl = document.getElementById('profile-bank-ifsc-placeholder');
+            if (imgEl && placeholderEl) {
+              imgEl.src = compressed;
+              imgEl.style.display = 'block';
+              placeholderEl.style.display = 'none';
+            }
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    });
   }
 
   // Set Theme Toggle
@@ -2706,13 +2826,20 @@ function showProfileModal() {
   const overlay = document.getElementById('profile-modal-overlay');
   if (!overlay) return;
 
+  // Initialize temporary variables for editing profile
+  tempProfilePhoto = emp.photo || null;
+  tempAadharFile = emp.aadhar || null;
+  tempPanFile = emp.pan || null;
+  tempBankAccFile = emp.bankAcc || null;
+  tempBankIfscFile = emp.bankIfsc || null;
+
   // Render Avatar
   const avatarEl = document.getElementById('profile-modal-avatar');
   if (avatarEl) {
-    if (emp.photo) {
-      avatarEl.innerHTML = `<img src="${emp.photo}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
+    if (tempProfilePhoto) {
+      avatarEl.innerHTML = `<img id="profile-edit-avatar-img" src="${tempProfilePhoto}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
     } else {
-      avatarEl.innerHTML = emp.avatar;
+      avatarEl.innerHTML = `<span id="profile-edit-avatar-text">${emp.avatar}</span>`;
     }
   }
 
@@ -2732,10 +2859,41 @@ function showProfileModal() {
   // Populate editable fields
   setVal('profile-edit-email', emp.email);
   setVal('profile-edit-phone', emp.phone || '');
-  setVal('profile-edit-aadhar', emp.aadhar || '');
-  setVal('profile-edit-pan', emp.pan || '');
-  setVal('profile-edit-bank-acc', emp.bankAcc || '');
-  setVal('profile-edit-bank-ifsc', emp.bankIfsc || '');
+
+  // Populate document previews
+  const updateDocPreview = (imgId, placeholderId, base64) => {
+    const imgEl = document.getElementById(imgId);
+    const placeholderEl = document.getElementById(placeholderId);
+    if (imgEl && placeholderEl) {
+      if (base64 && base64.trim() !== '') {
+        imgEl.src = base64;
+        imgEl.style.display = 'block';
+        placeholderEl.style.display = 'none';
+      } else {
+        imgEl.src = '';
+        imgEl.style.display = 'none';
+        placeholderEl.style.display = 'flex';
+      }
+    }
+  };
+
+  updateDocPreview('profile-aadhar-preview-img', 'profile-aadhar-placeholder', tempAadharFile);
+  updateDocPreview('profile-pan-preview-img', 'profile-pan-placeholder', tempPanFile);
+  updateDocPreview('profile-bank-acc-preview-img', 'profile-bank-acc-placeholder', tempBankAccFile);
+  updateDocPreview('profile-bank-ifsc-preview-img', 'profile-bank-ifsc-placeholder', tempBankIfscFile);
+
+  // Reset file input values
+  const fileInputs = [
+    'profile-edit-photo-file',
+    'profile-edit-aadhar-file',
+    'profile-edit-pan-file',
+    'profile-edit-bank-acc-file',
+    'profile-edit-bank-ifsc-file'
+  ];
+  fileInputs.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
 
   overlay.classList.add('active');
 }
@@ -2754,13 +2912,26 @@ function handleProfileSave(e) {
 
   emp.email = document.getElementById('profile-edit-email').value.trim() || emp.email;
   emp.phone = document.getElementById('profile-edit-phone').value.trim() || emp.phone;
-  emp.aadhar = document.getElementById('profile-edit-aadhar').value.trim() || emp.aadhar;
-  emp.pan = document.getElementById('profile-edit-pan').value.trim() || emp.pan;
-  emp.bankAcc = document.getElementById('profile-edit-bank-acc').value.trim() || emp.bankAcc;
-  emp.bankIfsc = document.getElementById('profile-edit-bank-ifsc').value.trim() || emp.bankIfsc;
+  emp.photo = tempProfilePhoto || emp.photo;
+  emp.aadhar = tempAadharFile || '';
+  emp.pan = tempPanFile || '';
+  emp.bankAcc = tempBankAccFile || '';
+  emp.bankIfsc = tempBankIfscFile || '';
 
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
   state.currentUser = emp;
+
+  // Update header avatar and details immediately
+  updateHeaderAvatar(emp);
+  const nameHeader = document.getElementById('header-name');
+  if (nameHeader) nameHeader.textContent = emp.name;
+  const roleHeader = document.getElementById('header-role');
+  if (roleHeader) roleHeader.textContent = emp.dept || emp.role;
+
+  // Refresh current view to reflect changes (e.g. employee roster)
+  const activeMenuItem = document.querySelector('.menu-item.active');
+  const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
+  switchView(currentView);
 
   hideProfileModal();
   showToast('Profile updated successfully!', 'success');

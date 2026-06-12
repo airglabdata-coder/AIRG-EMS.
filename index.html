@@ -2092,9 +2092,19 @@
         <div class="modal-body" style="padding: 24px;">
           <div
             style="display: flex; align-items: center; gap: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 20px;">
-            <div id="profile-modal-avatar" class="avatar"
-              style="width: 70px; height: 70px; font-size: 1.8rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; background: var(--primary-gradient);">
-              US</div>
+            <div style="position: relative; width: 70px; height: 70px;">
+              <div id="profile-modal-avatar" class="avatar"
+                style="width: 70px; height: 70px; font-size: 1.8rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; background: var(--primary-gradient); overflow: hidden; margin: 0; border: 2px solid var(--border-color);">
+                US
+              </div>
+              <label for="profile-edit-photo-file" class="profile-photo-edit-badge" title="Edit Profile Photo">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </label>
+              <input type="file" id="profile-edit-photo-file" accept="image/*" style="display: none;">
+            </div>
             <div>
               <h2 id="profile-modal-name" style="font-size: 1.4rem; font-weight: 800; margin-bottom: 4px;"></h2>
               <p id="profile-modal-designation" style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;">
@@ -2129,25 +2139,100 @@
           </div>
 
           <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 20px;">
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; font-size: 0.9rem;">
-              <div class="form-group">
-                <label for="profile-edit-aadhar" style="color: var(--text-muted); font-weight: 600;">Aadhar Card</label>
-                <input type="text" id="profile-edit-aadhar" style="font-weight: 600;">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; font-size: 0.9rem;">
+              
+              <!-- Aadhar Card Group -->
+              <div class="form-group doc-preview-group">
+                <label style="color: var(--text-muted); font-weight: 600; margin-bottom: 4px;">Aadhar Card</label>
+                <div class="doc-image-container">
+                  <img id="profile-aadhar-preview-img" src="" style="display: none;" onclick="openRosterDocModal(this.src)" title="Click to view full image" />
+                  <div id="profile-aadhar-placeholder" class="text-muted" style="font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="opacity: 0.5;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>No Document Uploaded</span>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <label for="profile-edit-aadhar-file" class="btn btn-secondary btn-sm" style="flex: 1; text-align: center; margin: 0; cursor: pointer; font-size: 0.75rem; padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span>Upload</span>
+                  </label>
+                  <input type="file" id="profile-edit-aadhar-file" accept="image/*" style="display: none;">
+                </div>
               </div>
-              <div class="form-group">
-                <label for="profile-edit-pan" style="color: var(--text-muted); font-weight: 600;">PAN Card</label>
-                <input type="text" id="profile-edit-pan" style="font-weight: 600;">
+
+              <!-- PAN Card Group -->
+              <div class="form-group doc-preview-group">
+                <label style="color: var(--text-muted); font-weight: 600; margin-bottom: 4px;">PAN Card</label>
+                <div class="doc-image-container">
+                  <img id="profile-pan-preview-img" src="" style="display: none;" onclick="openRosterDocModal(this.src)" title="Click to view full image" />
+                  <div id="profile-pan-placeholder" class="text-muted" style="font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="opacity: 0.5;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>No Document Uploaded</span>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <label for="profile-edit-pan-file" class="btn btn-secondary btn-sm" style="flex: 1; text-align: center; margin: 0; cursor: pointer; font-size: 0.75rem; padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span>Upload</span>
+                  </label>
+                  <input type="file" id="profile-edit-pan-file" accept="image/*" style="display: none;">
+                </div>
               </div>
-              <div class="form-group">
-                <label for="profile-edit-bank-acc" style="color: var(--text-muted); font-weight: 600;">Bank Account
-                  No.</label>
-                <input type="text" id="profile-edit-bank-acc" style="font-weight: 600;">
+
+              <!-- Bank Account No. Group -->
+              <div class="form-group doc-preview-group">
+                <label style="color: var(--text-muted); font-weight: 600; margin-bottom: 4px;">Bank Account No.</label>
+                <div class="doc-image-container">
+                  <img id="profile-bank-acc-preview-img" src="" style="display: none;" onclick="openRosterDocModal(this.src)" title="Click to view full image" />
+                  <div id="profile-bank-acc-placeholder" class="text-muted" style="font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="opacity: 0.5;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>No Document Uploaded</span>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <label for="profile-edit-bank-acc-file" class="btn btn-secondary btn-sm" style="flex: 1; text-align: center; margin: 0; cursor: pointer; font-size: 0.75rem; padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span>Upload</span>
+                  </label>
+                  <input type="file" id="profile-edit-bank-acc-file" accept="image/*" style="display: none;">
+                </div>
               </div>
-              <div class="form-group">
-                <label for="profile-edit-bank-ifsc" style="color: var(--text-muted); font-weight: 600;">IFSC Code & Bank
-                  Name</label>
-                <input type="text" id="profile-edit-bank-ifsc" style="font-weight: 600;">
+
+              <!-- IFSC Code & Bank Name Group -->
+              <div class="form-group doc-preview-group">
+                <label style="color: var(--text-muted); font-weight: 600; margin-bottom: 4px;">IFSC & Bank Name</label>
+                <div class="doc-image-container">
+                  <img id="profile-bank-ifsc-preview-img" src="" style="display: none;" onclick="openRosterDocModal(this.src)" title="Click to view full image" />
+                  <div id="profile-bank-ifsc-placeholder" class="text-muted" style="font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="opacity: 0.5;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>No Document Uploaded</span>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <label for="profile-edit-bank-ifsc-file" class="btn btn-secondary btn-sm" style="flex: 1; text-align: center; margin: 0; cursor: pointer; font-size: 0.75rem; padding: 6px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span>Upload</span>
+                  </label>
+                  <input type="file" id="profile-edit-bank-ifsc-file" accept="image/*" style="display: none;">
+                </div>
               </div>
+
             </div>
           </div>
         </div>
