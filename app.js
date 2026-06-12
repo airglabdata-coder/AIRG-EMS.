@@ -88,7 +88,7 @@ async function fetchCentralizedState() {
         cleanBloatedAttachments(s.tasks);
         originalSetItem.call(localStorage, 'ems_tasks', JSON.stringify(s.tasks));
       }
-      if (s.departments) originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(s.departments));
+      if (s.departments) originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(['Engineering', 'EdTech']));
       if (s.chats) originalSetItem.call(localStorage, 'ems_chats', JSON.stringify(s.chats));
       if (s.dailyReports) originalSetItem.call(localStorage, 'ems_reports', JSON.stringify(s.dailyReports));
       if (s.announcements) {
@@ -208,7 +208,7 @@ const DEFAULT_REQUESTS = [];
 const DEFAULT_PROJECTS = [];
 
 const DEFAULT_TASKS = [];
-const DEFAULT_DEPARTMENTS = ['Administration'];
+const DEFAULT_DEPARTMENTS = ['Engineering', 'EdTech'];
 
 const DEFAULT_CHATS = [];
 
@@ -522,9 +522,17 @@ function openFullImageViewModalWithData(dataUrl) {
 function renderAttachmentsHTML(attachments, itemId) {
   if (!attachments || attachments.length === 0) return '';
   
+  // Filter out attachments with empty data (cleared bloated files)
+  const validAttachments = attachments.filter(file => {
+    const data = typeof file === 'string' ? file : file.data;
+    return data && data.trim() !== '';
+  });
+  
+  if (validAttachments.length === 0) return '';
+  
   return `
     <div class="attachment-list" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;">
-      ${attachments.map((file, idx) => {
+      ${validAttachments.map((file, idx) => {
         const isString = typeof file === 'string';
         const data = isString ? file : file.data;
         const name = isString ? 'Image' : file.name;
@@ -758,7 +766,7 @@ function cleanBloatedAttachments(items) {
   items.forEach(item => {
     if (Array.isArray(item.images)) {
       item.images.forEach(img => {
-        if (img && img.data && img.data.length > 50000) {
+        if (img && img.data && img.data.length > 500000) {
           img.data = "";
           changed = true;
         }
@@ -766,7 +774,7 @@ function cleanBloatedAttachments(items) {
     }
     if (Array.isArray(item.attachments)) {
       item.attachments.forEach(att => {
-        if (att && att.data && att.data.length > 50000) {
+        if (att && att.data && att.data.length > 500000) {
           att.data = "";
           changed = true;
         }
@@ -774,7 +782,7 @@ function cleanBloatedAttachments(items) {
     }
     if (Array.isArray(item.images)) {
       item.images.forEach((img, index) => {
-        if (typeof img === 'string' && img.length > 50000) {
+        if (typeof img === 'string' && img.length > 500000) {
           item.images[index] = "";
           changed = true;
         }
@@ -784,7 +792,7 @@ function cleanBloatedAttachments(items) {
       item.replies.forEach(reply => {
         if (Array.isArray(reply.attachments)) {
           reply.attachments.forEach(att => {
-            if (att && att.data && att.data.length > 50000) {
+            if (att && att.data && att.data.length > 500000) {
               att.data = "";
               changed = true;
             }
@@ -931,10 +939,7 @@ async function init() {
         } else {
           // Default mappings based on department
           if (p.dept === 'Engineering') p.techLeadId = 'EMP007'; // Elena Rostova
-          else if (p.dept === 'Design') p.techLeadId = 'EMP012'; // Liam Carter
-          else if (p.dept === 'Sales') p.techLeadId = 'EMP013'; // Sophia Vance
-          else if (p.dept === 'Marketing') p.techLeadId = 'EMP014'; // Oliver Brooks
-          else if (p.dept === 'Human Resources') p.techLeadId = 'EMP015'; // Emma Stone
+          else if (p.dept === 'EdTech') p.techLeadId = 'EMP007'; // Elena Rostova
           else p.techLeadId = '';
         }
         updatedProjs = true;
@@ -964,9 +969,8 @@ async function init() {
   if (!localStorage.getItem('ems_tasks')) {
     localStorage.setItem('ems_tasks', JSON.stringify(DEFAULT_TASKS));
   }
-  if (!localStorage.getItem('ems_departments')) {
-    localStorage.setItem('ems_departments', JSON.stringify(DEFAULT_DEPARTMENTS));
-  }
+  // Self-healing migration to enforce only Engineering and EdTech
+  localStorage.setItem('ems_departments', JSON.stringify(DEFAULT_DEPARTMENTS));
   if (!localStorage.getItem('ems_chats')) {
     localStorage.setItem('ems_chats', JSON.stringify(DEFAULT_CHATS));
   }
@@ -7287,10 +7291,7 @@ function getDepartmentTechLead(dept) {
   if (tl) return tl;
   const defaults = {
     'Engineering': { id: 'EMP007', name: 'Elena Rostova' },
-    'Design': { id: 'EMP012', name: 'Liam Carter' },
-    'Sales': { id: 'EMP013', name: 'Sophia Vance' },
-    'Marketing': { id: 'EMP014', name: 'Oliver Brooks' },
-    'Human Resources': { id: 'EMP015', name: 'Emma Stone' }
+    'EdTech': { id: 'EMP007', name: 'Elena Rostova' }
   };
   return defaults[dept] || { id: 'EMP011', name: 'Admin' };
 }
