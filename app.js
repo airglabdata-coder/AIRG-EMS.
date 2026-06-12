@@ -2410,7 +2410,7 @@ function renderEmployeeRoster() {
         : '<span class="text-muted">Not Provided</span>';
 
       let deleteBtnHTML = '';
-      const isSystemAdmin = emp.role.toLowerCase() === 'admin' || emp.email.toLowerCase() === 'admin@company.com';
+      const isSystemAdmin = emp.email.toLowerCase() === 'admin@company.com';
       if ((state.currentRole === 'hr' || state.currentRole === 'admin') && !isSystemAdmin) {
         deleteBtnHTML = `
           <div style="display: flex; justify-content: flex-end; margin-top: 12px; border-top: 1px dashed var(--border-color); padding-top: 12px;">
