@@ -29,7 +29,11 @@ if (MONGODB_URI) {
   mongoose.connect(MONGODB_URI)
     .then(async () => {
       console.log('Connected to MongoDB Atlas successfully.');
-      await migrateLocalToMongo();
+      if (process.env.CLEAN_DB_ONCE === 'true') {
+        await clearAndSeedMongoDB();
+      } else {
+        await migrateLocalToMongo();
+      }
     })
     .catch(err => {
       console.error('Failed to connect to MongoDB Atlas. Falling back to local file database.', err.message);
@@ -169,6 +173,95 @@ async function migrateLocalToMongo() {
     }
   } catch (err) {
     console.error('Error during local to MongoDB migration:', err);
+  }
+}
+
+// Helper to wipe all data from MongoDB Atlas and seed the clean state
+async function clearAndSeedMongoDB() {
+  try {
+    console.log('CLEAN_DB_ONCE is set to true. Wiping MongoDB Atlas collections...');
+    await Promise.all([
+      models.Employee.deleteMany({}),
+      models.LeaveRequest.deleteMany({}),
+      models.Project.deleteMany({}),
+      models.Task.deleteMany({}),
+      models.Chat.deleteMany({}),
+      models.DailyReport.deleteMany({}),
+      models.Announcement.deleteMany({}),
+      models.Notice.deleteMany({}),
+      models.Reimbursement.deleteMany({}),
+      models.Ticket.deleteMany({}),
+      models.NationalHoliday.deleteMany({}),
+      models.CelebrationDay.deleteMany({}),
+      models.SystemMetadata.deleteMany({}),
+      models.PushSubscription.deleteMany({})
+    ]);
+
+    console.log('Seeding default Admin user into MongoDB Atlas...');
+    const adminUser = {
+      id: "EMP011",
+      name: "Richard Boss",
+      dept: "Administration",
+      email: "admin@company.com",
+      role: "Admin",
+      balance: 20,
+      absent: 0,
+      avatar: "RB",
+      aadhar: "1111 2222 3333",
+      pan: "ADMIR1111B",
+      bankAcc: "1234567890",
+      bankIfsc: "ICIC0000456 (ICICI)",
+      password: "password123",
+      salary: {
+        basic: 90000,
+        hra: 36000,
+        other: 13500,
+        profTax: 200,
+        lwpDays: 0
+      },
+      phone: "+91 87654 01235"
+    };
+    await models.Employee.create(adminUser);
+
+    console.log('Seeding default holidays into MongoDB Atlas...');
+    const nationalHolidays = [
+      { date: '2026-01-26', name: 'Republic Day' },
+      { date: '2026-02-19', name: 'Shivjayanti' },
+      { date: '2026-03-03', name: 'Dhulivandan' },
+      { date: '2026-03-19', name: 'Gudipadva' },
+      { date: '2026-04-14', name: 'Ambedkar Jayanti' },
+      { date: '2026-05-01', name: 'Maharashtra Din' },
+      { date: '2026-08-15', name: 'Independence Day' },
+      { date: '2026-08-28', name: 'Raksha Bandhan' },
+      { date: '2026-09-05', name: 'Gopalkala' },
+      { date: '2026-09-14', name: 'Ganesh Chaturthi' },
+      { date: '2026-10-02', name: 'Gandhi Jayanti' },
+      { date: '2026-10-20', name: 'Dasara' },
+      { date: '2026-11-09', name: 'Diwali' },
+      { date: '2026-11-10', name: 'Diwali' },
+      { date: '2026-11-11', name: 'Bhai Duj (Bhaubij)' },
+      { date: '2026-12-25', name: 'Christmas' }
+    ];
+    const celebrationDays = [
+      { date: '2026-01-12', name: 'National Youth Day' },
+      { date: '2026-01-24', name: 'National Girl Child Day' },
+      { date: '2026-02-28', name: 'National Science Day' },
+      { date: '2026-03-08', name: 'International Women\'s Day' },
+      { date: '2026-05-11', name: 'National Technology Day' },
+      { date: '2026-07-29', name: 'Gurupornima' },
+      { date: '2026-09-05', name: 'Teacher\'s Day' },
+      { date: '2026-09-15', name: 'Engineer\'s Day' },
+      { date: '2026-11-11', name: 'National Education Day' },
+      { date: '2026-11-14', name: 'Children\'s Day' },
+      { date: '2026-11-19', name: 'International Men\'s Day' }
+    ];
+    await models.NationalHoliday.insertMany(nationalHolidays);
+    await models.CelebrationDay.insertMany(celebrationDays);
+
+    await models.SystemMetadata.create({ key: 'lastUpdated', timestamp: Date.now() });
+    console.log('MongoDB Atlas successfully cleared and seeded with default state.');
+  } catch (err) {
+    console.error('Failed to clear and seed MongoDB Atlas:', err);
   }
 }
 

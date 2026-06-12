@@ -173,242 +173,23 @@ function initSyncPolling() {
 
 // --- Constants & Seed Data ---
 const DEFAULT_EMPLOYEES = [
-  { id: 'EMP001', name: 'Sarah Jenkins', dept: 'Human Resources', email: 'sarah.j@company.com', role: 'HR', balance: 20, absent: 0, avatar: 'SJ', aadhar: '4532 9812 7345', pan: 'AWQPJ4812K', bankAcc: '918273645012', bankIfsc: 'HDFC0001234 (HDFC Bank)', password: 'password123', phone: '+91 98765 43210' },
-  { id: 'EMP002', name: 'Alex Rivera', dept: 'Engineering', email: 'alex.r@company.com', role: 'Employee', balance: 15, absent: 5, avatar: 'AR', aadhar: '7721 8839 0019', pan: 'BPLXR9921D', bankAcc: '1092837465', bankIfsc: 'SBIN0000123 (SBI)', password: 'password123', phone: '+91 87654 32109' },
-  { id: 'EMP003', name: 'Priya Patel', dept: 'Design', email: 'priya.p@company.com', role: 'Employee', balance: 12, absent: 8, avatar: 'PP', aadhar: '6654 3321 0098', pan: 'CLKPP4821A', bankAcc: '883726152431', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123', phone: '+91 76543 21098' },
-  { id: 'EMP004', name: 'Marcus Chen', dept: 'Sales', email: 'marcus.c@company.com', role: 'Employee', balance: 18, absent: 2, avatar: 'MC', aadhar: '9001 8837 2212', pan: 'DNMCM0091K', bankAcc: '445362718290', bankIfsc: 'BARB0POWAI (Bank of Baroda)', password: 'password123', phone: '+91 65432 10987' },
-  { id: 'EMP005', name: 'Chloe Dupont', dept: 'Marketing', email: 'chloe.d@company.com', role: 'Employee', balance: 19, absent: 1, avatar: 'CD', aadhar: '2234 8876 5432', pan: 'ZPLCD9928H', bankAcc: '776253412098', bankIfsc: 'AXIS0000789 (Axis Bank)', password: 'password123', phone: '+91 54321 09876' },
-  { id: 'EMP006', name: 'David Kim', dept: 'Engineering', email: 'david.k@company.com', role: 'Employee', balance: 20, absent: 0, avatar: 'DK', aadhar: '8872 1192 3345', pan: 'TYPDK0192L', bankAcc: '334251609872', bankIfsc: 'SBIN0000123 (SBI)', password: 'password123', phone: '+91 43210 98765' },
-  { id: 'EMP007', name: 'Elena Rostova', dept: 'Engineering', email: 'elena.r@company.com', role: 'Tech Lead', balance: 18, absent: 2, avatar: 'ER', aadhar: '4452 9901 8834', pan: 'QWERP1209M', bankAcc: '556273819023', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123', phone: '+91 32109 87654' },
-  { id: 'EMP008', name: 'Emily Wong', dept: 'Design', email: 'emily.w@company.com', role: 'Employee', balance: 17, absent: 3, avatar: 'EW', aadhar: '1109 8834 7721', pan: 'UIOPW4482R', bankAcc: '998273645019', bankIfsc: 'HDFC0001234 (HDFC Bank)', password: 'password123', phone: '+91 21098 76543' },
-  { id: 'EMP009', name: 'Jason Mwangi', dept: 'Sales', email: 'jason.m@company.com', role: 'Employee', balance: 14, absent: 6, avatar: 'JM', aadhar: '5532 9901 8823', pan: 'PLKJM9012W', bankAcc: '667283910293', bankIfsc: 'KKBK0000881 (Kotak)', password: 'password123', phone: '+91 10987 65432' },
-  { id: 'EMP010', name: 'Sofia Al-Jamil', dept: 'Marketing', email: 'sofia.a@company.com', role: 'Employee', balance: 18, absent: 2, avatar: 'SA', aadhar: '7765 4432 1098', pan: 'MNBVS9921X', bankAcc: '223412098734', bankIfsc: 'AXIS0000789 (Axis Bank)', password: 'password123', phone: '+91 98765 01234' },
-  { id: 'EMP011', name: 'Richard Boss', dept: 'Administration', email: 'admin@company.com', role: 'Admin', balance: 20, absent: 0, avatar: 'RB', aadhar: '1111 2222 3333', pan: 'ADMIR1111B', bankAcc: '1234567890', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123', phone: '+91 87654 01235' },
-  { id: 'EMP012', name: 'Liam Carter', dept: 'Design', email: 'liam.c@company.com', role: 'Tech Lead', balance: 20, absent: 0, avatar: 'LC', aadhar: '1122 3344 5566', pan: 'ABCDE1234F', bankAcc: '9988776655', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123', phone: '+91 76543 01236' },
-  { id: 'EMP013', name: 'Sophia Vance', dept: 'Sales', email: 'sophia.v@company.com', role: 'Tech Lead', balance: 20, absent: 0, avatar: 'SV', aadhar: '2233 4455 6677', pan: 'FGHIJ5678K', bankAcc: '8877665544', bankIfsc: 'HDFC0001234 (HDFC Bank)', password: 'password123', phone: '+91 65432 01237' },
-  { id: 'EMP014', name: 'Oliver Brooks', dept: 'Marketing', email: 'oliver.b@company.com', role: 'Tech Lead', balance: 20, absent: 0, avatar: 'OB', aadhar: '3344 5566 7788', pan: 'LMNOP9012Q', bankAcc: '7766554433', bankIfsc: 'AXIS0000789 (Axis Bank)', password: 'password123', phone: '+91 54321 01238' },
-  { id: 'EMP015', name: 'Emma Stone', dept: 'Human Resources', email: 'emma.s@company.com', role: 'Tech Lead', balance: 20, absent: 0, avatar: 'ES', aadhar: '4455 6677 8899', pan: 'RSTUV3456W', bankAcc: '6655443322', bankIfsc: 'SBIN0000123 (SBI)', password: 'password123', phone: '+91 43210 01239' }
+  { id: 'EMP011', name: 'Richard Boss', dept: 'Administration', email: 'admin@company.com', role: 'Admin', balance: 20, absent: 0, avatar: 'RB', aadhar: '1111 2222 3333', pan: 'ADMIR1111B', bankAcc: '1234567890', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123', phone: '+91 87654 01235' }
 ];
 
-const DEFAULT_REQUESTS = [
-  {
-    id: 'REQ101',
-    employeeId: 'EMP002',
-    employeeName: 'Alex Rivera',
-    dept: 'Engineering',
-    type: 'Sick Leave (SL)',
-    startDate: '2026-05-10',
-    endDate: '2026-05-14',
-    duration: 5,
-    reason: 'Severe flu and recovery time prescribed by doctor.',
-    status: 'approved',
-    comment: 'Get well soon!',
-    submittedAt: '2026-05-08'
-  },
-  {
-    id: 'REQ102',
-    employeeId: 'EMP003',
-    employeeName: 'Priya Patel',
-    dept: 'Design',
-    type: 'Earned Leave (EL) / Privilege Leave',
-    startDate: '2026-05-18',
-    endDate: '2026-05-25',
-    duration: 8,
-    reason: 'Annual family trip to Hawaii.',
-    status: 'approved',
-    comment: 'Enjoy your vacation!',
-    submittedAt: '2026-05-01'
-  },
-  {
-    id: 'REQ103',
-    employeeId: 'EMP004',
-    employeeName: 'Marcus Chen',
-    dept: 'Sales',
-    type: 'Casual Leave (CL)',
-    startDate: '2026-06-08',
-    endDate: '2026-06-09',
-    duration: 2,
-    reason: 'Urgent personal work in hometown.',
-    status: 'pending',
-    comment: '',
-    submittedAt: '2026-06-01'
-  },
-  {
-    id: 'REQ104',
-    employeeId: 'EMP005',
-    employeeName: 'Chloe Dupont',
-    dept: 'Marketing',
-    type: 'Casual Leave (CL)',
-    startDate: '2026-05-05',
-    endDate: '2026-05-05',
-    duration: 1,
-    reason: 'Attending friend\'s graduation ceremony.',
-    status: 'rejected',
-    comment: 'Clashes with major product launch event.',
-    submittedAt: '2026-05-02'
-  },
-  {
-    id: 'REQ105',
-    employeeId: 'EMP002',
-    employeeName: 'Alex Rivera',
-    dept: 'Engineering',
-    type: 'Earned Leave (EL) / Privilege Leave',
-    startDate: '2026-06-20',
-    endDate: '2026-06-22',
-    duration: 3,
-    reason: 'Sister\'s wedding ceremony.',
-    status: 'pending',
-    comment: '',
-    submittedAt: '2026-06-01'
-  }
-];
+const DEFAULT_REQUESTS = [];
 
-const DEFAULT_PROJECTS = [
-  { id: 'PRJ301', name: 'Next-Gen Engine', dept: 'Engineering', status: 'Active', techLeadId: 'EMP007', progress: 89, description: 'Next-Generation Engine for processing company tasks and core computations.', files: [] },
-  { id: 'PRJ302', name: 'UI Refactoring', dept: 'Design', status: 'Active', techLeadId: 'EMP012', progress: 40, description: 'Complete redesign and optimization of company-wide dashboard assets.', files: [] },
-  { id: 'PRJ303', name: 'Enterprise CRM Rollout', dept: 'Sales', status: 'Planning', techLeadId: 'EMP013', progress: 10, description: 'Rolling out Salesforce CRM solution for regional client relations.', files: [] },
-  { id: 'PRJ304', name: 'Product Launch Campaign', dept: 'Marketing', status: 'Active', techLeadId: 'EMP014', progress: 60, description: 'Coordinating digital marketing copy and ads for brand expansion.', files: [] },
-  { id: 'PRJ305', name: 'Onboarding Redesign', dept: 'Human Resources', status: 'Completed', techLeadId: 'EMP015', progress: 100, description: 'Updating policy drafts and new hire portals for optimal integration.', files: [] }
-];
+const DEFAULT_PROJECTS = [];
 
-const DEFAULT_TASKS = [
-  { id: 'TSK401', projectId: 'PRJ301', projectName: 'Next-Gen Engine', desc: 'Refactor authentication middleware', assigneeId: 'EMP002', assigneeName: 'Alex Rivera', dueDate: '2026-06-15', priority: 'High', status: 'Not Completed' },
-  { id: 'TSK402', projectId: 'PRJ302', projectName: 'UI Refactoring', desc: 'Design dashboard light/dark assets', assigneeId: 'EMP003', assigneeName: 'Priya Patel', dueDate: '2026-06-10', priority: 'Medium', status: 'Completed' },
-  { id: 'TSK403', projectId: 'PRJ303', projectName: 'Enterprise CRM Rollout', desc: 'Call tier 1 sales leads', assigneeId: 'EMP004', assigneeName: 'Marcus Chen', dueDate: '2026-06-30', priority: 'Medium', status: 'Not Completed' },
-  { id: 'TSK404', projectId: 'PRJ304', projectName: 'Product Launch Campaign', desc: 'Write marketing copy for launch email', assigneeId: 'EMP005', assigneeName: 'Chloe Dupont', dueDate: '2026-06-12', priority: 'High', status: 'Not Completed' },
-  { id: 'TSK405', projectId: 'PRJ305', projectName: 'Onboarding Redesign', desc: 'Review leave policy draft', assigneeId: 'EMP001', assigneeName: 'Sarah Jenkins', dueDate: '2026-05-28', priority: 'Low', status: 'Completed' },
-  { id: 'TSK406', projectId: 'PRJ301', projectName: 'Next-Gen Engine', desc: 'Implement unit tests for leave logic', assigneeId: 'EMP002', assigneeName: 'Alex Rivera', dueDate: '2026-06-25', priority: 'Low', status: 'Not Completed' }
-];
-const DEFAULT_DEPARTMENTS = ['Engineering', 'Design', 'Sales', 'Marketing', 'Human Resources'];
+const DEFAULT_TASKS = [];
+const DEFAULT_DEPARTMENTS = ['Administration'];
 
-const DEFAULT_CHATS = [
-  { id: 'MSG001', senderId: 'EMP001', senderName: 'Sarah Jenkins', receiverId: 'group', content: 'Welcome everyone to the new company communications channel!', timestamp: '2026-06-01T09:00:00.000Z' },
-  { id: 'MSG002', senderId: 'EMP002', senderName: 'Alex Rivera', receiverId: 'group', content: 'Thanks Sarah! Excited to use this space.', timestamp: '2026-06-01T09:15:00.000Z' }
-];
+const DEFAULT_CHATS = [];
 
-const DEFAULT_ANNOUNCEMENTS = [
-  { id: 'ANN001', title: 'Q3 Goal Planning Alignment', content: 'Our Q3 alignment meeting is scheduled for next Monday at 10 AM. Please ensure your project sheets are updated.', senderName: 'Sarah Jenkins', timestamp: '2026-06-02T10:00:00.000Z' },
-  { id: 'ANN002', title: 'New Employee Roster Portal Online', content: 'We have updated our internal leave roster system. You can now toggle your panels dynamically. Let HR know if you find any styling issues.', senderName: 'Sarah Jenkins', timestamp: '2026-06-01T08:30:00.000Z' }
-];
+const DEFAULT_ANNOUNCEMENTS = [];
 
-const DEFAULT_NOTICES = [
-  { id: 'NTC001', title: 'HR Compliance Roster Check', content: 'Please review your profile details in the Employee Roster to ensure your email matches company specifications.', targetEmployeeIds: ['EMP002', 'EMP003', 'EMP004'], senderName: 'Sarah Jenkins', timestamp: '2026-06-02T11:00:00.000Z' }
-];
+const DEFAULT_NOTICES = [];
 
-const DEFAULT_TICKETS = [
-  {
-    id: 'TCK001',
-    employeeId: 'EMP002',
-    employeeName: 'Alex Rivera',
-    title: 'VPN access issues during remote work',
-    description: 'I cannot connect to the Mumbai server. Getting credentials error even though my password is correct. Checked with colleague who is connected fine.',
-    category: 'IT Support',
-    priority: 'High',
-    status: 'In Progress',
-    assignedToId: 'EMP011',
-    assignedToName: 'Richard Boss',
-    targetRole: 'admin',
-    targetDept: '',
-    createdAt: '2026-06-05T09:00:00.000Z',
-    updatedAt: '2026-06-05T11:15:00.000Z',
-    replies: [
-      {
-        senderId: 'EMP002',
-        senderName: 'Alex Rivera',
-        content: 'Hi IT team, please look into this. It is blocking my database updates.',
-        timestamp: '2026-06-05T09:00:00.000Z'
-      },
-      {
-        senderId: 'EMP011',
-        senderName: 'Richard Boss',
-        content: 'Hi Alex, I have checked with the network admin. They are resetting your credentials. Can you try again in 15 minutes?',
-        timestamp: '2026-06-05T11:15:00.000Z'
-      }
-    ],
-    attachments: []
-  },
-  {
-    id: 'TCK002',
-    employeeId: 'EMP003',
-    employeeName: 'Priya Patel',
-    title: 'Clarification regarding casual leave accrual policy',
-    description: 'Hi, I see that casual leaves accrue 1.5 days per month. Does it carry forward to next year, or will it expire in December?',
-    category: 'HR Support',
-    priority: 'Low',
-    status: 'Resolved',
-    assignedToId: 'EMP001',
-    assignedToName: 'Sarah Jenkins',
-    targetRole: 'hr',
-    targetDept: '',
-    createdAt: '2026-06-03T14:20:00.000Z',
-    updatedAt: '2026-06-04T10:00:00.000Z',
-    replies: [
-      {
-        senderId: 'EMP003',
-        senderName: 'Priya Patel',
-        content: 'Just want to verify this for vacation planning.',
-        timestamp: '2026-06-03T14:20:00.000Z'
-      },
-      {
-        senderId: 'EMP001',
-        senderName: 'Sarah Jenkins',
-        content: 'Hi Priya, all accrued leaves carry forward up to a maximum of 18 days per year. Anything beyond 18 days will lapse at the end of the year.',
-        timestamp: '2026-06-04T10:00:00.000Z'
-      }
-    ],
-    attachments: []
-  },
-  {
-    id: 'TCK003',
-    employeeId: 'EMP004',
-    employeeName: 'Marcus Chen',
-    title: 'Desk AC vents are blowing hot air',
-    description: 'The AC vent directly above desk 14 is blowing hot air. It is getting very uncomfortable to work. Please check with maintenance.',
-    category: 'Facilities',
-    priority: 'Medium',
-    status: 'Open',
-    assignedToId: 'EMP011',
-    assignedToName: 'Richard Boss',
-    targetRole: 'admin',
-    targetDept: '',
-    createdAt: '2026-06-08T10:00:00.000Z',
-    updatedAt: '2026-06-08T10:00:00.000Z',
-    replies: [
-      {
-        senderId: 'EMP004',
-        senderName: 'Marcus Chen',
-        content: 'Please look into this soon. Thanks.',
-        timestamp: '2026-06-08T10:00:00.000Z'
-      }
-    ],
-    attachments: []
-  },
-  {
-    id: 'TCK004',
-    employeeId: 'EMP002',
-    employeeName: 'Alex Rivera',
-    title: 'Git repository access blocker',
-    description: 'I cannot push to the Next-Gen Engine repository. It says permission denied. Elena, could you verify if my GitHub username is in the engineering group access list?',
-    category: 'Technical Blocker',
-    priority: 'High',
-    status: 'Open',
-    assignedToId: 'EMP007',
-    assignedToName: 'Elena Rostova',
-    targetRole: 'techlead',
-    targetDept: 'Engineering',
-    createdAt: '2026-06-08T11:00:00.000Z',
-    updatedAt: '2026-06-08T11:00:00.000Z',
-    replies: [
-      {
-        senderId: 'EMP002',
-        senderName: 'Alex Rivera',
-        content: 'Elena, I need this to check in the latest auth tests.',
-        timestamp: '2026-06-08T11:00:00.000Z'
-      }
-    ],
-    attachments: []
-  }
-];
+const DEFAULT_TICKETS = [];
 
 const DEFAULT_NATIONAL_HOLIDAYS = [
   { date: '2026-01-26', name: 'Republic Day' },
@@ -457,34 +238,7 @@ let currentUploadedPanFile = null;
 let currentUploadedBankAccFile = null;
 let currentUploadedBankIfscFile = null;
 
-const DEFAULT_REPORTS = [
-  {
-    id: 'REP501',
-    employeeId: 'EMP002',
-    employeeName: 'Alex Rivera',
-    dept: 'Engineering',
-    date: '2026-06-02',
-    details: 'Completed unit testing for the authentication middleware, refactored routes, and documented API endpoints.',
-    images: [],
-    remarks: 'Excellent progress Alex, thanks for updating the documentation too!',
-    reviewedBy: 'Sarah Jenkins',
-    reviewedAt: '2026-06-02',
-    starRating: 5
-  },
-  {
-    id: 'REP502',
-    employeeId: 'EMP003',
-    employeeName: 'Priya Patel',
-    dept: 'Design',
-    date: '2026-06-02',
-    details: 'Designed dark and light assets for the dashboard. Generated multiple variants of high-resolution cyber-theme visuals.',
-    images: [],
-    remarks: '',
-    reviewedBy: '',
-    reviewedAt: '',
-    starRating: 0
-  }
-];
+const DEFAULT_REPORTS = [];
 
 // --- State Management ---
 let state = {
@@ -4276,15 +4030,15 @@ function openCreateEmployeeModal() {
   const roleSelect = document.getElementById('new-emp-role');
   if (roleSelect) {
     roleSelect.innerHTML = '';
-    if (state.currentUser && state.currentRole === 'admin') {
+    if (!state.currentUser || (state.currentUser && state.currentRole === 'admin')) {
       roleSelect.innerHTML = `
-        <option value="Employee" selected>Employee</option>
+        <option value="Employee" selected>Employee (Engineer)</option>
         <option value="Tech Lead">Tech Lead</option>
         <option value="HR">HR Manager</option>
         <option value="Admin">Admin</option>
       `;
     } else {
-      // Guest or other role (HR cannot create HR or Admin roles, guests cannot either)
+      // HR or Tech Lead adding someone from the portal
       roleSelect.innerHTML = `
         <option value="Employee" selected>Employee</option>
         <option value="Tech Lead">Tech Lead</option>
