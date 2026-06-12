@@ -16,7 +16,16 @@ let isSyncingToServer = false;
 let syncTimeout = null;
 
 localStorage.setItem = function(key, value) {
-  originalSetItem.call(localStorage, key, value);
+  try {
+    originalSetItem.call(localStorage, key, value);
+  } catch (e) {
+    if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      console.warn('LocalStorage quota exceeded! Data saved in memory for this session.', e);
+      showToast('Warning: Browser local storage is full. Files/attachments might not be saved locally, but they are being synced to the server database.', 'warning');
+    } else {
+      throw e;
+    }
+  }
   if (key.startsWith('ems_') && key !== 'ems_logged_in_user' && key !== 'ems_theme' && !key.startsWith('ems_read_')) {
     triggerBackendSync();
   }
@@ -69,17 +78,35 @@ async function fetchCentralizedState() {
     if (data && data.state && !data.empty) {
       isSyncingToServer = true;
       const s = data.state;
-      if (s.employees) originalSetItem.call(localStorage, 'ems_employees', JSON.stringify(s.employees));
+      if (s.employees) {
+        const cleanResult = cleanBloatedEmployees(s.employees);
+        originalSetItem.call(localStorage, 'ems_employees', JSON.stringify(cleanResult.employees));
+      }
       if (s.requests) originalSetItem.call(localStorage, 'ems_requests', JSON.stringify(s.requests));
       if (s.projects) originalSetItem.call(localStorage, 'ems_projects', JSON.stringify(s.projects));
-      if (s.tasks) originalSetItem.call(localStorage, 'ems_tasks', JSON.stringify(s.tasks));
+      if (s.tasks) {
+        cleanBloatedAttachments(s.tasks);
+        originalSetItem.call(localStorage, 'ems_tasks', JSON.stringify(s.tasks));
+      }
       if (s.departments) originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(s.departments));
       if (s.chats) originalSetItem.call(localStorage, 'ems_chats', JSON.stringify(s.chats));
       if (s.dailyReports) originalSetItem.call(localStorage, 'ems_reports', JSON.stringify(s.dailyReports));
-      if (s.announcements) originalSetItem.call(localStorage, 'ems_announcements', JSON.stringify(s.announcements));
-      if (s.notices) originalSetItem.call(localStorage, 'ems_notices', JSON.stringify(s.notices));
-      if (s.reimbursements) originalSetItem.call(localStorage, 'ems_reimbursements', JSON.stringify(s.reimbursements));
-      if (s.tickets) originalSetItem.call(localStorage, 'ems_tickets', JSON.stringify(s.tickets));
+      if (s.announcements) {
+        cleanBloatedAttachments(s.announcements);
+        originalSetItem.call(localStorage, 'ems_announcements', JSON.stringify(s.announcements));
+      }
+      if (s.notices) {
+        cleanBloatedAttachments(s.notices);
+        originalSetItem.call(localStorage, 'ems_notices', JSON.stringify(s.notices));
+      }
+      if (s.reimbursements) {
+        cleanBloatedAttachments(s.reimbursements);
+        originalSetItem.call(localStorage, 'ems_reimbursements', JSON.stringify(s.reimbursements));
+      }
+      if (s.tickets) {
+        cleanBloatedAttachments(s.tickets);
+        originalSetItem.call(localStorage, 'ems_tickets', JSON.stringify(s.tickets));
+      }
       if (s.nationalHolidays) originalSetItem.call(localStorage, 'ems_national_holidays', JSON.stringify(s.nationalHolidays));
       if (s.celebrationDays) originalSetItem.call(localStorage, 'ems_celebration_days', JSON.stringify(s.celebrationDays));
       if (s.smsNotifications) originalSetItem.call(localStorage, 'ems_notifications', JSON.stringify(s.smsNotifications));
@@ -373,13 +400,15 @@ function setupPasteListener(textareaId, previewContainerId, fileListArray) {
         const reader = new FileReader();
         reader.onload = function (event) {
           const base64Data = event.target.result;
-          const fileObj = {
-            name: blob.name || 'Pasted File',
-            type: blob.type,
-            data: base64Data
-          };
-          fileListArray.push(fileObj);
-          renderAttachmentPreview(fileObj, previewContainer, fileListArray);
+          compressImage(base64Data, 800, 800, 0.6, function (compressedDataUrl) {
+            const fileObj = {
+              name: blob.name || 'Pasted File',
+              type: blob.type,
+              data: compressedDataUrl
+            };
+            fileListArray.push(fileObj);
+            renderAttachmentPreview(fileObj, previewContainer, fileListArray);
+          });
         };
         reader.readAsDataURL(blob);
       }
@@ -399,13 +428,15 @@ function setupFileInputListener(inputId, previewContainerId, fileListArray) {
       const reader = new FileReader();
       reader.onload = function (event) {
         const base64Data = event.target.result;
-        const fileObj = {
-          name: file.name,
-          type: file.type,
-          data: base64Data
-        };
-        fileListArray.push(fileObj);
-        renderAttachmentPreview(fileObj, previewContainer, fileListArray);
+        compressImage(base64Data, 800, 800, 0.6, function (compressedDataUrl) {
+          const fileObj = {
+            name: file.name,
+            type: file.type,
+            data: compressedDataUrl
+          };
+          fileListArray.push(fileObj);
+          renderAttachmentPreview(fileObj, previewContainer, fileListArray);
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -721,6 +752,50 @@ function cleanBloatedEmployees(employees) {
   return { employees, changed };
 }
 
+function cleanBloatedAttachments(items) {
+  if (!Array.isArray(items)) return false;
+  let changed = false;
+  items.forEach(item => {
+    if (Array.isArray(item.images)) {
+      item.images.forEach(img => {
+        if (img && img.data && img.data.length > 50000) {
+          img.data = "";
+          changed = true;
+        }
+      });
+    }
+    if (Array.isArray(item.attachments)) {
+      item.attachments.forEach(att => {
+        if (att && att.data && att.data.length > 50000) {
+          att.data = "";
+          changed = true;
+        }
+      });
+    }
+    if (Array.isArray(item.images)) {
+      item.images.forEach((img, index) => {
+        if (typeof img === 'string' && img.length > 50000) {
+          item.images[index] = "";
+          changed = true;
+        }
+      });
+    }
+    if (Array.isArray(item.replies)) {
+      item.replies.forEach(reply => {
+        if (Array.isArray(reply.attachments)) {
+          reply.attachments.forEach(att => {
+            if (att && att.data && att.data.length > 50000) {
+              att.data = "";
+              changed = true;
+            }
+          });
+        }
+      });
+    }
+  });
+  return changed;
+}
+
 function compressImage(dataUrl, maxWidth, maxHeight, quality, callback) {
   if (!dataUrl || !dataUrl.startsWith('data:image/')) {
     callback(dataUrl);
@@ -963,6 +1038,21 @@ async function init() {
   state.chats = JSON.parse(localStorage.getItem('ems_chats'));
   state.announcements = JSON.parse(localStorage.getItem('ems_announcements'));
   state.notices = JSON.parse(localStorage.getItem('ems_notices'));
+  
+  // Clean local bloated items
+  let noticesUpdated = cleanBloatedAttachments(state.notices);
+  if (noticesUpdated) {
+    localStorage.setItem('ems_notices', JSON.stringify(state.notices));
+  }
+  let announcementsUpdated = cleanBloatedAttachments(state.announcements);
+  if (announcementsUpdated) {
+    localStorage.setItem('ems_announcements', JSON.stringify(state.announcements));
+  }
+  let tasksBloatUpdated = cleanBloatedAttachments(state.tasks);
+  if (tasksBloatUpdated) {
+    localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
+  }
+
   state.smsNotifications = JSON.parse(localStorage.getItem('ems_notifications') || '[]');
   state.nationalHolidays = JSON.parse(localStorage.getItem('ems_national_holidays'));
   state.celebrationDays = JSON.parse(localStorage.getItem('ems_celebration_days'));
@@ -972,6 +1062,12 @@ async function init() {
     state.reimbursements = JSON.parse(localStorage.getItem('ems_reimbursements') || '[]');
   } catch (e) {
     state.reimbursements = [];
+  }
+  if (state.reimbursements.length > 0) {
+    let reimbursementsUpdated = cleanBloatedAttachments(state.reimbursements);
+    if (reimbursementsUpdated) {
+      localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
+    }
   }
   if (state.reimbursements.length === 0) {
     state.reimbursements = [
@@ -1057,6 +1153,11 @@ async function init() {
   if (state.tickets.length === 0) {
     state.tickets = DEFAULT_TICKETS;
     localStorage.setItem('ems_tickets', JSON.stringify(state.tickets));
+  } else {
+    let ticketsUpdated = cleanBloatedAttachments(state.tickets);
+    if (ticketsUpdated) {
+      localStorage.setItem('ems_tickets', JSON.stringify(state.tickets));
+    }
   }
 
   // Bind role toggles
