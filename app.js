@@ -2859,6 +2859,13 @@ function showProfileModal() {
   // Populate editable fields
   setVal('profile-edit-email', emp.email);
   setVal('profile-edit-phone', emp.phone || '');
+  setVal('profile-edit-password', emp.password || 'password123');
+  const pwdInput = document.getElementById('profile-edit-password');
+  if (pwdInput) pwdInput.type = 'password';
+  const eyeIconPath = document.getElementById('profile-password-eye-icon');
+  if (eyeIconPath) {
+    eyeIconPath.setAttribute('d', 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z');
+  }
 
   // Populate document previews
   const updateDocPreview = (imgId, placeholderId, base64) => {
@@ -2912,6 +2919,7 @@ function handleProfileSave(e) {
 
   emp.email = document.getElementById('profile-edit-email').value.trim() || emp.email;
   emp.phone = document.getElementById('profile-edit-phone').value.trim() || emp.phone;
+  emp.password = document.getElementById('profile-edit-password').value || emp.password || 'password123';
   emp.photo = tempProfilePhoto || emp.photo;
   emp.aadhar = tempAadharFile || '';
   emp.pan = tempPanFile || '';
@@ -2920,6 +2928,7 @@ function handleProfileSave(e) {
 
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
   state.currentUser = emp;
+  localStorage.setItem('ems_logged_in_user', JSON.stringify(emp));
 
   // Update header avatar and details immediately
   updateHeaderAvatar(emp);
@@ -7754,6 +7763,20 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+function toggleProfilePasswordVisibility() {
+  const passwordInput = document.getElementById('profile-edit-password');
+  const eyeIconPath = document.getElementById('profile-password-eye-icon');
+  if (passwordInput && eyeIconPath) {
+    if (passwordInput.type === 'password') {
+      passwordInput.type = 'text';
+      eyeIconPath.setAttribute('d', 'M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18');
+    } else {
+      passwordInput.type = 'password';
+      eyeIconPath.setAttribute('d', 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z');
+    }
+  }
+}
+
 window.clearSMSLogs = clearSMSLogs;
 window.triggerSMSNotification = triggerSMSNotification;
 window.renderSMSLogs = renderSMSLogs;
@@ -7764,6 +7787,7 @@ window.handleProfileSave = handleProfileSave;
 window.openFullImageViewModalWithData = openFullImageViewModalWithData;
 window.setupPushSubscription = setupPushSubscription;
 window.updateNotificationButtonState = updateNotificationButtonState;
+window.toggleProfilePasswordVisibility = toggleProfilePasswordVisibility;
 
 // Run application on DOM loaded
 window.addEventListener('DOMContentLoaded', init);
