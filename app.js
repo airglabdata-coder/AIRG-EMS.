@@ -173,7 +173,7 @@ function initSyncPolling() {
 
 // --- Constants & Seed Data ---
 const DEFAULT_EMPLOYEES = [
-  { id: 'EMP011', name: 'Richard Boss', dept: 'Administration', email: 'admin@company.com', role: 'Admin', balance: 20, absent: 0, avatar: 'RB', aadhar: '1111 2222 3333', pan: 'ADMIR1111B', bankAcc: '1234567890', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123', phone: '+91 87654 01235' }
+  { id: 'EMP011', name: 'Admin', dept: 'Administration', email: 'admin@company.com', role: 'Admin', balance: 20, absent: 0, avatar: 'AD', aadhar: '1111 2222 3333', pan: 'ADMIR1111B', bankAcc: '1234567890', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123', phone: '+91 87654 01235' }
 ];
 
 const DEFAULT_REQUESTS = [];
@@ -1839,7 +1839,7 @@ function setRole(role) {
     if (!matchesTargetRole(state.currentUser, 'admin')) {
       let adminEmp = state.employees.find(emp => emp.role === 'Admin');
       if (!adminEmp) {
-        adminEmp = { id: 'EMP011', name: 'Richard Boss', dept: 'Administration', email: 'admin@company.com', role: 'Admin', balance: 20, absent: 0, avatar: 'RB', aadhar: '1111 2222 3333', pan: 'ADMIR1111B', bankAcc: '1234567890', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123' };
+        adminEmp = { id: 'EMP011', name: 'Admin', dept: 'Administration', email: 'admin@company.com', role: 'Admin', balance: 20, absent: 0, avatar: 'AD', aadhar: '1111 2222 3333', pan: 'ADMIR1111B', bankAcc: '1234567890', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123' };
         state.employees.push(adminEmp);
         localStorage.setItem('ems_employees', JSON.stringify(state.employees));
         populateEmployeeDropdown();
@@ -7182,7 +7182,7 @@ function getDepartmentTechLead(dept) {
     'Marketing': { id: 'EMP014', name: 'Oliver Brooks' },
     'Human Resources': { id: 'EMP015', name: 'Emma Stone' }
   };
-  return defaults[dept] || { id: 'EMP011', name: 'Richard Boss' };
+  return defaults[dept] || { id: 'EMP011', name: 'Admin' };
 }
 
 // 2. Agent / Admin view rendering
@@ -7308,7 +7308,7 @@ function handleTicketFormSubmit(e) {
     // IT Support, Facilities, Finance
     targetRole = 'admin';
     assignedToId = 'EMP011';
-    assignedToName = 'Richard Boss';
+    assignedToName = 'Admin';
   }
 
   // Find next sequential ID

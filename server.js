@@ -29,11 +29,7 @@ if (MONGODB_URI) {
   mongoose.connect(MONGODB_URI)
     .then(async () => {
       console.log('Connected to MongoDB Atlas successfully.');
-      if (process.env.CLEAN_DB_ONCE === 'true') {
-        await clearAndSeedMongoDB();
-      } else {
-        await migrateLocalToMongo();
-      }
+      await migrateLocalToMongo();
     })
     .catch(err => {
       console.error('Failed to connect to MongoDB Atlas. Falling back to local file database.', err.message);
@@ -200,13 +196,13 @@ async function clearAndSeedMongoDB() {
     console.log('Seeding default Admin user into MongoDB Atlas...');
     const adminUser = {
       id: "EMP011",
-      name: "Richard Boss",
+      name: "Admin",
       dept: "Administration",
       email: "admin@company.com",
       role: "Admin",
       balance: 20,
       absent: 0,
-      avatar: "RB",
+      avatar: "AD",
       aadhar: "1111 2222 3333",
       pan: "ADMIR1111B",
       bankAcc: "1234567890",

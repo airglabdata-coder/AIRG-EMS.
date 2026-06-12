@@ -2,13 +2,13 @@
   "employees": [
     {
       "id": "EMP011",
-      "name": "Richard Boss",
+      "name": "Admin",
       "dept": "Administration",
       "email": "admin@company.com",
       "role": "Admin",
       "balance": 20,
       "absent": 0,
-      "avatar": "RB",
+      "avatar": "AD",
       "aadhar": "1111 2222 3333",
       "pan": "ADMIR1111B",
       "bankAcc": "1234567890",
