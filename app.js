@@ -2410,8 +2410,7 @@ function renderEmployeeRoster() {
         : '<span class="text-muted">Not Provided</span>';
 
       let deleteBtnHTML = '';
-      const isSystemAdmin = emp.email.toLowerCase() === 'admin@company.com';
-      if ((state.currentRole === 'hr' || state.currentRole === 'admin') && !isSystemAdmin) {
+      if ((state.currentRole === 'hr' || state.currentRole === 'admin') && emp.id !== state.currentUser.id) {
         deleteBtnHTML = `
           <div style="display: flex; justify-content: flex-end; margin-top: 12px; border-top: 1px dashed var(--border-color); padding-top: 12px;">
             <button class="btn btn-danger btn-sm" onclick="deleteEmployee('${emp.id}', event)" style="padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px;">
@@ -2535,12 +2534,6 @@ function deleteEmployee(empId, event) {
 
   const emp = state.employees.find(e => e.id === empId);
   if (!emp) return;
-
-  const isPrimaryAdmin = emp.email.toLowerCase() === 'admin@company.com';
-  if (isPrimaryAdmin) {
-    showToast('The Primary Administrator account cannot be deleted!', 'error');
-    return;
-  }
 
   if (confirm(`Are you sure you want to delete employee "${emp.name}"? This action is permanent.`)) {
     state.employees = state.employees.filter(e => e.id !== empId);
