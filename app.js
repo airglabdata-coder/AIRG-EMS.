@@ -2348,6 +2348,7 @@ function renderEmployeeRoster() {
     const points = state.dailyReports.filter(r => r.employeeId === emp.id && r.starRating > 0).reduce((sum, r) => sum + (r.starRating || 0), 0);
     
     const isExpanded = state.expandedEmployeeIds && state.expandedEmployeeIds.has(emp.id);
+    const isSystemAdmin = emp.role.toLowerCase() === 'admin' || emp.email.toLowerCase() === 'admin@company.com';
 
     const item = document.createElement('div');
     item.className = `roster-item ${isExpanded ? 'expanded' : ''}`;
