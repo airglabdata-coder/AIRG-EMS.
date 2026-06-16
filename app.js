@@ -1592,7 +1592,7 @@ async function init() {
   // Set Theme Toggle
   const themeToggle = document.getElementById('theme-toggle');
   themeToggle.addEventListener('click', () => {
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('ems_theme', newTheme);
@@ -1600,7 +1600,7 @@ async function init() {
   });
 
   // Load Saved Theme
-  const savedTheme = localStorage.getItem('ems_theme') || 'light';
+  const savedTheme = localStorage.getItem('ems_theme') || 'dark';
   document.documentElement.setAttribute('data-theme', savedTheme);
   updateThemeIcon(savedTheme);
 
@@ -3490,6 +3490,13 @@ function createProjectCard(proj, isMyProject) {
   // Determine if editable by the project lead (the assigned Tech Lead) or Admin
   const isEditable = (state.currentUser.id === proj.techLeadId || state.currentUser.role === 'Admin');
 
+  // Determine if deletable by Admin, HR, or the assigned Tech Lead of the project
+  const canDelete = (
+    state.currentRole === 'admin' ||
+    state.currentRole === 'hr' ||
+    (state.currentRole === 'techlead' && state.currentUser.id === proj.techLeadId)
+  );
+
   // LEFT COLUMN HTML
   let leftColHtml = '';
   if (isMyProject === false) {
@@ -3504,9 +3511,19 @@ function createProjectCard(proj, isMyProject) {
           </div>
           ${dueDateDisplay}
         </div>
-        <div style="font-size: 0.75rem; color: var(--text-muted);">
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: auto;">
           Current Tech Lead: <strong>${leadName}</strong>
         </div>
+        ${canDelete ? `
+          <div style="margin-top: auto; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+            <button class="btn btn-danger btn-xs" onclick="deleteProject('${proj.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; border: none; cursor: pointer; color: white;">
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete Project
+            </button>
+          </div>
+        ` : ''}
       </div>
     `;
   } else {
@@ -3559,6 +3576,16 @@ function createProjectCard(proj, isMyProject) {
           `}
         </div>
         ${leadDisplay}
+        ${canDelete ? `
+          <div style="margin-top: auto; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+            <button class="btn btn-danger btn-xs" onclick="deleteProject('${proj.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; border: none; cursor: pointer; color: white;">
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete Project
+            </button>
+          </div>
+        ` : ''}
       </div>
     `;
   }
@@ -3739,6 +3766,33 @@ function deleteProjectFile(projId, fileIndex) {
   }
 }
 window.deleteProjectFile = deleteProjectFile;
+
+function deleteProject(projectId, event) {
+  if (event) {
+    event.stopPropagation();
+  }
+
+  const proj = state.projects.find(p => p.id === projectId);
+  if (!proj) return;
+
+  if (confirm(`Are you sure you want to delete project "${proj.name}"? This will also delete all tasks associated with this project.`)) {
+    // Delete the project
+    state.projects = state.projects.filter(p => p.id !== projectId);
+    localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+
+    // Delete associated tasks
+    state.tasks = state.tasks.filter(t => t.projectId !== projectId);
+    localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
+
+    // Refresh UI
+    const activeMenuItem = document.querySelector('.menu-item.active');
+    const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
+    switchView(currentView);
+
+    showToast(`Project "${proj.name}" deleted successfully.`, 'success');
+  }
+}
+window.deleteProject = deleteProject;
 
 // --- 2. HR View Logic ---
 function renderHRTasksAndProjects() {
