@@ -80,6 +80,12 @@ async function fetchCentralizedState() {
       const s = data.state;
       if (s.employees) {
         const cleanResult = cleanBloatedEmployees(s.employees);
+        // Ensure Suyash Patil (AIRG00008) is set to "Lab Setup" department and "Tech Lead" role
+        const suyash = cleanResult.employees.find(emp => emp.id === 'AIRG00008');
+        if (suyash) {
+          suyash.dept = 'Lab Setup';
+          suyash.role = 'Tech Lead';
+        }
         originalSetItem.call(localStorage, 'ems_employees', JSON.stringify(cleanResult.employees));
       }
       if (s.requests) originalSetItem.call(localStorage, 'ems_requests', JSON.stringify(s.requests));
@@ -88,7 +94,7 @@ async function fetchCentralizedState() {
         cleanBloatedAttachments(s.tasks);
         originalSetItem.call(localStorage, 'ems_tasks', JSON.stringify(s.tasks));
       }
-      if (s.departments) originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(['Engineering', 'EdTech']));
+      if (s.departments) originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(['Engineering', 'EdTech', 'Lab Setup']));
       if (s.chats) originalSetItem.call(localStorage, 'ems_chats', JSON.stringify(s.chats));
       if (s.dailyReports) originalSetItem.call(localStorage, 'ems_reports', JSON.stringify(s.dailyReports));
       if (s.announcements) {
@@ -171,6 +177,8 @@ function initSyncPolling() {
         
         isSyncingToServer = false;
         
+        if (!state.currentUser) return;
+        
         const activeMenuItem = document.querySelector('.menu-item.active');
         const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
         
@@ -208,7 +216,7 @@ const DEFAULT_REQUESTS = [];
 const DEFAULT_PROJECTS = [];
 
 const DEFAULT_TASKS = [];
-const DEFAULT_DEPARTMENTS = ['Engineering', 'EdTech'];
+const DEFAULT_DEPARTMENTS = ['Engineering', 'EdTech', 'Lab Setup'];
 
 const DEFAULT_CHATS = [];
 
@@ -915,10 +923,19 @@ async function init() {
           updated = true;
         }
       });
-    }
+      // Ensure Suyash Patil (AIRG00008) is set to "Lab Setup" department and "Tech Lead" role
+      const suyash = stored.find(emp => emp.id === 'AIRG00008');
+      if (suyash) {
+        if (suyash.dept !== 'Lab Setup' || suyash.role !== 'Tech Lead') {
+          suyash.dept = 'Lab Setup';
+          suyash.role = 'Tech Lead';
+          updated = true;
+        }
+      }
 
-    if (updated) {
-      localStorage.setItem('ems_employees', JSON.stringify(stored));
+      if (updated) {
+        localStorage.setItem('ems_employees', JSON.stringify(stored));
+      }
     }
   }
   if (!localStorage.getItem('ems_requests')) {
@@ -1615,7 +1632,8 @@ async function init() {
         // Update Profile Widget
         updateHeaderAvatar(selectedEmp);
         document.getElementById('header-name').textContent = selectedEmp.name;
-        document.getElementById('header-role').textContent = selectedEmp.dept;
+        const displayDept = (selectedEmp.dept && selectedEmp.dept.toLowerCase() !== 'engineering') ? selectedEmp.dept : '';
+        document.getElementById('header-role').textContent = displayDept || selectedEmp.role;
         const activeMenuItem = document.querySelector('.menu-item.active');
         const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
         if (currentView === 'communications') {
@@ -1971,7 +1989,8 @@ function setRole(role) {
   // Update Profile Widget
   updateHeaderAvatar(state.currentUser);
   document.getElementById('header-name').textContent = state.currentUser.name;
-  document.getElementById('header-role').textContent = state.currentUser.dept || state.currentUser.role;
+  const displayDept = (state.currentUser.dept && state.currentUser.dept.toLowerCase() !== 'engineering') ? state.currentUser.dept : '';
+  document.getElementById('header-role').textContent = displayDept || state.currentUser.role;
 
   // Sync dropdown selection if in employee mode
   if (role === 'employee' && empSelect) {
@@ -2224,6 +2243,7 @@ function switchView(viewName) {
 
 // --- Render Employee Dashboard ---
 function renderEmployeeDashboard(viewName = 'tasks') {
+  if (!state.currentUser) return;
   const userId = state.currentUser.id;
   const userRequests = state.requests.filter(req => req.employeeId === userId);
   const employeeData = state.employees.find(emp => emp.id === userId);
@@ -2594,7 +2614,7 @@ function renderEmployeeRoster() {
               ★ ${points} Star${points !== 1 ? 's' : ''}
             </span>
           </div>
-          <div class="roster-dept">${emp.dept} • ${emp.email}</div>
+          <div class="roster-dept">${(emp.dept && emp.dept.toLowerCase() !== 'engineering') ? `${emp.dept} • ` : ''}${emp.email}</div>
         </div>
         <div class="roster-stat" style="display: flex; align-items: center; gap: 16px;">
           <div style="text-align: right; min-width: 120px;">
@@ -3040,7 +3060,10 @@ function handleProfileSave(e) {
   const nameHeader = document.getElementById('header-name');
   if (nameHeader) nameHeader.textContent = emp.name;
   const roleHeader = document.getElementById('header-role');
-  if (roleHeader) roleHeader.textContent = emp.dept || emp.role;
+  if (roleHeader) {
+    const displayDept = (emp.dept && emp.dept.toLowerCase() !== 'engineering') ? emp.dept : '';
+    roleHeader.textContent = displayDept || emp.role;
+  }
 
   // Refresh current view to reflect changes (e.g. employee roster)
   const activeMenuItem = document.querySelector('.menu-item.active');
@@ -3530,12 +3553,28 @@ function createProjectCard(proj, isMyProject) {
     // My project (full view) or Admin/HR view (isMyProject is null)
     let leadDisplay = '';
     if (isMyProject === null) {
-      // In Admin/HR view, display which Tech Lead is assigned
-      leadDisplay = `
-        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
-          Tech Lead: <strong style="color: var(--text-primary);">${leadName}</strong>
-        </div>
-      `;
+      if (state.currentRole === 'admin') {
+        let selectOptions = '';
+        state.employees.forEach(emp => {
+          const isSelected = emp.id === proj.techLeadId;
+          selectOptions += `<option value="${emp.id}" ${isSelected ? 'selected' : ''}>${emp.name} (${emp.dept} - ${emp.role})</option>`;
+        });
+        leadDisplay = `
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px; display: flex; flex-direction: column; gap: 4px;">
+            <span>Assign Tech Lead:</span>
+            <select class="project-card-tech-lead-select" data-project-id="${proj.id}" onchange="changeProjectTechLead('${proj.id}', this.value)" style="padding: 4px 8px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); outline: none; cursor: pointer;">
+              ${selectOptions}
+            </select>
+          </div>
+        `;
+      } else {
+        // In Tech Lead or HR view, display which Tech Lead is assigned
+        leadDisplay = `
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+            Tech Lead: <strong style="color: var(--text-primary);">${leadName}</strong>
+          </div>
+        `;
+      }
     }
 
     leftColHtml = `
@@ -4159,6 +4198,54 @@ function handleProjectCreationSubmit(e) {
   state.projects.push(newProj);
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
 
+  // If department is "Lab Setup", create default todo tasks
+  if (dept === 'Lab Setup') {
+    const defaultTodos = [
+      "Electronics components purchasing",
+      "3d printer purchasing",
+      "All required inventory purchasing (led, bulb ,cctv ,alexa , decoration)",
+      "Project",
+      "All project stickers,prints",
+      "Component Manual print",
+      "All necessary print (nfc,info document)",
+      "Project models 3d printed",
+      "3d printed drone",
+      "Ready all project with 3d models",
+      "Pc setup (pc, monitor mouse , keypad,pad for keypad, speaker)",
+      "Engine setup",
+      "Project models setup",
+      "Electronics kit",
+      "3d printed drone setup",
+      "Diy drone",
+      "Drone simulator",
+      "3d printer assembly",
+      "All component checking",
+      "All acrylic boards (certificate, section wise like drone)"
+    ];
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    defaultTodos.forEach((todo, idx) => {
+      const task = {
+        id: `TSK${400 + state.tasks.length + 1}`,
+        projectId: newProj.id,
+        projectName: newProj.name,
+        desc: todo,
+        details: '',
+        images: [],
+        assigneeId: techLeadId,
+        assigneeName: chosenEmp ? chosenEmp.name : 'Suyash Patil',
+        startDate: todayStr,
+        dueDate: dueDate,
+        priority: 'Medium',
+        status: 'Not Completed'
+      };
+      state.tasks.push(task);
+    });
+
+    localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
+  }
+
   hideProjectModal();
   renderHRTasksAndProjects();
   showToast(`Project "${name}" created successfully!`, 'success');
@@ -4166,6 +4253,26 @@ function handleProjectCreationSubmit(e) {
 
 window.openCreateProjectModal = openCreateProjectModal;
 window.hideProjectModal = hideProjectModal;
+
+function changeProjectTechLead(projId, newTechLeadId) {
+  const proj = state.projects.find(p => p.id === projId);
+  if (!proj) return;
+
+  const chosenEmp = state.employees.find(emp => emp.id === newTechLeadId);
+  proj.techLeadId = newTechLeadId;
+
+  // Promote employee to Tech Lead if they aren't already a Tech Lead or Admin
+  if (chosenEmp && chosenEmp.role !== 'Tech Lead' && chosenEmp.role !== 'Admin') {
+    chosenEmp.role = 'Tech Lead';
+    localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+    showToast(`${chosenEmp.name} has been promoted to Tech Lead!`, 'info');
+  }
+
+  localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+  showToast(`Tech Lead for project "${proj.name}" updated successfully!`, 'success');
+  renderHRTasksAndProjects();
+}
+window.changeProjectTechLead = changeProjectTechLead;
 
 function openAssignTaskModal() {
   document.getElementById('task-assignment-form').reset();
@@ -4365,7 +4472,7 @@ function openCreateEmployeeModal() {
     roleSelect.innerHTML = '';
     if (!state.currentUser || (state.currentUser && state.currentRole === 'admin')) {
       roleSelect.innerHTML = `
-        <option value="Employee" selected>Employee (Engineer)</option>
+        <option value="Employee" selected>Employee</option>
         <option value="Tech Lead">Tech Lead</option>
         <option value="HR">HR Manager</option>
         <option value="Admin">Admin</option>
@@ -7199,7 +7306,10 @@ function loginAsUser(user) {
   const headerName = document.getElementById('header-name');
   if (headerName) headerName.textContent = user.name;
   const headerRole = document.getElementById('header-role');
-  if (headerRole) headerRole.textContent = user.dept || user.role;
+  if (headerRole) {
+    const displayDept = (user.dept && user.dept.toLowerCase() !== 'engineering') ? user.dept : '';
+    headerRole.textContent = displayDept || user.role;
+  }
 
   // Bind role UI display
   const targetRole = user.role.toLowerCase() === 'tech lead' ? 'techlead' : user.role.toLowerCase() === 'hr' ? 'hr' : user.role.toLowerCase() === 'admin' ? 'admin' : 'employee';
@@ -7345,7 +7455,8 @@ function getDepartmentTechLead(dept) {
   if (tl) return tl;
   const defaults = {
     'Engineering': { id: 'EMP007', name: 'Elena Rostova' },
-    'EdTech': { id: 'EMP007', name: 'Elena Rostova' }
+    'EdTech': { id: 'EMP007', name: 'Elena Rostova' },
+    'Lab Setup': { id: 'AIRG00008', name: 'Suyash Patil' }
   };
   return defaults[dept] || { id: 'EMP011', name: 'Admin' };
 }
