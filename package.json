@@ -4,7 +4,8 @@
   "description": "Employee Management System & Support Portal",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "reseed": "node scratch/reseed.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

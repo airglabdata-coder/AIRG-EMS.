@@ -1,6 +1,6 @@
 // EMS Leave Portal - Application Logic
 
-window.onerror = function(message, source, lineno, colno, error) {
+window.onerror = function (message, source, lineno, colno, error) {
   // Try using showToast, fallback to alert
   try {
     showToast(`Runtime Error: ${message} at line ${lineno}`, 'error');
@@ -15,7 +15,7 @@ const originalSetItem = localStorage.setItem;
 let isSyncingToServer = false;
 let syncTimeout = null;
 
-localStorage.setItem = function(key, value) {
+localStorage.setItem = function (key, value) {
   try {
     originalSetItem.call(localStorage, key, value);
   } catch (e) {
@@ -34,7 +34,7 @@ localStorage.setItem = function(key, value) {
 function triggerBackendSync() {
   if (isSyncingToServer) return;
   if (syncTimeout) clearTimeout(syncTimeout);
-  
+
   syncTimeout = setTimeout(() => {
     const cleanState = {
       employees: JSON.parse(localStorage.getItem('ems_employees') || '[]'),
@@ -58,15 +58,15 @@ function triggerBackendSync() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cleanState)
     })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        state.lastSyncedTimestamp = data.timestamp;
-      }
-    })
-    .catch(err => {
-      console.error('Failed to sync to database server:', err);
-    });
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          state.lastSyncedTimestamp = data.timestamp;
+        }
+      })
+      .catch(err => {
+        console.error('Failed to sync to database server:', err);
+      });
   }, 300);
 }
 
@@ -74,18 +74,12 @@ async function fetchCentralizedState() {
   try {
     const res = await fetch('/api/sync');
     const data = await res.json();
-    
+
     if (data && data.state && !data.empty) {
       isSyncingToServer = true;
       const s = data.state;
       if (s.employees) {
         const cleanResult = cleanBloatedEmployees(s.employees);
-        // Ensure Suyash Patil (AIRG00008) is set to "Lab Setup" department and "Tech Lead" role
-        const suyash = cleanResult.employees.find(emp => emp.id === 'AIRG00008');
-        if (suyash) {
-          suyash.dept = 'Lab Setup';
-          suyash.role = 'Tech Lead';
-        }
         originalSetItem.call(localStorage, 'ems_employees', JSON.stringify(cleanResult.employees));
       }
       if (s.requests) originalSetItem.call(localStorage, 'ems_requests', JSON.stringify(s.requests));
@@ -94,7 +88,7 @@ async function fetchCentralizedState() {
         cleanBloatedAttachments(s.tasks);
         originalSetItem.call(localStorage, 'ems_tasks', JSON.stringify(s.tasks));
       }
-      if (s.departments) originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(['Engineering', 'EdTech', 'Lab Setup']));
+      if (s.departments) originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(['AI', 'Electronics', 'Lab Setup', 'Instructor']));
       if (s.chats) originalSetItem.call(localStorage, 'ems_chats', JSON.stringify(s.chats));
       if (s.dailyReports) originalSetItem.call(localStorage, 'ems_reports', JSON.stringify(s.dailyReports));
       if (s.announcements) {
@@ -116,7 +110,7 @@ async function fetchCentralizedState() {
       if (s.nationalHolidays) originalSetItem.call(localStorage, 'ems_national_holidays', JSON.stringify(s.nationalHolidays));
       if (s.celebrationDays) originalSetItem.call(localStorage, 'ems_celebration_days', JSON.stringify(s.celebrationDays));
       if (s.smsNotifications) originalSetItem.call(localStorage, 'ems_notifications', JSON.stringify(s.smsNotifications));
-      
+
       state.lastSyncedTimestamp = data.timestamp;
       isSyncingToServer = false;
     }
@@ -139,7 +133,7 @@ function initSyncPolling() {
     try {
       const res = await fetch('/api/sync');
       const data = await res.json();
-      
+
       if (data && data.state && !data.empty && data.timestamp !== state.lastSyncedTimestamp) {
         isSyncingToServer = true;
         const s = data.state;
@@ -157,9 +151,9 @@ function initSyncPolling() {
         state.nationalHolidays = s.nationalHolidays || state.nationalHolidays;
         state.celebrationDays = s.celebrationDays || state.celebrationDays;
         state.smsNotifications = s.smsNotifications || state.smsNotifications;
-        
+
         state.lastSyncedTimestamp = data.timestamp;
-        
+
         if (s.employees) originalSetItem.call(localStorage, 'ems_employees', JSON.stringify(s.employees));
         if (s.requests) originalSetItem.call(localStorage, 'ems_requests', JSON.stringify(s.requests));
         if (s.projects) originalSetItem.call(localStorage, 'ems_projects', JSON.stringify(s.projects));
@@ -174,14 +168,14 @@ function initSyncPolling() {
         if (s.nationalHolidays) originalSetItem.call(localStorage, 'ems_national_holidays', JSON.stringify(s.nationalHolidays));
         if (s.celebrationDays) originalSetItem.call(localStorage, 'ems_celebration_days', JSON.stringify(s.celebrationDays));
         if (s.smsNotifications) originalSetItem.call(localStorage, 'ems_notifications', JSON.stringify(s.smsNotifications));
-        
+
         isSyncingToServer = false;
-        
+
         if (!state.currentUser) return;
-        
+
         const activeMenuItem = document.querySelector('.menu-item.active');
         const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
-        
+
         if (currentView === 'communications') {
           renderCommunicationsHub();
         } else if (currentView === 'calendar') {
@@ -208,7 +202,246 @@ function initSyncPolling() {
 
 // --- Constants & Seed Data ---
 const DEFAULT_EMPLOYEES = [
-  { id: 'EMP011', name: 'Admin', dept: 'Administration', email: 'admin@company.com', role: 'Admin', balance: 20, absent: 0, avatar: 'AD', aadhar: '1111 2222 3333', pan: 'ADMIR1111B', bankAcc: '1234567890', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123', phone: '+91 87654 01235' }
+  {
+    id: "AIRG00008",
+    name: "Suyash Patil",
+    dept: "AI, Electronics, Lab Setup",
+    email: "suyash@gurujiair.com",
+    role: "Tech Lead",
+    balance: 20,
+    absent: 0,
+    avatar: "SP",
+    aadhar: "5250 6200 0000",
+    pan: "SUYAS1234P",
+    bankAcc: "98765432101",
+    bankIfsc: "HDFC0000123",
+    password: "suyash",
+    phone: "+91 99752 59016"
+  },
+  {
+    id: "AIRG00030",
+    name: "Aniket Shrungare",
+    dept: "Electronics, Lab Setup",
+    email: "aniket@gurujiair.com",
+    role: "Employee",
+    balance: 20,
+    absent: 0,
+    avatar: "AS",
+    aadhar: "2437 8300 0000",
+    pan: "ANIKE1234S",
+    bankAcc: "98765432102",
+    bankIfsc: "HDFC0000123",
+    password: "aniket",
+    phone: "+91 97649 11848"
+  },
+  {
+    id: "AIRG00031",
+    name: "Dipak Reddy",
+    dept: "Electronics, Lab Setup",
+    email: "dipak@gurujiair.com",
+    role: "Employee",
+    balance: 20,
+    absent: 0,
+    avatar: "DR",
+    aadhar: "4052 2900 0000",
+    pan: "DIPAK1234R",
+    bankAcc: "98765432103",
+    bankIfsc: "HDFC0000123",
+    password: "dipak",
+    phone: "+91 78409 67594"
+  },
+  {
+    id: "AIRG00029",
+    name: "Pratik Mane",
+    dept: "Electronics, Lab Setup",
+    email: "pratik@gurujiair.com",
+    role: "Employee",
+    balance: 20,
+    absent: 0,
+    avatar: "PM",
+    aadhar: "8235 4400 0000",
+    pan: "PRATI1234M",
+    bankAcc: "98765432104",
+    bankIfsc: "HDFC0000123",
+    password: "pratik",
+    phone: "+91 95791 17298"
+  },
+  {
+    id: "AIRG00010",
+    name: "Prasad Shelke",
+    dept: "Electronics, Lab Setup",
+    email: "prasad@gurujiair.com",
+    role: "Tech Lead",
+    balance: 20,
+    absent: 0,
+    avatar: "PS",
+    aadhar: "6805 0800 0000",
+    pan: "PRASA1234S",
+    bankAcc: "98765432105",
+    bankIfsc: "HDFC0000123",
+    password: "prasad",
+    phone: "+91 87673 87480"
+  },
+  {
+    id: "AIRG00038",
+    name: "Rohan Patil",
+    dept: "Electronics, Lab Setup",
+    email: "rohan@gurujiair.com",
+    role: "Employee",
+    balance: 20,
+    absent: 0,
+    avatar: "RP",
+    aadhar: "3678 6400 0000",
+    pan: "ROHAN1234P",
+    bankAcc: "98765432106",
+    bankIfsc: "HDFC0000123",
+    password: "rohan",
+    phone: "+91 99214 14810"
+  },
+  {
+    id: "AIRG00026",
+    name: "Nilesh Sonanwane",
+    dept: "Instructor",
+    email: "nilesh@gurujiair.com",
+    role: "Employee",
+    balance: 20,
+    absent: 0,
+    avatar: "NS",
+    aadhar: "6942 6200 0000",
+    pan: "NILES1234S",
+    bankAcc: "98765432107",
+    bankIfsc: "HDFC0000123",
+    password: "nilesh",
+    phone: "+91 96994 41027"
+  },
+  {
+    id: "AIRG00032",
+    name: "Yash Bhisekar",
+    dept: "Instructor",
+    email: "yash@gurujiair.com",
+    role: "Employee",
+    balance: 20,
+    absent: 0,
+    avatar: "YB",
+    aadhar: "5428 9600 0000",
+    pan: "YASHB1234I",
+    bankAcc: "98765432108",
+    bankIfsc: "HDFC0000123",
+    password: "yash",
+    phone: "+91 94223 90685"
+  },
+  {
+    id: "AIRG00035",
+    name: "Yogesh Meena",
+    dept: "AI",
+    email: "yogesh@gurujiair.com",
+    role: "Employee",
+    balance: 20,
+    absent: 0,
+    avatar: "YM",
+    aadhar: "8029 0800 0000",
+    pan: "YOGES1234M",
+    bankAcc: "98765432109",
+    bankIfsc: "HDFC0000123",
+    password: "yogesh",
+    phone: "+91 96729 94136"
+  },
+  {
+    id: "AIRG00028",
+    name: "Soham Wandkar",
+    dept: "AI",
+    email: "soham@gurujiair.com",
+    role: "Employee",
+    balance: 20,
+    absent: 0,
+    avatar: "SW",
+    aadhar: "2991 1000 0000",
+    pan: "SOHAM1234W",
+    bankAcc: "98765432110",
+    bankIfsc: "HDFC0000123",
+    password: "soham",
+    phone: "+91 97661 33667"
+  },
+  {
+    id: "AIRG00037",
+    name: "Aditya Raj",
+    dept: "AI",
+    email: "aditya@gurujiair.com",
+    role: "Employee",
+    balance: 20,
+    absent: 0,
+    avatar: "AR",
+    aadhar: "3797 2100 0000",
+    pan: "ADITY1234R",
+    bankAcc: "98765432111",
+    bankIfsc: "HDFC0000123",
+    password: "aditya",
+    phone: "+91 93805 75065"
+  },
+  {
+    id: "AIRG00001",
+    name: "Pratap Pawar",
+    dept: "AI, Electronics, Lab Setup, Instructor",
+    email: "pratap@gurujiair.com",
+    role: "Admin",
+    balance: 20,
+    absent: 0,
+    avatar: "PP",
+    aadhar: "1234 5700 0000",
+    pan: "PRATA1234P",
+    bankAcc: "98765432112",
+    bankIfsc: "HDFC0000123",
+    password: "pratap",
+    phone: "+91 98607 79172"
+  },
+  {
+    id: "AIRG00040",
+    name: "Mahadev Sooorvey",
+    dept: "AI",
+    email: "mahadev@gurujiair.com",
+    role: "Employee",
+    balance: 20,
+    absent: 0,
+    avatar: "MS",
+    aadhar: "4493 2000 0000",
+    pan: "MAHAD1234S",
+    bankAcc: "98765432113",
+    bankIfsc: "HDFC0000123",
+    password: "mahadev",
+    phone: "+91 93215 24763"
+  },
+  {
+    id: "AIRG00041",
+    name: "Atharva Nahire",
+    dept: "AI",
+    email: "atharva@gurujiair.com",
+    role: "Employee",
+    balance: 20,
+    absent: 0,
+    avatar: "AN",
+    aadhar: "6117 3400 0000",
+    pan: "ATHAR1234N",
+    bankAcc: "98765432114",
+    bankIfsc: "HDFC0000123",
+    password: "atharva",
+    phone: "+91 78208 48917"
+  },
+  {
+    id: "AIRG00042",
+    name: "Shravani Khanvilkar",
+    dept: "AI, Electronics, Lab Setup, Instructor",
+    email: "shravani@gurujiair.com",
+    role: "HR",
+    balance: 20,
+    absent: 0,
+    avatar: "SK",
+    aadhar: "2275 9500 0000",
+    pan: "SHRAV1234K",
+    bankAcc: "98765432115",
+    bankIfsc: "HDFC0000123",
+    password: "shravani",
+    phone: "+91 84465 31087"
+  }
 ];
 
 const DEFAULT_REQUESTS = [];
@@ -216,7 +449,7 @@ const DEFAULT_REQUESTS = [];
 const DEFAULT_PROJECTS = [];
 
 const DEFAULT_TASKS = [];
-const DEFAULT_DEPARTMENTS = ['Engineering', 'EdTech', 'Lab Setup'];
+const DEFAULT_DEPARTMENTS = ['AI', 'Electronics', 'Lab Setup', 'Instructor'];
 
 const DEFAULT_CHATS = [];
 
@@ -529,31 +762,31 @@ function openFullImageViewModalWithData(dataUrl) {
 
 function renderAttachmentsHTML(attachments, itemId) {
   if (!attachments || attachments.length === 0) return '';
-  
+
   // Filter out attachments with empty data (cleared bloated files)
   const validAttachments = attachments.filter(file => {
     const data = typeof file === 'string' ? file : file.data;
     return data && data.trim() !== '';
   });
-  
+
   if (validAttachments.length === 0) return '';
-  
+
   return `
     <div class="attachment-list" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;">
       ${validAttachments.map((file, idx) => {
-        const isString = typeof file === 'string';
-        const data = isString ? file : file.data;
-        const name = isString ? 'Image' : file.name;
-        const type = isString ? 'image/png' : (file.type || '');
-        
-        if (type.startsWith('image/')) {
-          return `
+    const isString = typeof file === 'string';
+    const data = isString ? file : file.data;
+    const name = isString ? 'Image' : file.name;
+    const type = isString ? 'image/png' : (file.type || '');
+
+    if (type.startsWith('image/')) {
+      return `
             <div class="attachment-item" style="position: relative; width: 80px; height: 80px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); cursor: pointer;" onclick="openFullImageViewModal('${itemId}', ${idx}, event)">
               <img src="${data}" style="width: 100%; height: 100%; object-fit: cover;" title="${name}" class="hover-scale-img">
             </div>
           `;
-        } else {
-          return `
+    } else {
+      return `
             <a href="${data}" download="${name}" class="attachment-item" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--primary); text-decoration: none; font-size: 0.8rem; font-weight: 500; transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-color)'">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -561,8 +794,8 @@ function renderAttachmentsHTML(attachments, itemId) {
               <span>${name}</span>
             </a>
           `;
-        }
-      }).join('')}
+    }
+  }).join('')}
     </div>
   `;
 }
@@ -819,7 +1052,7 @@ function compressImage(dataUrl, maxWidth, maxHeight, quality, callback) {
   }
 
   const img = new Image();
-  img.onload = function() {
+  img.onload = function () {
     let width = img.width;
     let height = img.height;
 
@@ -849,7 +1082,7 @@ function compressImage(dataUrl, maxWidth, maxHeight, quality, callback) {
       callback(dataUrl);
     }
   };
-  img.onerror = function() {
+  img.onerror = function () {
     callback(dataUrl);
   };
   img.src = dataUrl;
@@ -859,6 +1092,43 @@ function compressImage(dataUrl, maxWidth, maxHeight, quality, callback) {
 // --- Initialization ---
 async function init() {
   await fetchCentralizedState();
+
+  const CURRENT_SEED_VERSION = 'v15_credentials_v2';
+  if (localStorage.getItem('ems_seed_version') !== CURRENT_SEED_VERSION) {
+    console.log('Seeding the clean v15 employee and database dataset...');
+    originalSetItem.call(localStorage, 'ems_employees', JSON.stringify(DEFAULT_EMPLOYEES));
+    originalSetItem.call(localStorage, 'ems_projects', JSON.stringify([]));
+    originalSetItem.call(localStorage, 'ems_tasks', JSON.stringify([]));
+    originalSetItem.call(localStorage, 'ems_requests', JSON.stringify([]));
+    originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(DEFAULT_DEPARTMENTS));
+    originalSetItem.call(localStorage, 'ems_chats', JSON.stringify([]));
+    originalSetItem.call(localStorage, 'ems_reports', JSON.stringify([]));
+    originalSetItem.call(localStorage, 'ems_announcements', JSON.stringify([]));
+    originalSetItem.call(localStorage, 'ems_notices', JSON.stringify([]));
+    originalSetItem.call(localStorage, 'ems_reimbursements', JSON.stringify([]));
+    originalSetItem.call(localStorage, 'ems_tickets', JSON.stringify([]));
+    originalSetItem.call(localStorage, 'ems_national_holidays', JSON.stringify(DEFAULT_NATIONAL_HOLIDAYS));
+    originalSetItem.call(localStorage, 'ems_celebration_days', JSON.stringify(DEFAULT_CELEBRATION_DAYS));
+    originalSetItem.call(localStorage, 'ems_seed_version', CURRENT_SEED_VERSION);
+    originalSetItem.call(localStorage, 'ems_notifications', JSON.stringify([]));
+
+    state.employees = DEFAULT_EMPLOYEES;
+    state.projects = [];
+    state.tasks = [];
+    state.requests = [];
+    state.departments = DEFAULT_DEPARTMENTS;
+    state.chats = [];
+    state.dailyReports = [];
+    state.announcements = [];
+    state.notices = [];
+    state.reimbursements = [];
+    state.tickets = [];
+    state.nationalHolidays = DEFAULT_NATIONAL_HOLIDAYS;
+    state.celebrationDays = DEFAULT_CELEBRATION_DAYS;
+    state.smsNotifications = [];
+
+    triggerBackendSync();
+  }
   // Load or seed data
   if (!localStorage.getItem('ems_employees')) {
     localStorage.setItem('ems_employees', JSON.stringify(DEFAULT_EMPLOYEES));
@@ -923,15 +1193,7 @@ async function init() {
           updated = true;
         }
       });
-      // Ensure Suyash Patil (AIRG00008) is set to "Lab Setup" department and "Tech Lead" role
-      const suyash = stored.find(emp => emp.id === 'AIRG00008');
-      if (suyash) {
-        if (suyash.dept !== 'Lab Setup' || suyash.role !== 'Tech Lead') {
-          suyash.dept = 'Lab Setup';
-          suyash.role = 'Tech Lead';
-          updated = true;
-        }
-      }
+
 
       if (updated) {
         localStorage.setItem('ems_employees', JSON.stringify(stored));
@@ -955,8 +1217,7 @@ async function init() {
           p.techLeadId = defaultProj.techLeadId;
         } else {
           // Default mappings based on department
-          if (p.dept === 'Engineering') p.techLeadId = 'EMP007'; // Elena Rostova
-          else if (p.dept === 'EdTech') p.techLeadId = 'EMP007'; // Elena Rostova
+          if (p.dept === 'AI' || p.dept === 'Electronics' || p.dept === 'Lab Setup') p.techLeadId = 'AIRG00008'; // Suyash Patil
           else p.techLeadId = '';
         }
         updatedProjs = true;
@@ -1059,7 +1320,7 @@ async function init() {
   state.chats = JSON.parse(localStorage.getItem('ems_chats'));
   state.announcements = JSON.parse(localStorage.getItem('ems_announcements'));
   state.notices = JSON.parse(localStorage.getItem('ems_notices'));
-  
+
   // Clean local bloated items
   let noticesUpdated = cleanBloatedAttachments(state.notices);
   if (noticesUpdated) {
@@ -1132,7 +1393,7 @@ async function init() {
       if (emp.role === 'Admin') basic = 90000;
       else if (emp.role === 'HR') basic = 60000;
       else if (emp.role === 'Tech Lead') basic = 75000;
-      
+
       emp.salary = {
         basic: basic,
         hra: Math.round(basic * 0.40),
@@ -1219,7 +1480,7 @@ async function init() {
   if (ticketReplyForm) {
     ticketReplyForm.addEventListener('submit', handleTicketReplyFormSubmit);
   }
-  
+
   // Bind ticket filters
   const ticketSearch = document.getElementById('ticket-agent-search');
   if (ticketSearch) ticketSearch.addEventListener('input', renderTickets);
@@ -1240,7 +1501,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function(compressed) {
+          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
             currentUploadedEmployeePhoto = compressed;
             photoImg.src = compressed;
             photoPreview.style.display = 'block';
@@ -1265,7 +1526,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function(compressed) {
+          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
             currentUploadedAadharFile = compressed;
             aadharImg.src = compressed;
             aadharPreview.style.display = 'block';
@@ -1290,7 +1551,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function(compressed) {
+          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
             currentUploadedPanFile = compressed;
             panImg.src = compressed;
             panPreview.style.display = 'block';
@@ -1315,7 +1576,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function(compressed) {
+          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
             currentUploadedBankAccFile = compressed;
             bankAccImg.src = compressed;
             bankAccPreview.style.display = 'block';
@@ -1340,7 +1601,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function(compressed) {
+          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
             currentUploadedBankIfscFile = compressed;
             bankIfscImg.src = compressed;
             bankIfscPreview.style.display = 'block';
@@ -1632,8 +1893,7 @@ async function init() {
         // Update Profile Widget
         updateHeaderAvatar(selectedEmp);
         document.getElementById('header-name').textContent = selectedEmp.name;
-        const displayDept = (selectedEmp.dept && selectedEmp.dept.toLowerCase() !== 'engineering') ? selectedEmp.dept : '';
-        document.getElementById('header-role').textContent = displayDept || selectedEmp.role;
+        document.getElementById('header-role').textContent = selectedEmp.role;
         const activeMenuItem = document.querySelector('.menu-item.active');
         const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
         if (currentView === 'communications') {
@@ -1739,7 +1999,7 @@ async function init() {
         showToast('Notifications are blocked by browser settings. Please reset site permissions in Chrome.', 'warning');
         return;
       }
-      
+
       showToast('Requesting permission...', 'info');
       try {
         const permission = await Notification.requestPermission();
@@ -1791,7 +2051,7 @@ function getEmployeeLeavesPerMonth(employeeId) {
   approvedRequests.forEach(req => {
     // Split multi-month spans day by day
     const start = new Date(req.startDate + 'T00:00:00');
-    const end   = new Date(req.endDate   + 'T00:00:00');
+    const end = new Date(req.endDate + 'T00:00:00');
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       perMonth[ym] = (perMonth[ym] || 0) + 1;
@@ -1944,7 +2204,22 @@ function setRole(role) {
     if (!matchesTargetRole(state.currentUser, 'techlead')) {
       let leadEmp = state.employees.find(emp => emp.role === 'Tech Lead');
       if (!leadEmp) {
-        leadEmp = { id: 'EMP007', name: 'Elena Rostova', dept: 'Engineering', email: 'elena.r@company.com', role: 'Tech Lead', balance: 18, absent: 2, avatar: 'ER' };
+        leadEmp = {
+          id: "AIRG00008",
+          name: "Suyash Patil",
+          dept: "AI, Electronics, Lab Setup",
+          email: "suyash@gurujiair.com",
+          role: "Tech Lead",
+          balance: 20,
+          absent: 0,
+          avatar: "SP",
+          aadhar: "5250 6200 0000",
+          pan: "SUYAS1234P",
+          bankAcc: "98765432101",
+          bankIfsc: "HDFC0000123",
+          password: "suyash",
+          phone: "+91 99752 59016"
+        };
         state.employees.push(leadEmp);
         localStorage.setItem('ems_employees', JSON.stringify(state.employees));
         populateEmployeeDropdown();
@@ -1962,7 +2237,22 @@ function setRole(role) {
     if (!matchesTargetRole(state.currentUser, 'admin')) {
       let adminEmp = state.employees.find(emp => emp.role === 'Admin');
       if (!adminEmp) {
-        adminEmp = { id: 'EMP011', name: 'Admin', dept: 'Administration', email: 'admin@company.com', role: 'Admin', balance: 20, absent: 0, avatar: 'AD', aadhar: '1111 2222 3333', pan: 'ADMIR1111B', bankAcc: '1234567890', bankIfsc: 'ICIC0000456 (ICICI)', password: 'password123' };
+        adminEmp = {
+          id: "AIRG00001",
+          name: "Pratap Pawar",
+          dept: "AI, Electronics, Lab Setup, Instructor",
+          email: "pratap@gurujiair.com",
+          role: "Admin",
+          balance: 20,
+          absent: 0,
+          avatar: "PP",
+          aadhar: "1234 5700 0000",
+          pan: "PRATA1234P",
+          bankAcc: "98765432112",
+          bankIfsc: "HDFC0000123",
+          password: "pratap",
+          phone: "+91 98607 79172"
+        };
         state.employees.push(adminEmp);
         localStorage.setItem('ems_employees', JSON.stringify(state.employees));
         populateEmployeeDropdown();
@@ -1978,7 +2268,29 @@ function setRole(role) {
 
     // Only switch current user if not already matching the hr role
     if (!matchesTargetRole(state.currentUser, 'hr')) {
-      state.currentUser = state.employees.find(emp => emp.role === 'HR'); // Default HR (Sarah)
+      let hrEmp = state.employees.find(emp => emp.role === 'HR');
+      if (!hrEmp) {
+        hrEmp = {
+          id: "AIRG00042",
+          name: "Shravani Khanvilkar",
+          dept: "AI, Electronics, Lab Setup, Instructor",
+          email: "shravani@gurujiair.com",
+          role: "HR",
+          balance: 20,
+          absent: 0,
+          avatar: "SK",
+          aadhar: "2275 9500 0000",
+          pan: "SHRAV1234K",
+          bankAcc: "98765432115",
+          bankIfsc: "HDFC0000123",
+          password: "shravani",
+          phone: "+91 84465 31087"
+        };
+        state.employees.push(hrEmp);
+        localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+        populateEmployeeDropdown();
+      }
+      state.currentUser = hrEmp;
     }
 
     if (empSelectorWrapper) {
@@ -1989,8 +2301,7 @@ function setRole(role) {
   // Update Profile Widget
   updateHeaderAvatar(state.currentUser);
   document.getElementById('header-name').textContent = state.currentUser.name;
-  const displayDept = (state.currentUser.dept && state.currentUser.dept.toLowerCase() !== 'engineering') ? state.currentUser.dept : '';
-  document.getElementById('header-role').textContent = displayDept || state.currentUser.role;
+  document.getElementById('header-role').textContent = state.currentUser.role;
 
   // Sync dropdown selection if in employee mode
   if (role === 'employee' && empSelect) {
@@ -2189,18 +2500,18 @@ function switchView(viewName) {
     if (payslipsContainer) payslipsContainer.style.display = 'none';
     if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
     if (ticketsContainer) ticketsContainer.style.display = 'none';
-    
+
     const isLeadOrHR = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin');
     const leaveSubTabs = document.getElementById('leave-sub-tabs');
 
     if (viewName === 'dashboard' || viewName === 'requests') {
       if (isLeadOrHR) {
         if (leaveSubTabs) leaveSubTabs.style.display = 'flex';
-        
+
         if (!state.activeLeaveSubTab) {
           state.activeLeaveSubTab = 'approve';
         }
-        
+
         const applyTab = document.getElementById('leave-tab-apply');
         const approveTab = document.getElementById('leave-tab-approve');
         if (applyTab && approveTab) {
@@ -2368,7 +2679,9 @@ function renderHRDashboard(viewName = 'dashboard') {
       const applicantRole = applicant ? (applicant.role.toLowerCase() === 'tech lead' ? 'techlead' : applicant.role.toLowerCase() === 'hr' ? 'hr' : applicant.role.toLowerCase() === 'admin' ? 'admin' : 'employee') : 'employee';
       // Tech Lead only views history of their own department employees (no other leads/HR, except themselves)
       if (req.employeeId !== state.currentUser.id) {
-        if (req.dept !== state.currentUser.dept || applicantRole !== 'employee') return false;
+        const leadDepts = (state.currentUser.dept || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+        const reqDept = (req.dept || '').trim().toLowerCase();
+        if (!leadDepts.includes(reqDept) || applicantRole !== 'employee') return false;
       }
     } else if (state.currentRole === 'hr') {
       // HR views history of employees and techleads (no other HR for privacy unless admin, except their own)
@@ -2385,7 +2698,12 @@ function renderHRDashboard(viewName = 'dashboard') {
 
   // Calculate HR stats cards (clamped by department for Tech Leads)
   const deptEmployees = state.currentRole === 'techlead'
-    ? state.employees.filter(emp => emp.dept === state.currentUser.dept)
+    ? state.employees.filter(emp => {
+      if (!emp.dept) return false;
+      const leadDepts = (state.currentUser.dept || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+      const empDepts = emp.dept.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+      return empDepts.some(d => leadDepts.includes(d));
+    })
     : state.employees;
 
   const totalEmployeesCount = deptEmployees.length;
@@ -2403,7 +2721,9 @@ function renderHRDashboard(viewName = 'dashboard') {
     } else if (state.currentRole === 'hr') {
       return applicantRole === 'employee' || applicantRole === 'techlead';
     } else if (state.currentRole === 'techlead') {
-      return applicantRole === 'employee' && req.dept === state.currentUser.dept;
+      const leadDepts = (state.currentUser.dept || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+      const reqDept = (req.dept || '').trim().toLowerCase();
+      return applicantRole === 'employee' && leadDepts.includes(reqDept);
     }
     return false;
   }).length;
@@ -2574,7 +2894,12 @@ function renderEmployeeRoster() {
 
   let employeesToRender = state.employees;
   if (state.currentRole === 'techlead' && state.currentUser) {
-    employeesToRender = state.employees.filter(emp => emp.dept === state.currentUser.dept);
+    employeesToRender = state.employees.filter(emp => {
+      if (!emp.dept) return false;
+      const leadDepts = (state.currentUser.dept || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+      const empDepts = emp.dept.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+      return empDepts.some(d => leadDepts.includes(d));
+    });
   }
 
   employeesToRender.forEach(emp => {
@@ -2591,17 +2916,17 @@ function renderEmployeeRoster() {
 
     // Calculate performance stars from daily reports (sum of starRating values)
     const points = state.dailyReports.filter(r => r.employeeId === emp.id && r.starRating > 0).reduce((sum, r) => sum + (r.starRating || 0), 0);
-    
+
     const isExpanded = state.expandedEmployeeIds && state.expandedEmployeeIds.has(emp.id);
     const isSystemAdmin = emp.role.toLowerCase() === 'admin' || emp.email.toLowerCase() === 'admin@company.com';
 
     const item = document.createElement('div');
     item.className = `roster-item ${isExpanded ? 'expanded' : ''}`;
-    
-    const avatarHTML = emp.photo 
-      ? `<img src="${emp.photo}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />` 
+
+    const avatarHTML = emp.photo
+      ? `<img src="${emp.photo}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`
       : emp.avatar;
-    
+
     const avatarStyle = emp.photo ? 'style="border-radius: 50%; overflow: hidden; background: none; padding: 0;"' : '';
 
     const headerHTML = `
@@ -2644,15 +2969,15 @@ function renderEmployeeRoster() {
     let detailsHTML = '';
     if (isExpanded) {
       const aadharContent = emp.aadhar
-        ? (emp.aadhar.startsWith('data:') 
-           ? `<img src="${emp.aadhar}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.aadhar}')" title="Click to view full Aadhar card image" />`
-           : `<strong style="color: var(--text-primary); font-family: monospace; font-size: 0.9rem;">${emp.aadhar}</strong>`)
+        ? (emp.aadhar.startsWith('data:')
+          ? `<img src="${emp.aadhar}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.aadhar}')" title="Click to view full Aadhar card image" />`
+          : `<strong style="color: var(--text-primary); font-family: monospace; font-size: 0.9rem;">${emp.aadhar}</strong>`)
         : '<span class="text-muted">Not Provided</span>';
 
       const panContent = emp.pan
-        ? (emp.pan.startsWith('data:') 
-           ? `<img src="${emp.pan}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.pan}')" title="Click to view full PAN card image" />`
-           : `<strong style="color: var(--text-primary); font-family: monospace; font-size: 0.9rem; text-transform: uppercase;">${emp.pan}</strong>`)
+        ? (emp.pan.startsWith('data:')
+          ? `<img src="${emp.pan}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.pan}')" title="Click to view full PAN card image" />`
+          : `<strong style="color: var(--text-primary); font-family: monospace; font-size: 0.9rem; text-transform: uppercase;">${emp.pan}</strong>`)
         : '<span class="text-muted">Not Provided</span>';
 
       let deleteBtnHTML = '';
@@ -2674,7 +2999,7 @@ function renderEmployeeRoster() {
         const bankAccImg = emp.bankAcc && emp.bankAcc.startsWith('data:')
           ? `<img src="${emp.bankAcc}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.bankAcc}')" title="Click to view full Bank Account document image" />`
           : (emp.bankAcc ? `<strong style="color: var(--text-primary); font-family: monospace; font-size: 0.9rem;">${emp.bankAcc}</strong>` : '<span class="text-muted">Not Provided</span>');
-        
+
         const bankIfscImg = emp.bankIfsc && emp.bankIfsc.startsWith('data:')
           ? `<img src="${emp.bankIfsc}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.bankIfsc}')" title="Click to view full IFSC document image" />`
           : (emp.bankIfsc ? `<strong style="color: var(--text-primary); font-family: monospace; font-size: 0.9rem;">${emp.bankIfsc}</strong>` : '<span class="text-muted">Not Provided</span>');
@@ -3061,8 +3386,7 @@ function handleProfileSave(e) {
   if (nameHeader) nameHeader.textContent = emp.name;
   const roleHeader = document.getElementById('header-role');
   if (roleHeader) {
-    const displayDept = (emp.dept && emp.dept.toLowerCase() !== 'engineering') ? emp.dept : '';
-    roleHeader.textContent = displayDept || emp.role;
+    roleHeader.textContent = emp.role;
   }
 
   // Refresh current view to reflect changes (e.g. employee roster)
@@ -3143,8 +3467,8 @@ function showToast(message, type = 'success') {
   const icon = type === 'success' ?
     `<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>` :
     type === 'warning' ?
-    `<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>` :
-    `<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>`;
+      `<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>` :
+      `<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>`;
 
   toast.innerHTML = `
     <div class="toast-icon">${icon}</div>
@@ -3222,14 +3546,14 @@ function renderEmployeeTasksAndProjects() {
   const grid = document.getElementById('emp-projects-grid');
   if (grid) {
     grid.innerHTML = '';
-    
+
     // Get unique project IDs where user has at least one assigned task
     const userTaskProjectIds = state.tasks
       .filter(t => t.assigneeId === user.id && t.projectId)
       .map(t => t.projectId);
 
-    const activeProjects = state.projects.filter(p => 
-      p.dept === user.dept || userTaskProjectIds.includes(p.id)
+    const activeProjects = state.projects.filter(p =>
+      p.dept === user.dept || userTaskProjectIds.includes(p.id) || (p.employeeIds && p.employeeIds.includes(user.id))
     );
 
     if (activeProjects.length === 0) {
@@ -3450,7 +3774,7 @@ function cycleTaskStatus(taskId) {
     task.status = prevStatus;
     return;
   }
-  
+
   if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin') {
     renderHRTasksAndProjects();
   } else {
@@ -3475,7 +3799,7 @@ function toggleTaskCompletion(taskId) {
     task.status = prevStatus;
     return;
   }
-  
+
   if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin') {
     renderHRTasksAndProjects();
   } else {
@@ -3493,7 +3817,7 @@ function createProjectCard(proj, isMyProject) {
   card.style.display = 'grid';
   card.style.gridTemplateColumns = '1.1fr 1.1fr 1fr';
   card.style.gap = '20px';
-  
+
   // Find current Tech Lead name
   const leadEmp = state.employees.find(e => e.id === proj.techLeadId);
   const leadName = leadEmp ? leadEmp.name : 'Unassigned';
@@ -3512,6 +3836,55 @@ function createProjectCard(proj, isMyProject) {
 
   // Determine if editable by the project lead (the assigned Tech Lead) or Admin
   const isEditable = (state.currentUser.id === proj.techLeadId || state.currentUser.role === 'Admin');
+
+  // Get all employees associated with the project
+  const taskAssigneeIds = state.tasks.filter(t => t.projectId === proj.id).map(t => t.assigneeId);
+  const deptEmployees = state.employees.filter(e => e.dept === proj.dept);
+  const externalEmployees = state.employees.filter(e => e.dept !== proj.dept && ((proj.employeeIds && proj.employeeIds.includes(e.id)) || taskAssigneeIds.includes(e.id)));
+  const allProjectEmployees = [...deptEmployees, ...externalEmployees];
+
+  const uniqueEmployees = [];
+  const seenIds = new Set();
+  allProjectEmployees.forEach(emp => {
+    if (!seenIds.has(emp.id)) {
+      seenIds.add(emp.id);
+      uniqueEmployees.push(emp);
+    }
+  });
+
+  // Sort: Tech Lead first, then department employees, then external contributors
+  uniqueEmployees.sort((a, b) => {
+    if (a.id === proj.techLeadId) return -1;
+    if (b.id === proj.techLeadId) return 1;
+    if (a.dept === proj.dept && b.dept !== proj.dept) return -1;
+    if (a.dept !== proj.dept && b.dept === proj.dept) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  const memberChipsHtml = uniqueEmployees.map(emp => {
+    const isLead = emp.id === proj.techLeadId;
+    const isExternal = emp.dept !== proj.dept;
+    const canRemove = isEditable && !isLead && isExternal;
+
+    return `
+      <div class="project-member-chip" style="display: inline-flex; align-items: center; gap: 6px; background: ${isLead ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-secondary)'}; border: 1px solid ${isLead ? 'rgba(239, 68, 68, 0.25)' : 'var(--border-color)'}; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; color: ${isLead ? 'var(--primary)' : 'var(--text-primary)'};">
+        <div class="avatar-xs" style="width: 20px; height: 20px; border-radius: 50%; background: ${isLead ? 'var(--primary-gradient)' : 'var(--bg-tertiary)'}; color: ${isLead ? 'white' : 'var(--text-secondary)'}; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; border: 1px solid var(--border-color);">
+          ${emp.avatar || emp.name.split(' ').map(n => n[0]).join('')}
+        </div>
+        <span>${emp.name}</span>
+        <span style="font-size: 0.65rem; color: var(--text-muted);">${isLead ? '(Tech Lead)' : isExternal ? `(${emp.dept} - Contributor)` : '(Dept)'}</span>
+        ${canRemove ? `
+          <button onclick="removeEmployeeFromProject('${proj.id}', '${emp.id}')" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.85rem; font-weight: bold; margin-left: 4px; padding: 0; line-height: 1;" title="Remove from project">&times;</button>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  // Dropdown for non-member employees
+  const nonMemberEmployees = state.employees.filter(e => !seenIds.has(e.id));
+  const existingEmployeesToAssignOptions = nonMemberEmployees.map(emp => {
+    return `<option value="${emp.id}">${emp.name} (${emp.dept} - ${emp.role})</option>`;
+  }).join('');
 
   // Determine if deletable by Admin, HR, or the assigned Tech Lead of the project
   const canDelete = (
@@ -3656,17 +4029,17 @@ function createProjectCard(proj, isMyProject) {
     filesHtml = `
       <div style="display: flex; gap: 8px; flex-wrap: wrap; max-height: 100px; overflow-y: auto; padding-right: 4px; width: 100%;">
         ${filesList.map((file, idx) => {
-          const isString = typeof file === 'string';
-          const fileData = isString ? file : (file.data || '');
-          const fileName = isString ? 'Image' : (file.name || 'File');
-          const fileType = isString ? 'image/png' : (file.type || '');
-          
-          const isImage = fileType.startsWith('image/') || 
-                          /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName) ||
-                          fileData.startsWith('data:image/');
-          
-          if (isImage) {
-            return `
+      const isString = typeof file === 'string';
+      const fileData = isString ? file : (file.data || '');
+      const fileName = isString ? 'Image' : (file.name || 'File');
+      const fileType = isString ? 'image/png' : (file.type || '');
+
+      const isImage = fileType.startsWith('image/') ||
+        /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName) ||
+        fileData.startsWith('data:image/');
+
+      if (isImage) {
+        return `
               <div style="position: relative; display: inline-block; width: 56px; height: 56px; flex-shrink: 0;">
                 <img src="${fileData}" onclick="openFullImageViewModal('${proj.id}', ${idx}, event)" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer; transition: transform 0.2s;" class="hover-scale-img" title="${fileName}">
                 ${isEditable ? `
@@ -3674,8 +4047,8 @@ function createProjectCard(proj, isMyProject) {
                 ` : ''}
               </div>
             `;
-          } else {
-            return `
+      } else {
+        return `
               <div style="position: relative; display: flex; align-items: center; gap: 4px; background-color: var(--bg-secondary); padding: 4px 6px; border-radius: 6px; border: 1px solid var(--border-color); max-width: 100%; overflow: hidden; box-sizing: border-box; flex-shrink: 0;">
                 <a href="${fileData}" download="${fileName}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.68rem; color: var(--primary); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; max-width: calc(100% - 14px);" title="Download ${fileName}">
                   <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="flex-shrink:0;">
@@ -3688,8 +4061,8 @@ function createProjectCard(proj, isMyProject) {
                 ` : ''}
               </div>
             `;
-          }
-        }).join('')}
+      }
+    }).join('')}
       </div>
     `;
   }
@@ -3713,10 +4086,115 @@ function createProjectCard(proj, isMyProject) {
     ${leftColHtml}
     ${middleColHtml}
     ${rightColHtml}
+    <div class="project-members-section" style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 8px; width: 100%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; width: 100%;">
+        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin: 0; display: flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          Project & Department Team
+        </h4>
+        ${isEditable ? `
+          <button type="button" class="btn btn-secondary btn-xs" onclick="toggleAddMemberForm('${proj.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 600;">
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Add Member
+          </button>
+        ` : ''}
+      </div>
+
+      <div class="project-members-list" style="display: flex; flex-wrap: wrap; gap: 8px; width: 100%;">
+        ${memberChipsHtml || '<div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">No members found.</div>'}
+      </div>
+
+      ${isEditable ? `
+        <div id="add-member-form-${proj.id}" class="add-member-form-container" style="display: none; align-items: center; gap: 12px; margin-top: 16px; background: var(--bg-secondary); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); flex-wrap: wrap; width: 100%; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px;">
+            <select id="select-add-member-${proj.id}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-tertiary); color: var(--text-primary); outline: none; cursor: pointer; flex: 1;">
+              <option value="" disabled selected>Select existing employee to assign...</option>
+              ${existingEmployeesToAssignOptions || '<option value="" disabled>No other employees available</option>'}
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="assignEmployeeToProject('${proj.id}')" style="padding: 6px 16px; font-size: 0.8rem; font-weight: 600; white-space: nowrap;">Assign to Project</button>
+          </div>
+          <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">or</span>
+          <button class="btn btn-secondary btn-sm" onclick="openCreateEmployeeForProject('${proj.id}', '${proj.dept}')" style="padding: 6px 16px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Register New Employee to Dept
+          </button>
+        </div>
+      ` : ''}
+    </div>
   `;
 
   return card;
 }
+
+function toggleAddMemberForm(projId, event) {
+  if (event) event.preventDefault();
+  const form = document.getElementById(`add-member-form-${projId}`);
+  if (form) {
+    form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+  }
+}
+window.toggleAddMemberForm = toggleAddMemberForm;
+
+function assignEmployeeToProject(projId) {
+  const select = document.getElementById(`select-add-member-${projId}`);
+  if (!select) return;
+  const empId = select.value;
+  if (!empId) {
+    showToast('Please select an employee to assign.', 'error');
+    return;
+  }
+  const proj = state.projects.find(p => p.id === projId);
+  if (!proj) return;
+  if (!proj.employeeIds) {
+    proj.employeeIds = [];
+  }
+  if (!proj.employeeIds.includes(empId)) {
+    proj.employeeIds.push(empId);
+  }
+  localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+
+  // Refresh views
+  const activeMenuItem = document.querySelector('.menu-item.active');
+  const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
+  switchView(currentView);
+  showToast('Employee assigned to project successfully!', 'success');
+}
+window.assignEmployeeToProject = assignEmployeeToProject;
+
+function removeEmployeeFromProject(projId, empId) {
+  const proj = state.projects.find(p => p.id === projId);
+  if (!proj) return;
+  if (proj.employeeIds) {
+    proj.employeeIds = proj.employeeIds.filter(id => id !== empId);
+  }
+  localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+
+  // Refresh views
+  const activeMenuItem = document.querySelector('.menu-item.active');
+  const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
+  switchView(currentView);
+  showToast('Employee removed from project.', 'success');
+}
+window.removeEmployeeFromProject = removeEmployeeFromProject;
+
+function openCreateEmployeeForProject(projId, dept) {
+  autoAssignToProjectAfterCreate = { projId, dept };
+  openCreateEmployeeModal();
+
+  // Pre-fill and lock department selection
+  const deptSelect = document.getElementById('new-emp-dept');
+  if (deptSelect) {
+    deptSelect.value = dept;
+    deptSelect.disabled = true;
+  }
+}
+window.openCreateEmployeeForProject = openCreateEmployeeForProject;
 
 
 
@@ -3731,7 +4209,7 @@ function updateProjectProgress(projId, val) {
     }
     localStorage.setItem('ems_projects', JSON.stringify(state.projects));
     showToast(`Project "${proj.name}" progress updated to ${val}%`, 'success');
-    
+
     // Refresh grids to update status badges and values
     if (state.currentRole === 'hr' || state.currentRole === 'admin') {
       renderHRTasksAndProjects();
@@ -4144,8 +4622,59 @@ function openCreateProjectModal() {
   currentUploadedProjectFiles.length = 0;
   const projectPreview = document.getElementById('project-files-preview');
   if (projectPreview) projectPreview.innerHTML = '';
-  
-  populateTechLeadOptions();
+
+  const projectDeptSelect = document.getElementById('project-dept');
+  const projectTechLeadSelect = document.getElementById('project-tech-lead');
+
+  if (state.currentRole === 'techlead') {
+    // Restrict department selection to tech lead's department(s)
+    if (projectDeptSelect) {
+      projectDeptSelect.innerHTML = '';
+      const userDepts = (state.currentUser.dept || '')
+        .split(',')
+        .map(d => d.trim())
+        .filter(Boolean);
+      userDepts.forEach(dept => {
+        const opt = document.createElement('option');
+        opt.value = dept;
+        opt.textContent = dept;
+        projectDeptSelect.appendChild(opt);
+      });
+      if (userDepts.length > 0) {
+        projectDeptSelect.value = userDepts[0];
+      }
+      projectDeptSelect.disabled = userDepts.length <= 1;
+    }
+
+    // Restrict tech lead option to the current user
+    if (projectTechLeadSelect) {
+      projectTechLeadSelect.innerHTML = '';
+      const opt = document.createElement('option');
+      opt.value = state.currentUser.id;
+      opt.textContent = `${state.currentUser.name} (${state.currentUser.dept} - ${state.currentUser.role})`;
+      projectTechLeadSelect.appendChild(opt);
+      projectTechLeadSelect.value = state.currentUser.id;
+      projectTechLeadSelect.disabled = true;
+    }
+  } else {
+    // Admin or HR: fully enable and populate both
+    if (projectDeptSelect) {
+      projectDeptSelect.innerHTML = '<option value="" disabled selected>Select department...</option>';
+      state.departments.forEach(dept => {
+        const opt = document.createElement('option');
+        opt.value = dept;
+        opt.textContent = dept;
+        projectDeptSelect.appendChild(opt);
+      });
+      projectDeptSelect.disabled = false;
+    }
+
+    if (projectTechLeadSelect) {
+      populateTechLeadOptions();
+      projectTechLeadSelect.disabled = false;
+    }
+  }
+
   document.getElementById('project-modal-overlay').classList.add('active');
 }
 
@@ -4427,12 +4956,17 @@ function handleDeptCreationSubmit(e) {
   showToast(`Department "${name}" created successfully!`, 'success');
 }
 
+let autoAssignToProjectAfterCreate = null;
+
 // Employee creation modal triggers
 function openCreateEmployeeModal() {
-  if (!document.body.classList.contains('auth-view') && state.currentRole !== 'admin') {
-    showToast('Access denied: Only Administrators can add employees inside the portal.', 'error');
+  if (!document.body.classList.contains('auth-view') && state.currentRole !== 'admin' && state.currentRole !== 'techlead') {
+    showToast('Access denied: Only Administrators and Tech Leads can add employees inside the portal.', 'error');
     return;
   }
+
+  const deptSelect = document.getElementById('new-emp-dept');
+  if (deptSelect) deptSelect.disabled = false;
 
   document.getElementById('employee-creation-form').reset();
   currentUploadedEmployeePhoto = null;
@@ -4501,7 +5035,10 @@ function handleEmployeeCreationSubmit(e) {
   const name = document.getElementById('new-emp-name').value.trim();
   const email = document.getElementById('new-emp-email').value.trim();
   const deptEl = document.getElementById('new-emp-dept');
-  const dept = deptEl ? deptEl.value : 'Engineering';
+  let dept = deptEl ? deptEl.value : 'AI';
+  if (autoAssignToProjectAfterCreate) {
+    dept = autoAssignToProjectAfterCreate.dept;
+  }
   const roleEl = document.getElementById('new-emp-role');
   const role = roleEl ? roleEl.value : 'Employee';
   const balanceEl = document.getElementById('new-emp-balance');
@@ -4578,6 +5115,19 @@ function handleEmployeeCreationSubmit(e) {
   // Re-populate all dropdown switchers and modal option lists
   populateEmployeeDropdown();
   populateTaskModalOptions();
+
+  if (autoAssignToProjectAfterCreate) {
+    const { projId } = autoAssignToProjectAfterCreate;
+    const proj = state.projects.find(p => p.id === projId);
+    if (proj) {
+      if (!proj.employeeIds) proj.employeeIds = [];
+      if (!proj.employeeIds.includes(newEmp.id)) {
+        proj.employeeIds.push(newEmp.id);
+      }
+      localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+    }
+    autoAssignToProjectAfterCreate = null;
+  }
 
   hideEmployeeModal();
 
@@ -4661,13 +5211,13 @@ function openCreateEmpTaskModal() {
   const projSelect = document.getElementById('emp-task-project-select');
   if (projSelect) {
     projSelect.innerHTML = '<option value="personal">Personal / Non-Project</option>';
-    
+
     // Get unique project IDs where user has at least one assigned task
     const userTaskProjectIds = state.tasks
       .filter(t => t.assigneeId === state.currentUser.id && t.projectId)
       .map(t => t.projectId);
 
-    const activeProjects = state.projects.filter(p => 
+    const activeProjects = state.projects.filter(p =>
       p.dept === state.currentUser.dept || userTaskProjectIds.includes(p.id)
     );
 
@@ -4747,14 +5297,14 @@ function getUnreadChatCount(key) {
   if (!state.currentUser || !state.chats) return 0;
   const readChats = JSON.parse(localStorage.getItem(`ems_read_chats_${state.currentUser.id}`) || '{}');
   const lastReadTime = readChats[key];
-  
+
   let messages = [];
   if (key === 'group') {
     messages = state.chats.filter(m => m.receiverId === 'group' && m.senderId !== state.currentUser.id);
   } else {
     messages = state.chats.filter(m => m.senderId === key && m.receiverId === state.currentUser.id);
   }
-  
+
   if (!lastReadTime) {
     return messages.length;
   }
@@ -4763,17 +5313,17 @@ function getUnreadChatCount(key) {
 
 function getUnreadChatsCount() {
   if (!state.currentUser || !state.chats) return { group: 0, direct: 0, total: 0 };
-  
+
   // 1. Group chat count
   let unreadGroup = getUnreadChatCount('group');
-  
+
   // 2. Direct chats count
   let unreadDirect = 0;
   const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id);
   otherEmployees.forEach(emp => {
     unreadDirect += getUnreadChatCount(emp.id);
   });
-  
+
   return {
     group: unreadGroup,
     direct: unreadDirect,
@@ -4784,16 +5334,16 @@ function getUnreadChatsCount() {
 function getUnreadReportsCount() {
   if (!state.currentUser) return 0;
   const isHRorAdmin = state.currentRole === 'hr' || state.currentRole === 'admin';
-  
+
   if (isHRorAdmin) {
     // Pending reviews count (reports with empty remarks)
     return (state.dailyReports || []).filter(r => !r.remarks || r.remarks.trim() === '').length;
   } else {
     // Count of reviewed reports not yet read by employee
     const readReports = JSON.parse(localStorage.getItem(`ems_read_reports_${state.currentUser.id}`) || '[]');
-    const myReviewedReports = (state.dailyReports || []).filter(r => 
-      r.employeeId === state.currentUser.id && 
-      r.remarks && 
+    const myReviewedReports = (state.dailyReports || []).filter(r =>
+      r.employeeId === state.currentUser.id &&
+      r.remarks &&
       r.remarks.trim() !== ''
     );
     return myReviewedReports.filter(r => !readReports.includes(r.id)).length;
@@ -4803,15 +5353,15 @@ function getUnreadReportsCount() {
 function getUnreadRequestsCount() {
   if (!state.currentUser) return 0;
   const isHRorAdmin = state.currentRole === 'hr' || state.currentRole === 'admin';
-  
+
   if (isHRorAdmin) {
     // Pending leave requests count
     return (state.requests || []).filter(r => r.status === 'pending').length;
   } else {
     // Count of approved/rejected requests not yet read by employee
     const readRequests = JSON.parse(localStorage.getItem(`ems_read_requests_${state.currentUser.id}`) || '[]');
-    const myResolvedRequests = (state.requests || []).filter(r => 
-      r.employeeId === state.currentUser.id && 
+    const myResolvedRequests = (state.requests || []).filter(r =>
+      r.employeeId === state.currentUser.id &&
       r.status !== 'pending'
     );
     return myResolvedRequests.filter(r => !readRequests.includes(r.id)).length;
@@ -5214,7 +5764,7 @@ function handleChatFileSelected(input) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = function (e) {
     const base64Data = e.target.result;
     const newMsg = {
       id: `MSG${String(state.chats.length + 1).padStart(3, '0')}`,
@@ -5524,10 +6074,10 @@ function populateNoticeEmployeeCheckboxes() {
     const item = document.createElement('label');
     item.className = 'employee-checkbox-item';
     item.dataset.name = emp.name.toLowerCase();
-    item.dataset.dept = (emp.dept || 'Engineering').toLowerCase();
+    item.dataset.dept = (emp.dept || 'AI').toLowerCase();
     item.innerHTML = `
       <input type="checkbox" value="${emp.id}">
-      <span>${emp.name} (${emp.dept || 'Engineering'} - ${emp.role})</span>
+      <span>${emp.name} (${emp.dept || 'AI'} - ${emp.role})</span>
     `;
     container.appendChild(item);
   });
@@ -6247,7 +6797,7 @@ function renderHRReports() {
                   <div style="display: inline-flex; align-items: center; gap: 6px;">
                     <label style="font-size: 0.7rem; font-weight: 600; color: var(--text-secondary);">⭐ Rating:</label>
                     <select onchange="setReportStarRating('${report.id}', parseInt(this.value), event)" style="padding: 2px 6px; font-size: 0.75rem; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; min-width: 55px;">
-                      ${[0,1,2,3,4,5,6,7,8,9,10].map(v => `<option value="${v}" ${report.starRating === v ? 'selected' : ''}>${v}/10</option>`).join('')}
+                      ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v => `<option value="${v}" ${report.starRating === v ? 'selected' : ''}>${v}/10</option>`).join('')}
                     </select>
                   </div>
                   ` : ''}
@@ -6271,7 +6821,7 @@ function renderHRReports() {
               <div style="display: inline-flex; align-items: center; gap: 6px;">
                 <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary);">⭐ Rating:</label>
                 <select onchange="setReportStarRating('${report.id}', parseInt(this.value), event)" style="padding: 3px 8px; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; min-width: 60px;">
-                  ${[0,1,2,3,4,5,6,7,8,9,10].map(v => `<option value="${v}" ${report.starRating === v ? 'selected' : ''}>${v}/10</option>`).join('')}
+                  ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v => `<option value="${v}" ${report.starRating === v ? 'selected' : ''}>${v}/10</option>`).join('')}
                 </select>
               </div>
               ` : ''}
@@ -6442,7 +6992,7 @@ function setReportStarRating(reportId, rating, event) {
 
   if (clampedRating > 0) {
     showToast(`Awarded ${clampedRating}/10 stars to daily report!`, 'success');
-    
+
     // Trigger SMS notification for report's owner
     const targetEmp = state.employees.find(emp => emp.id === report.employeeId);
     if (targetEmp && targetEmp.phone) {
@@ -6564,7 +7114,7 @@ function renderPayslips() {
 
   const isHRorAdmin = state.currentRole === 'hr' || state.currentRole === 'admin';
   const adminControls = document.getElementById('payslip-admin-controls');
-  
+
   if (isHRorAdmin) {
     if (adminControls) adminControls.style.display = 'flex';
     populateSalaryEmployeeSelect();
@@ -6593,7 +7143,7 @@ function renderPayslips() {
   const selectedMonth = monthSelect ? monthSelect.value : '2026-06';
 
   const salary = getEmployeeSalaryForMonth(targetEmp, selectedMonth);
-  
+
   // Calculate Expense Reimbursement (approved claims for this employee in the selected month)
   const approvedReimbSum = state.reimbursements
     .filter(r => r.employeeId === targetEmp.id && r.status === 'approved' && r.date.startsWith(selectedMonth))
@@ -6644,7 +7194,7 @@ function renderPayslips() {
       </div>
       <div>
         <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Department</span>
-        <strong style="color: var(--text-primary); font-size: 0.95rem;">${targetEmp.dept || 'Engineering'}</strong>
+        <strong style="color: var(--text-primary); font-size: 0.95rem;">${targetEmp.dept || 'AI'}</strong>
       </div>
       <div>
         <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Designation</span>
@@ -6748,7 +7298,7 @@ function printPayslip() {
     showToast('Popup blocker! Allow popups to print.', 'error');
     return;
   }
-  
+
   printWindow.document.write(`
     <html>
       <head>
@@ -6816,7 +7366,7 @@ function populateSalaryEmployeeSelect() {
   } else {
     select.value = state.employees[0].id;
   }
-  
+
   // Set the dataset attribute to check if initialized, and load details
   if (!select.dataset.initialized) {
     select.dataset.initialized = 'true';
@@ -6901,10 +7451,10 @@ function renderReimbursements() {
         tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-title">No reimbursement claims yet</div><p>Submit a new claim using the form on the left.</p></div></td></tr>`;
       } else {
         // Sort newest first
-        myClaims.sort((a,b) => new Date(b.submittedAt || b.date) - new Date(a.submittedAt || a.date));
+        myClaims.sort((a, b) => new Date(b.submittedAt || b.date) - new Date(a.submittedAt || a.date));
         myClaims.forEach(claim => {
           const tr = document.createElement('tr');
-          
+
           let attachmentsHTML = 'None';
           if (claim.attachments && claim.attachments.length > 0) {
             attachmentsHTML = claim.attachments.map(att => `
@@ -6941,7 +7491,7 @@ function renderReimbursements() {
       if (pendingClaims.length === 0) {
         queueTbody.innerHTML = `<tr><td colspan="8"><div class="empty-state" style="padding: 24px;"><div class="empty-state-title">No pending claims</div><p>All reimbursement requests have been processed.</p></div></td></tr>`;
       } else {
-        pendingClaims.sort((a,b) => new Date(b.submittedAt || b.date) - new Date(a.submittedAt || a.date));
+        pendingClaims.sort((a, b) => new Date(b.submittedAt || b.date) - new Date(a.submittedAt || a.date));
         pendingClaims.forEach(claim => {
           const tr = document.createElement('tr');
 
@@ -6984,7 +7534,7 @@ function renderReimbursements() {
     const archiveTbody = document.getElementById('hr-reimbursements-all-tbody');
     if (archiveTbody) {
       archiveTbody.innerHTML = '';
-      
+
       const searchQ = (document.getElementById('hr-reimbursement-search').value || '').toLowerCase();
       const filterType = document.getElementById('filter-reimbursement-type').value;
       const filterStatus = document.getElementById('filter-reimbursement-status').value;
@@ -6999,7 +7549,7 @@ function renderReimbursements() {
       if (filtered.length === 0) {
         archiveTbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-state-title">No matching claims found</div><p>Adjust your search query or filter settings.</p></div></td></tr>`;
       } else {
-        filtered.sort((a,b) => new Date(b.submittedAt || b.date) - new Date(a.submittedAt || a.date));
+        filtered.sort((a, b) => new Date(b.submittedAt || b.date) - new Date(a.submittedAt || a.date));
         filtered.forEach(claim => {
           const tr = document.createElement('tr');
 
@@ -7062,7 +7612,7 @@ function handleReimbursementSubmit(e) {
   };
 
   state.reimbursements.push(newClaim);
-  
+
   try {
     localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
   } catch (err) {
@@ -7091,12 +7641,12 @@ function handleReimbursementFilesChange(e) {
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const reader = new FileReader();
-    reader.onload = function(event) {
+    reader.onload = function (event) {
       const base64Data = event.target.result;
-      
+
       // Let's compress if it is an image to fit storage quota nicely
       if (file.type.startsWith('image/')) {
-        compressImage(base64Data, 200, 200, 0.7, function(compressed) {
+        compressImage(base64Data, 200, 200, 0.7, function (compressed) {
           const fileObj = { name: file.name, type: file.type, data: compressed };
           currentAttachedReimbursementFiles.push(fileObj);
           renderReimbursementFilePreview(fileObj, preview, currentAttachedReimbursementFiles);
@@ -7186,9 +7736,9 @@ function approveReimbursement(id) {
   claim.status = 'approved';
   claim.comment = comment || 'Approved by HR';
   localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
-  
+
   showToast(`Approved claim of $${claim.amount} for ${claim.employeeName}!`, 'success');
-  
+
   // Refresh views
   renderReimbursements();
   // Also refresh payslips in case we approved a reimbursement for the current month!
@@ -7287,7 +7837,7 @@ function handleLoginSubmit(e) {
 }
 
 function quickLogin(identifier) {
-  const found = state.employees.find(emp => 
+  const found = state.employees.find(emp =>
     emp.id === identifier || emp.email.toLowerCase() === identifier.toLowerCase()
   );
   if (found) {
@@ -7307,8 +7857,7 @@ function loginAsUser(user) {
   if (headerName) headerName.textContent = user.name;
   const headerRole = document.getElementById('header-role');
   if (headerRole) {
-    const displayDept = (user.dept && user.dept.toLowerCase() !== 'engineering') ? user.dept : '';
-    headerRole.textContent = displayDept || user.role;
+    headerRole.textContent = user.role;
   }
 
   // Bind role UI display
@@ -7341,14 +7890,14 @@ window.logout = logout;
 
 function renderTickets() {
   const isAgent = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin');
-  
+
   const subTabs = document.getElementById('ticket-sub-tabs');
   const empSection = document.getElementById('ticket-employee-section');
   const agentSection = document.getElementById('ticket-agent-section');
 
   if (isAgent) {
     if (subTabs) subTabs.style.display = 'flex';
-    
+
     // Update sub-tabs active classes
     const myTab = document.getElementById('ticket-tab-my');
     const manageTab = document.getElementById('ticket-tab-manage');
@@ -7434,7 +7983,7 @@ function renderEmployeeTickets() {
 // Helper to escape HTML tags
 function escapeHTML(str) {
   if (!str) return '';
-  return str.replace(/[&<>'"]/g, 
+  return str.replace(/[&<>'"]/g,
     tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
   );
 }
@@ -7451,14 +8000,20 @@ function getPriorityBadgeClass(priority) {
 }
 
 function getDepartmentTechLead(dept) {
-  const tl = state.employees.find(emp => emp.role === 'Tech Lead' && emp.dept === dept);
+  const tl = state.employees.find(emp =>
+    emp.role === 'Tech Lead' &&
+    emp.dept &&
+    emp.dept.split(',').map(d => d.trim()).includes(dept)
+  );
   if (tl) return tl;
-  const defaults = {
-    'Engineering': { id: 'EMP007', name: 'Elena Rostova' },
-    'EdTech': { id: 'EMP007', name: 'Elena Rostova' },
-    'Lab Setup': { id: 'AIRG00008', name: 'Suyash Patil' }
-  };
-  return defaults[dept] || { id: 'EMP011', name: 'Admin' };
+
+  if (dept === 'AI' || dept === 'Lab Setup' || dept === 'Instructor') {
+    return { id: 'AIRG00008', name: 'Suyash Patil' };
+  }
+  if (dept === 'Electronics') {
+    return { id: 'AIRG00010', name: 'Prasad Shelke' };
+  }
+  return { id: 'AIRG00001', name: 'Pratap Pawar' };
 }
 
 // 2. Agent / Admin view rendering
@@ -7495,10 +8050,10 @@ function renderAgentTickets() {
 
   // Apply search and dropdown filters
   let filtered = visibleTickets.filter(t => {
-    const matchesSearch = t.id.toLowerCase().includes(query) || 
-                          t.employeeName.toLowerCase().includes(query) || 
-                          t.title.toLowerCase().includes(query) ||
-                          t.description.toLowerCase().includes(query);
+    const matchesSearch = t.id.toLowerCase().includes(query) ||
+      t.employeeName.toLowerCase().includes(query) ||
+      t.title.toLowerCase().includes(query) ||
+      t.description.toLowerCase().includes(query);
     const matchesCat = (filterCat === 'all' || t.category === filterCat);
     const matchesPrio = (filterPrio === 'all' || t.priority === filterPrio);
     const matchesStatus = (filterStatus === 'all' || t.status === filterStatus);
@@ -7572,19 +8127,19 @@ function handleTicketFormSubmit(e) {
 
   if (category === 'Technical Blocker') {
     targetRole = 'techlead';
-    targetDept = state.currentUser.dept || 'Engineering';
+    targetDept = state.currentUser.dept ? state.currentUser.dept.split(',')[0].trim() : 'AI';
     const tl = getDepartmentTechLead(targetDept);
     assignedToId = tl.id;
     assignedToName = tl.name;
   } else if (category === 'HR Support') {
     targetRole = 'hr';
-    assignedToId = 'EMP001';
-    assignedToName = 'Sarah Jenkins';
+    assignedToId = 'AIRG00042';
+    assignedToName = 'Shravani Khanvilkar';
   } else {
     // IT Support, Facilities, Finance
     targetRole = 'admin';
-    assignedToId = 'EMP011';
-    assignedToName = 'Admin';
+    assignedToId = 'AIRG00001';
+    assignedToName = 'Pratap Pawar';
   }
 
   // Find next sequential ID
@@ -7621,10 +8176,10 @@ function handleTicketFormSubmit(e) {
   };
 
   state.tickets.push(newTicket);
-  
+
   if (safeSaveTickets()) {
     showToast(`Ticket ${newId} raised successfully!`, 'success');
-    
+
     // Reset form
     titleInput.value = '';
     catInput.selectedIndex = 0;
@@ -7633,7 +8188,7 @@ function handleTicketFormSubmit(e) {
     currentAttachedImagesTicket = [];
     const previewContainer = document.getElementById('ticket-attachments-preview');
     if (previewContainer) previewContainer.innerHTML = '';
-    
+
     renderTickets();
   }
 }
@@ -7647,7 +8202,7 @@ function safeSaveTickets() {
     showToast('Storage quota exceeded! Attached images may be too large.', 'error');
     try {
       state.tickets = JSON.parse(localStorage.getItem('ems_tickets') || '[]');
-    } catch (e) {}
+    } catch (e) { }
     return false;
   }
 }
@@ -7664,11 +8219,11 @@ function openTicketDetails(ticketId) {
   document.getElementById('ticket-modal-id').textContent = ticket.id;
   document.getElementById('ticket-modal-creator').textContent = ticket.employeeName;
   document.getElementById('ticket-modal-category').textContent = ticket.category;
-  
+
   const priorityBadge = document.getElementById('ticket-modal-priority');
   priorityBadge.textContent = ticket.priority;
   priorityBadge.className = `badge ${getPriorityBadgeClass(ticket.priority)}`;
-  
+
   const statusBadge = document.getElementById('ticket-modal-status');
   statusBadge.textContent = ticket.status;
   statusBadge.className = `badge badge-${ticket.status.toLowerCase().replace(' ', '')}`;
@@ -7729,8 +8284,8 @@ function renderTicketChatMessages(ticket) {
     const isMe = (reply.senderId === state.currentUser.id);
     const chatBubbleClass = isMe ? 'chat-message chat-message-sent' : 'chat-message chat-message-received';
     const formattedTime = new Date(reply.timestamp).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
-    
-    const bubbleStyle = isMe 
+
+    const bubbleStyle = isMe
       ? 'align-self: flex-end; background: var(--primary); color: #fff; border-radius: 12px 12px 0 12px; padding: 8px 12px; max-width: 80%;'
       : 'align-self: flex-start; background: var(--bg-tertiary); color: var(--text-primary); border-radius: 12px 12px 12px 0; padding: 8px 12px; max-width: 80%; border: 1px solid var(--border-color);';
 
@@ -7760,11 +8315,11 @@ function handleTicketAssignSelf() {
 
   ticket.assignedToId = state.currentUser.id;
   ticket.assignedToName = state.currentUser.name;
-  
+
   if (ticket.status === 'Open') {
     ticket.status = 'In Progress';
   }
-  
+
   ticket.updatedAt = new Date().toISOString();
 
   if (safeSaveTickets()) {
@@ -7859,7 +8414,7 @@ async function sendSMSNotification(to, message) {
 function triggerSMSNotification(phone, message, recipientName = '') {
   sendSMSNotification(phone, message);
   const newSMS = {
-    id: `SMS${Date.now()}_${Math.floor(Math.random()*1000)}`,
+    id: `SMS${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     recipientPhone: phone,
     recipientName: recipientName,
     message: message,
@@ -7944,11 +8499,11 @@ function triggerChatNotification(msg) {
 async function setupPushSubscription(employeeId) {
   try {
     const registration = await navigator.serviceWorker.ready;
-    
+
     let permission = Notification.permission;
     // We update the UI button state
     updateNotificationButtonState();
-    
+
     if (permission !== 'granted') {
       console.log('Push notifications permission not granted (current status: ' + permission + ').');
       return;
@@ -7987,12 +8542,12 @@ function updateNotificationButtonState() {
   const btn = document.getElementById('notification-toggle-btn');
   const dot = document.getElementById('notification-badge-dot');
   if (!btn) return;
-  
+
   if (!('Notification' in window)) {
     btn.style.display = 'none';
     return;
   }
-  
+
   if (Notification.permission === 'granted') {
     btn.title = 'Notifications Enabled';
     btn.style.color = '#10b981'; // Green color for success

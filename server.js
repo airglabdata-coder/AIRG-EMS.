@@ -195,27 +195,20 @@ async function clearAndSeedMongoDB() {
 
     console.log('Seeding default Admin user into MongoDB Atlas...');
     const adminUser = {
-      id: "EMP011",
-      name: "Admin",
-      dept: "Administration",
-      email: "admin@company.com",
+      id: "AIRG00001",
+      name: "Pratap Pawar",
+      dept: "AI, Electronics, Lab Setup, Instructor",
+      email: "pratap@gurujiair.com",
       role: "Admin",
       balance: 20,
       absent: 0,
-      avatar: "AD",
-      aadhar: "1111 2222 3333",
-      pan: "ADMIR1111B",
-      bankAcc: "1234567890",
-      bankIfsc: "ICIC0000456 (ICICI)",
-      password: "password123",
-      salary: {
-        basic: 90000,
-        hra: 36000,
-        other: 13500,
-        profTax: 200,
-        lwpDays: 0
-      },
-      phone: "+91 87654 01235"
+      avatar: "PP",
+      aadhar: "1234 5700 0000",
+      pan: "PRATA1234P",
+      bankAcc: "98765432112",
+      bankIfsc: "HDFC0000123",
+      password: "pratap",
+      phone: "+91 98607 79172"
     };
     await models.Employee.create(adminUser);
 
