@@ -106,6 +106,7 @@
       <p style="font-size:0.7rem; margin-top:4px;">Employee Management System</p>
     </div>
   </aside>
+  <div id="sidebar-overlay"></div>
 
   <!-- Main Content Shell -->
   <main id="main-content">
@@ -791,7 +792,15 @@
             <!-- 1. Chat Room Window Pane -->
             <div id="comm-chat-pane" class="chat-pane" style="display: flex;">
               <div class="comm-header">
-                <div class="comm-header-title" id="chat-header-title">General Group Chat</div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <button id="comm-back-btn" class="btn btn-secondary btn-sm comm-back-btn" style="display: none; padding: 6px 12px;">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Back
+                  </button>
+                  <div class="comm-header-title" id="chat-header-title">General Group Chat</div>
+                </div>
               </div>
               <div class="chat-messages" id="chat-messages-container">
                 <!-- Dynamically populated styled message bubbles -->
@@ -818,7 +827,15 @@
             <div id="comm-announcements-pane" class="feed-pane" style="display: none;">
               <div class="comm-header"
                 style="border-bottom: none; padding: 0 0 16px 0; display: flex; align-items: center; justify-content: space-between;">
-                <div class="comm-header-title" style="font-size: 1.2rem;">Company Announcements</div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <button class="btn btn-secondary btn-sm comm-back-btn" style="display: none; padding: 6px 12px;">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Back
+                  </button>
+                  <div class="comm-header-title" style="font-size: 1.2rem;">Company Announcements</div>
+                </div>
                 <button class="btn btn-primary btn-sm" id="btn-post-announcement" onclick="openPostAnnouncementModal()"
                   style="display: none;">+ Post Announcement</button>
               </div>
@@ -831,7 +848,14 @@
             <div id="comm-notices-pane" class="feed-pane" style="display: none;">
               <div class="comm-header"
                 style="border-bottom: none; padding: 0 0 16px 0; display: flex; align-items: center; justify-content: space-between;">
-                <div class="comm-header-title" id="notice-header-label" style="font-size: 1.2rem;">Targeted Notices
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <button class="btn btn-secondary btn-sm comm-back-btn" style="display: none; padding: 6px 12px;">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Back
+                  </button>
+                  <div class="comm-header-title" id="notice-header-label" style="font-size: 1.2rem;">Targeted Notices</div>
                 </div>
                 <button class="btn btn-primary btn-sm" id="btn-create-notice" onclick="openSendNoticeModal()"
                   style="display: none;">+ Send Targeted Notice</button>
@@ -845,7 +869,15 @@
             <div id="comm-sms-pane" class="feed-pane" style="display: none;">
               <div class="comm-header"
                 style="border-bottom: none; padding: 0 0 16px 0; display: flex; align-items: center; justify-content: space-between;">
-                <div class="comm-header-title" style="font-size: 1.2rem;">Outgoing SMS Notifications Log</div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <button class="btn btn-secondary btn-sm comm-back-btn" style="display: none; padding: 6px 12px;">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Back
+                  </button>
+                  <div class="comm-header-title" style="font-size: 1.2rem;">Outgoing SMS Notifications Log</div>
+                </div>
                 <button class="btn btn-secondary btn-sm" onclick="clearSMSLogs()"
                   style="border-color: rgba(239, 68, 68, 0.2); color: var(--danger); background-color: rgba(239, 68, 68, 0.05); padding: 6px 12px; font-weight: 600;">Clear
                   Logs</button>
@@ -2285,6 +2317,7 @@
   </div>
 
   <script src="app.js"></script>
+  <script src="mobile.js"></script>
 </body>
 
 </html>

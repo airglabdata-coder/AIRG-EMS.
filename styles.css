@@ -2088,3 +2088,339 @@ body:not(.auth-view) .employee-select-container {
 [data-theme="dark"] .profile-photo-edit-badge {
   border-color: var(--bg-secondary);
 }
+
+/* ==========================================================================
+   MOBILE & RESPONSIVE LAYOUT OVERRIDES (EMS PORTAL)
+   ========================================================================== */
+
+/* Responsive project cards grid minmax fix */
+.project-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 550px), 1fr)) !important;
+}
+
+/* Sidebar Overlay Backdrop styles */
+#sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 99;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+}
+
+#sidebar-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (max-width: 1024px) {
+  /* Let comm-layout scroll and size nicely */
+  .comm-layout {
+    flex-direction: column;
+    min-height: calc(100vh - 180px);
+  }
+}
+
+@media (max-width: 768px) {
+  /* --- Sidebar Navigation Overlay Toggle --- */
+  #sidebar {
+    transform: translateX(-100%);
+    width: 280px;
+    z-index: 100;
+  }
+  
+  #sidebar.open {
+    transform: translateX(0);
+    box-shadow: 5px 0 25px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Hamburger close button transform */
+  .hamburger.open span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+  }
+  .hamburger.open span:nth-child(2) {
+    opacity: 0;
+  }
+  .hamburger.open span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+
+  /* --- Main Content Shell Adjustments --- */
+  #main-content {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  /* --- Responsive Header Stack --- */
+  header {
+    height: auto !important;
+    min-height: 80px;
+    padding: 16px !important;
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    gap: 16px !important;
+    align-items: center;
+  }
+
+  header > div:first-child {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header-controls {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    width: 100%;
+    justify-content: space-between !important;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+  }
+
+  /* Hide profile text details on small headers, show only avatar */
+  .profile-widget {
+    padding: 2px;
+  }
+  .profile-info {
+    display: none !important;
+  }
+
+  /* Role switcher layout wrap */
+  .role-switcher-container {
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+  }
+  .role-btn {
+    flex: 1 0 auto;
+    padding: 8px 12px;
+    text-align: center;
+  }
+
+  /* "Acting As" Dropdown adjustments */
+  .employee-select-container {
+    width: 100%;
+    justify-content: space-between;
+  }
+  #active-employee-select {
+    flex: 1;
+    max-width: calc(100% - 100px);
+  }
+
+  /* --- Layout & Stats Grid spacing --- */
+  .container {
+    padding: 16px !important;
+    gap: 20px !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .stats-card {
+    padding: 16px !important;
+  }
+
+  .dashboard-row {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  /* Form layouts formatting */
+  .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .form-group.full-width {
+    grid-column: span 1 !important;
+  }
+
+  /* --- Card-Based Responsive Tables --- */
+  .table-container {
+    border: none !important;
+  }
+
+  table, thead, tbody, th, td, tr {
+    display: block !important;
+  }
+
+  thead {
+    display: none !important; /* Hide visual header labels */
+  }
+
+  tbody tr {
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--border-radius-sm) !important;
+    padding: 16px !important;
+    margin-bottom: 16px !important;
+    background-color: var(--bg-secondary) !important;
+    box-shadow: var(--card-shadow) !important;
+  }
+
+  tbody tr:hover td {
+    background-color: transparent !important;
+  }
+
+  td {
+    border: none !important;
+    border-bottom: 1px dashed var(--border-color) !important;
+    position: relative !important;
+    padding: 10px 0 10px 45% !important;
+    text-align: right !important;
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    word-break: break-word !important;
+  }
+
+  td:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Inject mobile cell data labels */
+  td::before {
+    content: attr(data-label) !important;
+    position: absolute !important;
+    left: 0 !important;
+    width: 40% !important;
+    font-weight: 700 !important;
+    color: var(--text-muted) !important;
+    font-size: 0.75rem !important;
+    text-transform: uppercase !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Special td layout for actions/buttons */
+  td.actions-td, td:has(button), td:has(.btn) {
+    justify-content: flex-end !important;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* --- Mobile Navigation for Communications Hub --- */
+  .comm-layout {
+    position: relative;
+    overflow: hidden;
+    height: calc(100vh - 180px) !important;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+  }
+
+  .comm-sidebar {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column;
+    height: 100%;
+    transition: transform var(--transition-normal);
+  }
+
+  .comm-main {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100% !important;
+    z-index: 10;
+    transform: translateX(100%);
+    transition: transform var(--transition-normal);
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Slide in main chat panel when show-chat active */
+  .comm-layout.show-chat .comm-sidebar {
+    transform: translateX(-100%);
+  }
+
+  .comm-layout.show-chat .comm-main {
+    transform: translateX(0);
+  }
+
+  .comm-header {
+    padding: 12px 16px !important;
+  }
+
+  .comm-back-btn {
+    display: inline-flex !important;
+    align-items: center;
+  }
+
+  /* --- Interactive Calendar view --- */
+  .calendar-container {
+    padding: 16px !important;
+  }
+
+  .calendar-day-cell, .calendar-padding-cell {
+    min-height: 70px !important;
+    padding: 4px !important;
+  }
+
+  .calendar-day-number {
+    font-size: 0.75rem !important;
+  }
+
+  /* --- Modals Overlay adjustments --- */
+  .modal {
+    width: 95% !important;
+    max-height: 95vh !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* --- Calendar View Dots Optimization --- */
+  .calendar-day-cell, .calendar-padding-cell {
+    min-height: 55px !important;
+  }
+  
+  .calendar-events-container {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 3px !important;
+  }
+
+  .calendar-event {
+    text-indent: -9999px !important;
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    margin: 1px !important;
+    min-height: 8px !important;
+    max-height: 8px !important;
+    display: inline-block !important;
+    border: none !important;
+    overflow: hidden !important;
+  }
+
+  .calendar-legend {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .balance-ring-container {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 12px !important;
+  }
+}
