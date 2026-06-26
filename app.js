@@ -1526,7 +1526,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
             currentUploadedAadharFile = compressed;
             aadharImg.src = compressed;
             aadharPreview.style.display = 'block';
@@ -1551,7 +1551,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
             currentUploadedPanFile = compressed;
             panImg.src = compressed;
             panPreview.style.display = 'block';
@@ -1576,7 +1576,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
             currentUploadedBankAccFile = compressed;
             bankAccImg.src = compressed;
             bankAccPreview.style.display = 'block';
@@ -1601,7 +1601,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
             currentUploadedBankIfscFile = compressed;
             bankIfscImg.src = compressed;
             bankIfscPreview.style.display = 'block';
@@ -1782,7 +1782,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
             tempAadharFile = compressed;
             const imgEl = document.getElementById('profile-aadhar-preview-img');
             const placeholderEl = document.getElementById('profile-aadhar-placeholder');
@@ -1805,7 +1805,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
             tempPanFile = compressed;
             const imgEl = document.getElementById('profile-pan-preview-img');
             const placeholderEl = document.getElementById('profile-pan-placeholder');
@@ -1828,7 +1828,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
             tempBankAccFile = compressed;
             const imgEl = document.getElementById('profile-bank-acc-preview-img');
             const placeholderEl = document.getElementById('profile-bank-acc-placeholder');
@@ -1851,7 +1851,7 @@ async function init() {
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = function (event) {
-          compressImage(event.target.result, 150, 150, 0.7, function (compressed) {
+          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
             tempBankIfscFile = compressed;
             const imgEl = document.getElementById('profile-bank-ifsc-preview-img');
             const placeholderEl = document.getElementById('profile-bank-ifsc-placeholder');
@@ -2968,17 +2968,13 @@ function renderEmployeeRoster() {
 
     let detailsHTML = '';
     if (isExpanded) {
-      const aadharContent = emp.aadhar
-        ? (emp.aadhar.startsWith('data:')
-          ? `<img src="${emp.aadhar}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.aadhar}')" title="Click to view full Aadhar card image" />`
-          : `<strong style="color: var(--text-primary); font-family: monospace; font-size: 0.9rem;">${emp.aadhar}</strong>`)
-        : '<span class="text-muted">Not Provided</span>';
+      const aadharContent = (emp.aadhar && emp.aadhar.startsWith('data:'))
+        ? `<img src="${emp.aadhar}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.aadhar}')" title="Click to view full Aadhar card image" />`
+        : '<span class="text-muted" style="font-weight: 500;">Not Uploaded</span>';
 
-      const panContent = emp.pan
-        ? (emp.pan.startsWith('data:')
-          ? `<img src="${emp.pan}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.pan}')" title="Click to view full PAN card image" />`
-          : `<strong style="color: var(--text-primary); font-family: monospace; font-size: 0.9rem; text-transform: uppercase;">${emp.pan}</strong>`)
-        : '<span class="text-muted">Not Provided</span>';
+      const panContent = (emp.pan && emp.pan.startsWith('data:'))
+        ? `<img src="${emp.pan}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.pan}')" title="Click to view full PAN card image" />`
+        : '<span class="text-muted" style="font-weight: 500;">Not Uploaded</span>';
 
       let deleteBtnHTML = '';
       if ((state.currentRole === 'hr' || state.currentRole === 'admin') && emp.id !== state.currentUser.id) {
@@ -2994,38 +2990,26 @@ function renderEmployeeRoster() {
         `;
       }
 
-      let bankDetailsHTML = '';
-      if ((emp.bankAcc && emp.bankAcc.startsWith('data:')) || (emp.bankIfsc && emp.bankIfsc.startsWith('data:'))) {
-        const bankAccImg = emp.bankAcc && emp.bankAcc.startsWith('data:')
-          ? `<img src="${emp.bankAcc}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.bankAcc}')" title="Click to view full Bank Account document image" />`
-          : (emp.bankAcc ? `<strong style="color: var(--text-primary); font-family: monospace; font-size: 0.9rem;">${emp.bankAcc}</strong>` : '<span class="text-muted">Not Provided</span>');
+      const bankAccImg = (emp.bankAcc && emp.bankAcc.startsWith('data:'))
+        ? `<img src="${emp.bankAcc}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.bankAcc}')" title="Click to view full Bank Account document image" />`
+        : '<span class="text-muted" style="font-weight: 500;">Not Uploaded</span>';
 
-        const bankIfscImg = emp.bankIfsc && emp.bankIfsc.startsWith('data:')
-          ? `<img src="${emp.bankIfsc}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.bankIfsc}')" title="Click to view full IFSC document image" />`
-          : (emp.bankIfsc ? `<strong style="color: var(--text-primary); font-family: monospace; font-size: 0.9rem;">${emp.bankIfsc}</strong>` : '<span class="text-muted">Not Provided</span>');
+      const bankIfscImg = (emp.bankIfsc && emp.bankIfsc.startsWith('data:'))
+        ? `<img src="${emp.bankIfsc}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.bankIfsc}')" title="Click to view full IFSC document image" />`
+        : '<span class="text-muted" style="font-weight: 500;">Not Uploaded</span>';
 
-        bankDetailsHTML = `
-          <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-            <div style="flex: 1; min-width: 150px;">
-              <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Bank Account Doc</span>
-              <div style="margin-top: 4px;">${bankAccImg}</div>
-            </div>
-            <div style="flex: 1; min-width: 150px;">
-              <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">IFSC & Bank Name Doc</span>
-              <div style="margin-top: 4px;">${bankIfscImg}</div>
-            </div>
+      const bankDetailsHTML = `
+        <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+          <div style="flex: 1; min-width: 150px;">
+            <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Bank Account Doc</span>
+            <div style="margin-top: 4px;">${bankAccImg}</div>
           </div>
-        `;
-      } else {
-        bankDetailsHTML = `
-          <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-            <div style="flex: 1; min-width: 150px;">
-              <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Bank Details</span>
-              <strong style="color: var(--text-primary);">Account: ${emp.bankAcc || 'Not Provided'} | IFSC: ${emp.bankIfsc || 'Not Provided'}</strong>
-            </div>
+          <div style="flex: 1; min-width: 150px;">
+            <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">IFSC & Bank Name Doc</span>
+            <div style="margin-top: 4px;">${bankIfscImg}</div>
           </div>
-        `;
-      }
+        </div>
+      `;
 
       if (state.currentRole === 'techlead') {
         detailsHTML = `
@@ -3322,7 +3306,7 @@ function showProfileModal() {
     const imgEl = document.getElementById(imgId);
     const placeholderEl = document.getElementById(placeholderId);
     if (imgEl && placeholderEl) {
-      if (base64 && base64.trim() !== '') {
+      if (base64 && base64.startsWith('data:')) {
         imgEl.src = base64;
         imgEl.style.display = 'block';
         placeholderEl.style.display = 'none';
@@ -3330,6 +3314,12 @@ function showProfileModal() {
         imgEl.src = '';
         imgEl.style.display = 'none';
         placeholderEl.style.display = 'flex';
+        
+        // Update placeholder span text to "Not Uploaded"
+        const span = placeholderEl.querySelector('span');
+        if (span) {
+          span.textContent = 'Not Uploaded';
+        }
       }
     }
   };

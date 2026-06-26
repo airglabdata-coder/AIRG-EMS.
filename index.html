@@ -2102,13 +2102,13 @@
 
   <!-- Full Image Viewer Modal Overlay -->
   <div id="image-viewer-modal-overlay" class="modal-overlay" onclick="hideImageViewerModal()"
-    style="z-index: 1000; background: rgba(0,0,0,0.85);">
+    style="z-index: 99999 !important; background: rgba(0,0,0,0.85);">
     <div onclick="event.stopPropagation()"
-      style="position: relative; max-width: 90%; max-height: 90%; background: none; box-shadow: none; display: flex; align-items: center; justify-content: center; margin: auto;">
+      style="position: relative; max-width: 95%; max-height: 95%; background: none; box-shadow: none; display: flex; align-items: center; justify-content: center; margin: auto;">
       <button type="button" onclick="hideImageViewerModal()"
-        style="position: absolute; top: -40px; right: 0; background:none; border:none; color:#fff; cursor:pointer; font-size:2.5rem;">&times;</button>
+        style="position: absolute; top: -45px; right: 0; background:none; border:none; color:#fff; cursor:pointer; font-size:2.5rem; z-index: 100000;">&times;</button>
       <img id="full-viewer-image" src=""
-        style="max-width: 100%; max-height: 85vh; border-radius: var(--border-radius); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: var(--modal-shadow); object-fit: contain;">
+        style="width: 90vw; max-width: 800px; height: auto; max-height: 80vh; border-radius: var(--border-radius); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: var(--modal-shadow); object-fit: contain;">
     </div>
   </div>
 
@@ -2318,6 +2318,45 @@
 
   <script src="app.js"></script>
   <script src="mobile.js"></script>
+  <script>
+    // Failsafe inline mobile layout toggler
+    (function() {
+      const closeSidebar = () => {
+        const sidebar = document.getElementById('sidebar');
+        const hamburger = document.getElementById('mobile-hamburger');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (sidebar) sidebar.classList.remove('open');
+        if (hamburger) hamburger.classList.remove('open');
+        if (overlay) overlay.classList.remove('open');
+      };
+      const openSidebar = () => {
+        const sidebar = document.getElementById('sidebar');
+        const hamburger = document.getElementById('mobile-hamburger');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (sidebar) sidebar.classList.add('open');
+        if (hamburger) hamburger.classList.add('open');
+        if (overlay) overlay.classList.add('open');
+      };
+
+      // Failsafe click handler on body
+      document.body.addEventListener('click', function(e) {
+        const hb = e.target.closest('#mobile-hamburger');
+        if (hb) {
+          e.stopPropagation();
+          const sidebar = document.getElementById('sidebar');
+          if (sidebar && sidebar.classList.contains('open')) {
+            closeSidebar();
+          } else {
+            openSidebar();
+          }
+          return;
+        }
+        if (e.target.closest('#sidebar-overlay') || e.target.closest('.menu-item')) {
+          closeSidebar();
+        }
+      });
+    })();
+  </script>
 </body>
 
 </html>
