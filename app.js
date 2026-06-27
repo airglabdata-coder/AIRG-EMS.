@@ -3627,10 +3627,8 @@ function renderEmployeeTasksAndProjects() {
   if (tbody) {
     tbody.innerHTML = '';
 
-    // Get all projects the current user is involved in (has at least one task)
-    const myProjectIds = [...new Set(
-      state.tasks.filter(t => t.assigneeId === user.id && t.projectId).map(t => t.projectId)
-    )];
+    // Get all projects the current user is involved in (either is a member, or has a task)
+    const myProjectIds = activeProjects.map(p => p.id);
 
     // Also include personal tasks (no projectId)
     const personalTasks = state.tasks.filter(t => t.assigneeId === user.id && !t.projectId);
