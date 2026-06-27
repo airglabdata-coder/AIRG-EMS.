@@ -2833,7 +2833,8 @@ function renderHRDashboard(viewName = 'dashboard') {
     } else if (state.currentRole === 'hr') {
       return applicantRole === 'employee' || applicantRole === 'techlead';
     } else if (state.currentRole === 'techlead') {
-      return applicantRole === 'employee' && req.dept === state.currentUser.dept;
+      const leadDepts = state.currentUser.dept ? state.currentUser.dept.split(',').map(d => d.trim().toLowerCase()) : [];
+      return applicantRole === 'employee' && req.dept && leadDepts.includes(req.dept.toLowerCase());
     }
     return false;
   });
@@ -3601,9 +3602,10 @@ function renderEmployeeTasksAndProjects() {
       .filter(t => t.assigneeId === user.id && t.projectId)
       .map(t => t.projectId);
 
-    const activeProjects = state.projects.filter(p =>
-      p.dept === user.dept || userTaskProjectIds.includes(p.id) || (p.employeeIds && p.employeeIds.includes(user.id))
-    );
+    const activeProjects = state.projects.filter(p => {
+      const isDeptMember = user.dept && p.dept && user.dept.split(',').map(d => d.trim().toLowerCase()).includes(p.dept.toLowerCase());
+      return isDeptMember || userTaskProjectIds.includes(p.id) || (p.employeeIds && p.employeeIds.includes(user.id));
+    });
 
     if (activeProjects.length === 0) {
       grid.innerHTML = `
@@ -3894,8 +3896,14 @@ function createProjectCard(proj, isMyProject) {
 
   // Get all employees associated with the project
   const taskAssigneeIds = state.tasks.filter(t => t.projectId === proj.id).map(t => t.assigneeId);
-  const deptEmployees = state.employees.filter(e => e.dept === proj.dept);
-  const externalEmployees = state.employees.filter(e => e.dept !== proj.dept && ((proj.employeeIds && proj.employeeIds.includes(e.id)) || taskAssigneeIds.includes(e.id)));
+  
+  const isDeptMember = (emp, deptName) => {
+    if (!emp.dept || !deptName) return false;
+    return emp.dept.split(',').map(d => d.trim().toLowerCase()).includes(deptName.toLowerCase());
+  };
+
+  const deptEmployees = state.employees.filter(e => isDeptMember(e, proj.dept));
+  const externalEmployees = state.employees.filter(e => !isDeptMember(e, proj.dept) && ((proj.employeeIds && proj.employeeIds.includes(e.id)) || taskAssigneeIds.includes(e.id)));
   const allProjectEmployees = [...deptEmployees, ...externalEmployees];
 
   const uniqueEmployees = [];
@@ -3911,14 +3919,16 @@ function createProjectCard(proj, isMyProject) {
   uniqueEmployees.sort((a, b) => {
     if (a.id === proj.techLeadId) return -1;
     if (b.id === proj.techLeadId) return 1;
-    if (a.dept === proj.dept && b.dept !== proj.dept) return -1;
-    if (a.dept !== proj.dept && b.dept === proj.dept) return 1;
+    const aIsDept = isDeptMember(a, proj.dept);
+    const bIsDept = isDeptMember(b, proj.dept);
+    if (aIsDept && !bIsDept) return -1;
+    if (!aIsDept && bIsDept) return 1;
     return a.name.localeCompare(b.name);
   });
 
   const memberChipsHtml = uniqueEmployees.map(emp => {
     const isLead = emp.id === proj.techLeadId;
-    const isExternal = emp.dept !== proj.dept;
+    const isExternal = !isDeptMember(emp, proj.dept);
     const canRemove = isEditable && !isLead && isExternal;
 
     return `
@@ -4780,8 +4790,17 @@ function handleProjectCreationSubmit(e) {
     dueDate: dueDate,
     progress: 0,
     description: description,
-    files: files
+    files: files,
+    employeeIds: []
   };
+
+  if (dept === 'Lab Setup') {
+    const namesToFind = ["dipak", "pratik", "aniket", "rohan"];
+    const autoAssignIds = state.employees
+      .filter(emp => namesToFind.some(name => emp.name.toLowerCase().includes(name)))
+      .map(emp => emp.id);
+    newProj.employeeIds = autoAssignIds;
+  }
 
   // Promote employee to Tech Lead if they aren't already a Tech Lead or Admin
   const chosenEmp = state.employees.find(emp => emp.id === techLeadId);
@@ -5284,9 +5303,10 @@ function openCreateEmpTaskModal() {
       .filter(t => t.assigneeId === state.currentUser.id && t.projectId)
       .map(t => t.projectId);
 
-    const activeProjects = state.projects.filter(p =>
-      p.dept === state.currentUser.dept || userTaskProjectIds.includes(p.id)
-    );
+    const activeProjects = state.projects.filter(p => {
+      const isDeptMember = state.currentUser.dept && p.dept && state.currentUser.dept.split(',').map(d => d.trim().toLowerCase()).includes(p.dept.toLowerCase());
+      return isDeptMember || userTaskProjectIds.includes(p.id) || (p.employeeIds && p.employeeIds.includes(state.currentUser.id));
+    });
 
     activeProjects.forEach(p => {
       const opt = document.createElement('option');
