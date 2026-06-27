@@ -1113,39 +1113,46 @@ async function init() {
 
   const CURRENT_SEED_VERSION = 'v15_credentials_v2';
   if (localStorage.getItem('ems_seed_version') !== CURRENT_SEED_VERSION) {
-    console.log('Seeding the clean v15 employee and database dataset...');
-    originalSetItem.call(localStorage, 'ems_employees', JSON.stringify(DEFAULT_EMPLOYEES));
-    originalSetItem.call(localStorage, 'ems_projects', JSON.stringify([]));
-    originalSetItem.call(localStorage, 'ems_tasks', JSON.stringify([]));
-    originalSetItem.call(localStorage, 'ems_requests', JSON.stringify([]));
-    originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(DEFAULT_DEPARTMENTS));
-    originalSetItem.call(localStorage, 'ems_chats', JSON.stringify([]));
-    originalSetItem.call(localStorage, 'ems_reports', JSON.stringify([]));
-    originalSetItem.call(localStorage, 'ems_announcements', JSON.stringify([]));
-    originalSetItem.call(localStorage, 'ems_notices', JSON.stringify([]));
-    originalSetItem.call(localStorage, 'ems_reimbursements', JSON.stringify([]));
-    originalSetItem.call(localStorage, 'ems_tickets', JSON.stringify([]));
-    originalSetItem.call(localStorage, 'ems_national_holidays', JSON.stringify(DEFAULT_NATIONAL_HOLIDAYS));
-    originalSetItem.call(localStorage, 'ems_celebration_days', JSON.stringify(DEFAULT_CELEBRATION_DAYS));
-    originalSetItem.call(localStorage, 'ems_seed_version', CURRENT_SEED_VERSION);
-    originalSetItem.call(localStorage, 'ems_notifications', JSON.stringify([]));
+    const storedEmployees = JSON.parse(localStorage.getItem('ems_employees') || '[]');
+    if (storedEmployees.length > 0) {
+      // The server database already has data, so we don't want to seed/overwrite.
+      // We just mark the seed version as current so we don't check again.
+      originalSetItem.call(localStorage, 'ems_seed_version', CURRENT_SEED_VERSION);
+    } else {
+      console.log('Seeding the clean v15 employee and database dataset...');
+      originalSetItem.call(localStorage, 'ems_employees', JSON.stringify(DEFAULT_EMPLOYEES));
+      originalSetItem.call(localStorage, 'ems_projects', JSON.stringify([]));
+      originalSetItem.call(localStorage, 'ems_tasks', JSON.stringify([]));
+      originalSetItem.call(localStorage, 'ems_requests', JSON.stringify([]));
+      originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(DEFAULT_DEPARTMENTS));
+      originalSetItem.call(localStorage, 'ems_chats', JSON.stringify([]));
+      originalSetItem.call(localStorage, 'ems_reports', JSON.stringify([]));
+      originalSetItem.call(localStorage, 'ems_announcements', JSON.stringify([]));
+      originalSetItem.call(localStorage, 'ems_notices', JSON.stringify([]));
+      originalSetItem.call(localStorage, 'ems_reimbursements', JSON.stringify([]));
+      originalSetItem.call(localStorage, 'ems_tickets', JSON.stringify([]));
+      originalSetItem.call(localStorage, 'ems_national_holidays', JSON.stringify(DEFAULT_NATIONAL_HOLIDAYS));
+      originalSetItem.call(localStorage, 'ems_celebration_days', JSON.stringify(DEFAULT_CELEBRATION_DAYS));
+      originalSetItem.call(localStorage, 'ems_seed_version', CURRENT_SEED_VERSION);
+      originalSetItem.call(localStorage, 'ems_notifications', JSON.stringify([]));
 
-    state.employees = DEFAULT_EMPLOYEES;
-    state.projects = [];
-    state.tasks = [];
-    state.requests = [];
-    state.departments = DEFAULT_DEPARTMENTS;
-    state.chats = [];
-    state.dailyReports = [];
-    state.announcements = [];
-    state.notices = [];
-    state.reimbursements = [];
-    state.tickets = [];
-    state.nationalHolidays = DEFAULT_NATIONAL_HOLIDAYS;
-    state.celebrationDays = DEFAULT_CELEBRATION_DAYS;
-    state.smsNotifications = [];
+      state.employees = DEFAULT_EMPLOYEES;
+      state.projects = [];
+      state.tasks = [];
+      state.requests = [];
+      state.departments = DEFAULT_DEPARTMENTS;
+      state.chats = [];
+      state.dailyReports = [];
+      state.announcements = [];
+      state.notices = [];
+      state.reimbursements = [];
+      state.tickets = [];
+      state.nationalHolidays = DEFAULT_NATIONAL_HOLIDAYS;
+      state.celebrationDays = DEFAULT_CELEBRATION_DAYS;
+      state.smsNotifications = [];
 
-    triggerBackendSync();
+      triggerBackendSync();
+    }
   }
   // Load or seed data
   if (!localStorage.getItem('ems_employees')) {
@@ -1162,7 +1169,7 @@ async function init() {
       updated = true;
     }
 
-    if (!stored || stored.length === 0 || !stored[0].aadhar || !stored[0].password) {
+    if (!stored || stored.length === 0) {
       stored = [...DEFAULT_EMPLOYEES];
       updated = true;
     } else {
