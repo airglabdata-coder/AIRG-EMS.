@@ -25,7 +25,7 @@ const initMobileUI = () => {
       e.stopPropagation();
       if (sidebar && sidebar.classList.contains('open')) {
         closeSidebar();
-      } else {
+      } else {   
         openSidebar();
       }
     });
