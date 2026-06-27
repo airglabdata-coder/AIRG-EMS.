@@ -58,9 +58,15 @@ function triggerBackendSync() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cleanState)
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          console.error('Server sync failed with status:', res.status);
+          return { success: false };
+        }
+        return res.json();
+      })
       .then(data => {
-        if (data.success) {
+        if (data && data.success) {
           state.lastSyncedTimestamp = data.timestamp;
         }
       })
@@ -73,9 +79,17 @@ function triggerBackendSync() {
 async function fetchCentralizedState() {
   try {
     const res = await fetch('/api/sync');
+
+    // If server returned an error, do NOT overwrite local state with stale/empty data
+    if (!res.ok) {
+      console.error('Server returned error status:', res.status, '— keeping local state intact.');
+      return;
+    }
+
     const data = await res.json();
 
-    if (data && data.state && !data.empty) {
+    // Only overwrite local state if we received valid data from MongoDB
+    if (data && data.state && !data.empty && !data.error) {
       isSyncingToServer = true;
       const s = data.state;
       if (s.employees) {
@@ -115,7 +129,7 @@ async function fetchCentralizedState() {
       isSyncingToServer = false;
     }
   } catch (err) {
-    console.error('Failed to load state from database server:', err);
+    console.error('Failed to load state from database server:', err, '— keeping local state intact.');
   }
 }
 
@@ -132,9 +146,16 @@ function initSyncPolling() {
 
     try {
       const res = await fetch('/api/sync');
+
+      // If server returned an error, skip this poll cycle — keep existing state intact
+      if (!res.ok) {
+        console.warn('Sync poll: server returned error status', res.status, '— skipping update.');
+        return;
+      }
+
       const data = await res.json();
 
-      if (data && data.state && !data.empty && data.timestamp !== state.lastSyncedTimestamp) {
+      if (data && data.state && !data.empty && !data.error && data.timestamp !== state.lastSyncedTimestamp) {
         isSyncingToServer = true;
         const s = data.state;
         state.employees = s.employees || state.employees;
@@ -857,16 +878,29 @@ function saveEditTask(taskId, event) {
 
   const prevDetails = task.details;
   const prevImages = task.images;
+  const prevDueDate = task.dueDate;
 
   const textarea = document.getElementById(`edit-details-textarea-${taskId}`);
   if (textarea) {
     task.details = textarea.value.trim();
   }
+
+  const dueDateInput = document.getElementById(`edit-due-date-${taskId}`);
+  if (dueDateInput) {
+    const newDueDate = dueDateInput.value;
+    if (task.startDate && task.startDate > newDueDate) {
+      showToast('Start Date cannot be after Due Date.', 'error');
+      return;
+    }
+    task.dueDate = newDueDate;
+  }
+
   task.images = [...state.editingTaskImages];
 
   if (!safeSaveTasks()) {
     task.details = prevDetails;
     task.images = prevImages;
+    task.dueDate = prevDueDate;
     return;
   }
 
@@ -980,25 +1014,9 @@ function renderEditPreviews(taskId) {
 // --- Storage & Image Compression Utilities ---
 function cleanBloatedEmployees(employees) {
   if (!Array.isArray(employees)) return { employees: [], changed: false };
-  let changed = false;
-  employees.forEach(emp => {
-    // If photo is a base64 string longer than 25KB, remove it
-    if (emp.photo && emp.photo.length > 25000) {
-      emp.photo = null;
-      changed = true;
-    }
-    // If Aadhar is a base64 string longer than 25KB, remove it
-    if (emp.aadhar && emp.aadhar.length > 25000) {
-      emp.aadhar = '';
-      changed = true;
-    }
-    // If PAN is a base64 string longer than 25KB, remove it
-    if (emp.pan && emp.pan.length > 25000) {
-      emp.pan = '';
-      changed = true;
-    }
-  });
-  return { employees, changed };
+  // No longer stripping photo/aadhar/pan — document images are expected
+  // to be larger than 25KB after compression to 800x800.
+  return { employees, changed: false };
 }
 
 function cleanBloatedAttachments(items) {
@@ -2026,7 +2044,41 @@ async function init() {
 function updateThemeIcon(theme) {
   const moonPath = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />`;
   const sunPath = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m2.828-9.9a5 5 0 11-7.07 7.07 5 5 0 017.07-7.07z" />`;
-  document.getElementById('theme-toggle').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">${theme === 'dark' ? sunPath : moonPath}</svg>`;
+  const toggleBtn = document.getElementById('theme-toggle');
+  if (toggleBtn) {
+    toggleBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">${theme === 'dark' ? sunPath : moonPath}</svg>`;
+  }
+  updateThemeLogos(theme);
+}
+
+function updateThemeLogos(theme) {
+  const sidebarLogo = document.getElementById('sidebar-logo');
+  const loginLogo = document.getElementById('login-logo');
+  const logoSrc = theme === 'dark' ? 'air g logo black.png' : 'logo.png';
+  if (sidebarLogo) {
+    sidebarLogo.src = logoSrc;
+    if (theme === 'dark') {
+      sidebarLogo.style.maxHeight = '95px';
+      sidebarLogo.style.marginTop = '-10px';
+      sidebarLogo.style.marginBottom = '-10px';
+    } else {
+      sidebarLogo.style.maxHeight = '50px';
+      sidebarLogo.style.marginTop = '0px';
+      sidebarLogo.style.marginBottom = '0px';
+    }
+  }
+  if (loginLogo) {
+    loginLogo.src = logoSrc;
+    if (theme === 'dark') {
+      loginLogo.style.maxHeight = '150px';
+      loginLogo.style.maxWidth = '250px';
+      loginLogo.style.marginBottom = '8px';
+    } else {
+      loginLogo.style.maxHeight = '80px';
+      loginLogo.style.maxWidth = '180px';
+      loginLogo.style.marginBottom = '16px';
+    }
+  }
 }
 
 // --- Date Utilities ---
@@ -3361,10 +3413,10 @@ function handleProfileSave(e) {
   emp.phone = document.getElementById('profile-edit-phone').value.trim() || emp.phone;
   emp.password = document.getElementById('profile-edit-password').value || emp.password || 'password123';
   emp.photo = tempProfilePhoto || emp.photo;
-  emp.aadhar = tempAadharFile || '';
-  emp.pan = tempPanFile || '';
-  emp.bankAcc = tempBankAccFile || '';
-  emp.bankIfsc = tempBankIfscFile || '';
+  emp.aadhar = tempAadharFile || emp.aadhar || '';
+  emp.pan = tempPanFile || emp.pan || '';
+  emp.bankAcc = tempBankAccFile || emp.bankAcc || '';
+  emp.bankIfsc = tempBankIfscFile || emp.bankIfsc || '';
 
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
   state.currentUser = emp;
@@ -3622,6 +3674,12 @@ function renderEmployeeTasksAndProjects() {
                         <input type="file" id="edit-images-input-${task.id}" accept="image/*" multiple style="font-size: 0.8rem; color: var(--text-primary);">
                       </div>
                       <div id="edit-images-preview-${task.id}" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;"></div>
+                      ${task.createdByEmployee ? `
+                        <div style="margin-top: 4px;">
+                          <label style="font-weight: 600; display: block; margin-bottom: 4px;">Due Date</label>
+                          <input type="date" id="edit-due-date-${task.id}" value="${task.dueDate}" style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; box-sizing: border-box;">
+                        </div>
+                      ` : ''}
                       <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
                         <button class="btn btn-secondary btn-sm" onclick="cancelEditTask(event)">Cancel</button>
                         <button class="btn btn-primary btn-sm" onclick="saveEditTask('${task.id}', event)">Save Changes</button>
@@ -4407,6 +4465,12 @@ function renderHRTasksAndProjects() {
                         <input type="file" id="edit-images-input-${task.id}" accept="image/*" multiple style="font-size: 0.8rem; color: var(--text-primary);">
                       </div>
                       <div id="edit-images-preview-${task.id}" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;"></div>
+                      ${task.createdByEmployee ? `
+                        <div style="margin-top: 4px;">
+                          <label style="font-weight: 600; display: block; margin-bottom: 4px;">Due Date</label>
+                          <input type="date" id="edit-due-date-${task.id}" value="${task.dueDate}" style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; box-sizing: border-box;">
+                        </div>
+                      ` : ''}
                       <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
                         <button class="btn btn-secondary btn-sm" onclick="cancelEditTask(event)">Cancel</button>
                         <button class="btn btn-primary btn-sm" onclick="saveEditTask('${task.id}', event)">Save Changes</button>
@@ -4512,6 +4576,12 @@ function renderHRTasksAndProjects() {
                         <input type="file" id="edit-images-input-${task.id}" accept="image/*" multiple style="font-size: 0.8rem; color: var(--text-primary);">
                       </div>
                       <div id="edit-images-preview-${task.id}" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;"></div>
+                      ${task.createdByEmployee ? `
+                        <div style="margin-top: 4px;">
+                          <label style="font-weight: 600; display: block; margin-bottom: 4px;">Due Date</label>
+                          <input type="date" id="edit-due-date-${task.id}" value="${task.dueDate}" style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; box-sizing: border-box;">
+                        </div>
+                      ` : ''}
                       <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
                         <button class="btn btn-secondary btn-sm" onclick="cancelEditTask(event)">Cancel</button>
                         <button class="btn btn-primary btn-sm" onclick="saveEditTask('${task.id}', event)">Save Changes</button>
@@ -7200,7 +7270,7 @@ function renderPayslips() {
           <thead>
             <tr>
               <th style="padding: 10px; text-align: left; background-color: var(--bg-tertiary); border-bottom: 2px solid var(--border-color);">Earnings</th>
-              <th style="padding: 10px; text-align: right; background-color: var(--bg-tertiary); border-bottom: 2px solid var(--border-color);">Amount ($)</th>
+              <th style="padding: 10px; text-align: right; background-color: var(--bg-tertiary); border-bottom: 2px solid var(--border-color);">Amount (₹)</th>
             </tr>
           </thead>
           <tbody>
@@ -7234,7 +7304,7 @@ function renderPayslips() {
           <thead>
             <tr>
               <th style="padding: 10px; text-align: left; background-color: var(--bg-tertiary); border-bottom: 2px solid var(--border-color);">Deductions</th>
-              <th style="padding: 10px; text-align: right; background-color: var(--bg-tertiary); border-bottom: 2px solid var(--border-color);">Amount ($)</th>
+              <th style="padding: 10px; text-align: right; background-color: var(--bg-tertiary); border-bottom: 2px solid var(--border-color);">Amount (₹)</th>
             </tr>
           </thead>
           <tbody>
@@ -7266,7 +7336,7 @@ function renderPayslips() {
     <!-- Net Pay Block -->
     <div style="display: flex; justify-content: space-between; align-items: center; background: var(--primary-gradient); padding: 18px 24px; border-radius: 8px; color: #fff; margin-bottom: 24px; box-shadow: var(--primary-glow);">
       <div style="font-size: 1.1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Net Take-Home Pay</div>
-      <div style="font-size: 1.8rem; font-weight: 800;">$${netPay.toLocaleString()}</div>
+      <div style="font-size: 1.8rem; font-weight: 800;">₹${netPay.toLocaleString()}</div>
     </div>
 
     <div style="display: flex; justify-content: flex-end;">
@@ -7457,7 +7527,7 @@ function renderReimbursements() {
           tr.innerHTML = `
             <td>${formatDate(claim.date)}</td>
             <td><strong>${claim.type}</strong></td>
-            <td style="font-weight:700; color:var(--primary);">$${claim.amount}</td>
+            <td style="font-weight:700; color:var(--primary);">₹${claim.amount}</td>
             <td>${claim.location}</td>
             <td title="${claim.purpose}">${truncateText(claim.purpose, 25)}</td>
             <td>${attachmentsHTML}</td>
@@ -7501,7 +7571,7 @@ function renderReimbursements() {
             </td>
             <td>${formatDate(claim.date)}</td>
             <td><strong>${claim.type}</strong></td>
-            <td style="font-weight:700; color:var(--primary);">$${claim.amount}</td>
+            <td style="font-weight:700; color:var(--primary);">₹${claim.amount}</td>
             <td>${claim.location}</td>
             <td title="${claim.purpose}">${truncateText(claim.purpose, 30)}</td>
             <td>${attachmentsHTML}</td>
@@ -7559,7 +7629,7 @@ function renderReimbursements() {
             </td>
             <td>${formatDate(claim.date)}</td>
             <td><strong>${claim.type}</strong></td>
-            <td style="font-weight:700; color:var(--primary);">$${claim.amount}</td>
+            <td style="font-weight:700; color:var(--primary);">₹${claim.amount}</td>
             <td>${claim.location}</td>
             <td title="${claim.purpose}">${truncateText(claim.purpose, 25)}</td>
             <td>${attachmentsHTML}</td>
@@ -7727,7 +7797,7 @@ function approveReimbursement(id) {
   claim.comment = comment || 'Approved by HR';
   localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
 
-  showToast(`Approved claim of $${claim.amount} for ${claim.employeeName}!`, 'success');
+  showToast(`Approved claim of ₹${claim.amount} for ${claim.employeeName}!`, 'success');
 
   // Refresh views
   renderReimbursements();
@@ -7746,7 +7816,7 @@ function rejectReimbursement(id) {
   claim.comment = comment || 'Rejected by HR';
   localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
 
-  showToast(`Rejected claim of $${claim.amount} for ${claim.employeeName}.`, 'success');
+  showToast(`Rejected claim of ₹${claim.amount} for ${claim.employeeName}.`, 'success');
   renderReimbursements();
   renderPayslips();
 }

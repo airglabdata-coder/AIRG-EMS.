@@ -14,7 +14,7 @@
   <aside id="sidebar">
     <div class="sidebar-brand"
       style="padding: 20px 24px; display: flex; justify-content: center; align-items: center; border-bottom: 1px solid var(--border-color);">
-      <img src="logo.png" alt="AIR G International" style="max-width: 100%; max-height: 50px; object-fit: contain;">
+      <img id="sidebar-logo" src="air g logo black.png" alt="AIR G International" style="max-width: 100%; max-height: 50px; object-fit: contain;">
     </div>
 
     <ul class="sidebar-menu">
@@ -69,7 +69,7 @@
         </a>
       </li>
 
-      <li>
+      <li style="display: none;">
         <a href="#" class="menu-item" data-view="payslips" id="menu-item-payslips">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"
             style="width: 20px; height: 20px; stroke: var(--text-muted);">
@@ -79,7 +79,7 @@
           <span>Payslip</span>
         </a>
       </li>
-      <li>
+      <li style="display: none;">
         <a href="#" class="menu-item" data-view="reimbursements" id="menu-item-reimbursements">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"
             style="width: 20px; height: 20px; stroke: var(--text-muted);">
@@ -1102,19 +1102,19 @@
             </div>
             <div class="form-grid" style="gap: 12px;">
               <div class="form-group">
-                <label for="salary-basic">Basic Pay ($)</label>
+                <label for="salary-basic">Basic Pay (₹)</label>
                 <input type="number" id="salary-basic" min="0" required>
               </div>
               <div class="form-group">
-                <label for="salary-hra">House Rent Allowance ($)</label>
+                <label for="salary-hra">House Rent Allowance (₹)</label>
                 <input type="number" id="salary-hra" min="0" required>
               </div>
               <div class="form-group">
-                <label for="salary-other">Other Allowance ($)</label>
+                <label for="salary-other">Other Allowance (₹)</label>
                 <input type="number" id="salary-other" min="0" required>
               </div>
               <div class="form-group">
-                <label for="salary-proftax">Professional Tax ($)</label>
+                <label for="salary-proftax">Professional Tax (₹)</label>
                 <input type="number" id="salary-proftax" min="0" required>
               </div>
               <div class="form-group full-width">
@@ -1169,7 +1169,7 @@
                 </div>
                 <div class="form-grid" style="gap: 12px; margin-bottom: 12px;">
                   <div class="form-group">
-                    <label for="reimbursement-amount" style="font-weight: 600;">Amount ($)</label>
+                    <label for="reimbursement-amount" style="font-weight: 600;">Amount (₹)</label>
                     <input type="number" id="reimbursement-amount" min="1" placeholder="e.g. 150" required
                       style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);">
                   </div>
@@ -2291,7 +2291,7 @@
   <div id="login-container">
     <div class="login-card">
       <div class="login-header" style="text-align: center; margin-bottom: 24px;">
-        <img src="logo.png" alt="AIR G International"
+        <img id="login-logo" src="air g logo black.png" alt="AIR G International"
           style="max-width: 180px; max-height: 80px; object-fit: contain; margin-bottom: 16px;">
         <p class="text-muted">Employee Portal Sign In</p>
       </div>

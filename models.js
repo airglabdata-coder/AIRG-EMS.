@@ -16,6 +16,8 @@ const EmployeeSchema = new mongoose.Schema({
   bankIfsc: { type: String },
   password: { type: String },
   phone: { type: String },
+  photo: { type: String },
+  designation: { type: String },
   salaries: { type: Map, of: mongoose.Schema.Types.Mixed },
   salary: { type: mongoose.Schema.Types.Mixed }
 }, { strict: false });

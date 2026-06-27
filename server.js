@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
 const models = require('./models');
@@ -9,36 +8,35 @@ const webpush = require('web-push');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const DB_DIR = path.join(__dirname, 'data');
-const DB_FILE = path.join(DB_DIR, 'db.json');
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Support base64 image uploads
 app.use(express.static(__dirname)); // Serve static files (index.html, app.js, styles.css)
 
-// Ensure data directory exists
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR);
-}
-
-// Database connection Setup
+// Database connection Setup — MongoDB Atlas is REQUIRED
 const MONGODB_URI = process.env.MONGODB_URI;
-let useLocalDB = false;
 
-if (MONGODB_URI) {
-  mongoose.connect(MONGODB_URI)
-    .then(async () => {
-      console.log('Connected to MongoDB Atlas successfully.');
-      await migrateLocalToMongo();
-    })
-    .catch(err => {
-      console.error('Failed to connect to MongoDB Atlas. Falling back to local file database.', err.message);
-      useLocalDB = true;
-    });
-} else {
-  console.log('No MONGODB_URI found in .env. Using local file database (db.json).');
-  useLocalDB = true;
+if (!MONGODB_URI) {
+  console.error('============================================================');
+  console.error('❌ FATAL: MONGODB_URI is not set in .env file.');
+  console.error('   This application requires MongoDB Atlas to function.');
+  console.error('   Please set MONGODB_URI in your .env file and restart.');
+  console.error('============================================================');
+  process.exit(1);
 }
+
+mongoose.connect(MONGODB_URI)
+  .then(async () => {
+    console.log('✅ Connected to MongoDB Atlas successfully.');
+  })
+  .catch(err => {
+    console.error('============================================================');
+    console.error('❌ FATAL: Failed to connect to MongoDB Atlas.');
+    console.error('   Error:', err.message);
+    console.error('   Please check your MONGODB_URI and network connection.');
+    console.error('============================================================');
+    process.exit(1);
+  });
 
 // Helper to pull entire state from MongoDB
 async function getMongoDBState() {
@@ -105,7 +103,7 @@ async function syncCollection(Model, array, keyField = 'id') {
 
   // Construct bulk upserts
   const ops = array.map(item => {
-    const { _id, ...cleanItem } = item; // strip existing mongo ID fields if present to prevent conflicts
+    const { _id, __v, ...cleanItem } = item; // strip existing mongo ID fields if present to prevent conflicts
     return {
       updateOne: {
         filter: { [keyField]: cleanItem[keyField] },
@@ -147,29 +145,6 @@ async function saveMongoDBState(stateObj) {
   );
 
   return timestamp;
-}
-
-// Helper to migrate local db.json data to MongoDB Atlas if MongoDB is empty
-async function migrateLocalToMongo() {
-  try {
-    const employeeCount = await models.Employee.countDocuments();
-    if (employeeCount === 0) {
-      console.log('MongoDB Atlas appears to be empty. Checking for local db.json to migrate...');
-      if (fs.existsSync(DB_FILE)) {
-        const fileContent = fs.readFileSync(DB_FILE, 'utf8');
-        const localData = JSON.parse(fileContent);
-        console.log('Found local db.json. Migrating records to MongoDB Atlas...');
-        await saveMongoDBState(localData);
-        console.log('Migration to MongoDB Atlas completed successfully!');
-      } else {
-        console.log('No local db.json found to migrate.');
-      }
-    } else {
-      console.log('MongoDB Atlas already contains data. Skipping migration.');
-    }
-  } catch (err) {
-    console.error('Error during local to MongoDB migration:', err);
-  }
 }
 
 // Helper to wipe all data from MongoDB Atlas and seed the clean state
@@ -256,33 +231,13 @@ async function clearAndSeedMongoDB() {
 
 // Endpoint to fetch centralized state
 app.get('/api/sync', async (req, res) => {
-  if (!useLocalDB) {
-    try {
-      const data = await getMongoDBState();
-      return res.json(data);
-    } catch (err) {
-      console.error('Failed to read from MongoDB Atlas:', err);
-    }
+  try {
+    const data = await getMongoDBState();
+    return res.json(data);
+  } catch (err) {
+    console.error('❌ Failed to read from MongoDB Atlas:', err.message);
+    return res.status(500).json({ error: 'Database read failed. Please try again.' });
   }
-
-  // Local File Database Fallback
-  if (!fs.existsSync(DB_FILE)) {
-    return res.json({ empty: true });
-  }
-  
-  fs.readFile(DB_FILE, 'utf8', (err, data) => {
-    if (err) {
-      console.error('Failed to read database file:', err);
-      return res.status(500).json({ error: 'Failed to read database' });
-    }
-    try {
-      const parsed = JSON.parse(data);
-      res.json({ state: parsed, timestamp: parsed.lastUpdated || Date.now() });
-    } catch (parseErr) {
-      console.error('Failed to parse database JSON:', parseErr);
-      res.json({ empty: true });
-    }
-  });
 });
 
 // Endpoint to overwrite/sync centralized state
@@ -292,25 +247,13 @@ app.post('/api/sync', async (req, res) => {
     return res.status(400).json({ error: 'Missing state payload' });
   }
 
-  // Update MongoDB Atlas if active
-  if (!useLocalDB) {
-    try {
-      const updatedTimestamp = await saveMongoDBState(newState);
-      return res.json({ success: true, timestamp: updatedTimestamp });
-    } catch (err) {
-      console.error('Failed to write to MongoDB Atlas:', err);
-    }
+  try {
+    const updatedTimestamp = await saveMongoDBState(newState);
+    return res.json({ success: true, timestamp: updatedTimestamp });
+  } catch (err) {
+    console.error('❌ Failed to write to MongoDB Atlas:', err.message);
+    return res.status(500).json({ error: 'Database write failed. Please try again.' });
   }
-
-  // Local File Database Fallback
-  newState.lastUpdated = Date.now();
-  fs.writeFile(DB_FILE, JSON.stringify(newState, null, 2), 'utf8', (err) => {
-    if (err) {
-      console.error('Failed to write database file:', err);
-      return res.status(500).json({ error: 'Failed to save database' });
-    }
-    res.json({ success: true, timestamp: newState.lastUpdated });
-  });
 });
 
 
@@ -339,9 +282,6 @@ webpush.setVapidDetails(
   vapidPrivateKey
 );
 
-// Keep a local in-memory fallback list of subscriptions if MongoDB fails or is not used
-let localSubscriptions = [];
-
 // Endpoint to share Public VAPID Key with client dynamically
 app.get('/api/notifications/vapid-public-key', (req, res) => {
   res.json({ publicKey: vapidPublicKey });
@@ -354,29 +294,23 @@ app.post('/api/notifications/subscribe', async (req, res) => {
     return res.status(400).json({ error: 'Missing employeeId or subscription' });
   }
 
-  if (!useLocalDB) {
-    try {
-      // Remove this endpoint from any other employees to prevent cross-user notification leakage
-      await models.PushSubscription.deleteMany({
-        employeeId: { $ne: employeeId },
-        'subscription.endpoint': subscription.endpoint
-      });
+  try {
+    // Remove this endpoint from any other employees to prevent cross-user notification leakage
+    await models.PushSubscription.deleteMany({
+      employeeId: { $ne: employeeId },
+      'subscription.endpoint': subscription.endpoint
+    });
 
-      await models.PushSubscription.findOneAndUpdate(
-        { employeeId, 'subscription.endpoint': subscription.endpoint },
-        { employeeId, subscription },
-        { upsert: true, new: true }
-      );
-      return res.json({ success: true });
-    } catch (err) {
-      console.error('Failed to save subscription to MongoDB:', err);
-    }
+    await models.PushSubscription.findOneAndUpdate(
+      { employeeId, 'subscription.endpoint': subscription.endpoint },
+      { employeeId, subscription },
+      { upsert: true, new: true }
+    );
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to save subscription to MongoDB:', err);
+    return res.status(500).json({ error: 'Failed to save subscription' });
   }
-
-  // Local fallback
-  localSubscriptions = localSubscriptions.filter(s => s.subscription.endpoint !== subscription.endpoint);
-  localSubscriptions.push({ employeeId, subscription });
-  res.json({ success: true });
 });
 
 // Endpoint to send/simulate push notifications
@@ -390,35 +324,19 @@ app.post('/api/send-notification', async (req, res) => {
   let employeeId = null;
   let employeeName = 'Employee';
 
-  if (!useLocalDB) {
-    try {
-      const emp = await models.Employee.findOne({ phone: to });
-      if (emp) {
-        employeeId = emp.id;
-        employeeName = emp.name;
-      }
-    } catch (err) {
-      console.error('Failed to lookup employee in MongoDB:', err);
+  try {
+    const emp = await models.Employee.findOne({ phone: to });
+    if (emp) {
+      employeeId = emp.id;
+      employeeName = emp.name;
     }
-  } else {
-    if (fs.existsSync(DB_FILE)) {
-      try {
-        const fileContent = fs.readFileSync(DB_FILE, 'utf8');
-        const dbData = JSON.parse(fileContent);
-        const emp = (dbData.employees || []).find(e => e.phone === to);
-        if (emp) {
-          employeeId = emp.id;
-          employeeName = emp.name;
-        }
-      } catch (err) {
-        console.error('Failed to read db.json locally for lookup:', err);
-      }
-    }
+  } catch (err) {
+    console.error('Failed to lookup employee in MongoDB:', err);
   }
 
-  // Direct ID fallback (if to is already an EMPxxx id)
+  // Direct ID fallback (if to is already an AIRG/EMP id)
   if (!employeeId) {
-    if (to.startsWith('EMP')) {
+    if (to.startsWith('EMP') || to.startsWith('AIRG')) {
       employeeId = to;
     } else {
       console.log(`⚠️  Could not resolve identifier "${to}" to an employee ID. Push skipped.`);
@@ -428,14 +346,10 @@ app.post('/api/send-notification', async (req, res) => {
 
   // 2. Fetch active browser subscriptions
   let subscriptions = [];
-  if (!useLocalDB) {
-    try {
-      subscriptions = await models.PushSubscription.find({ employeeId });
-    } catch (err) {
-      console.error('Failed to load subscriptions from MongoDB:', err);
-    }
-  } else {
-    subscriptions = localSubscriptions.filter(s => s.employeeId === employeeId);
+  try {
+    subscriptions = await models.PushSubscription.find({ employeeId });
+  } catch (err) {
+    console.error('Failed to load subscriptions from MongoDB:', err);
   }
 
   if (subscriptions.length === 0) {
@@ -458,11 +372,7 @@ app.post('/api/send-notification', async (req, res) => {
       // Clean up expired subscriptions
       if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
         console.log(`🧹 Cleaning up expired push subscription for employee ${employeeId}`);
-        if (!useLocalDB) {
-          await models.PushSubscription.deleteOne({ _id: sub._id });
-        } else {
-          localSubscriptions = localSubscriptions.filter(s => s.subscription.endpoint !== sub.subscription.endpoint);
-        }
+        await models.PushSubscription.deleteOne({ _id: sub._id });
       } else {
         console.error(`❌ Web Push failed:`, pushErr.message);
       }
@@ -479,6 +389,6 @@ app.listen(PORT, () => {
   console.log(`===================================================`);
   console.log(`🚀 AIR G International EMS Server is running!`);
   console.log(`🌐 URL: http://localhost:${PORT}`);
-  console.log(`📁 Local Database Path: ${DB_FILE}`);
+  console.log(`💾 Database: MongoDB Atlas (sole data store)`);
   console.log(`===================================================`);
 });
