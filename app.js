@@ -14,6 +14,19 @@ window.onerror = function (message, source, lineno, colno, error) {
 const originalSetItem = localStorage.setItem;
 let isSyncingToServer = false;
 let syncTimeout = null;
+let wasStateFetchedFromServer = false;
+
+function safeOriginalSetItem(key, value) {
+  try {
+    originalSetItem.call(localStorage, key, value);
+  } catch (e) {
+    if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      console.warn(`LocalStorage quota exceeded for key "${key}"! Data saved in memory only.`);
+    } else {
+      throw e;
+    }
+  }
+}
 
 localStorage.setItem = function (key, value) {
   try {
@@ -37,20 +50,20 @@ function triggerBackendSync() {
 
   syncTimeout = setTimeout(() => {
     const cleanState = {
-      employees: JSON.parse(localStorage.getItem('ems_employees') || '[]'),
-      requests: JSON.parse(localStorage.getItem('ems_requests') || '[]'),
-      projects: JSON.parse(localStorage.getItem('ems_projects') || '[]'),
-      tasks: JSON.parse(localStorage.getItem('ems_tasks') || '[]'),
-      departments: JSON.parse(localStorage.getItem('ems_departments') || '[]'),
-      chats: JSON.parse(localStorage.getItem('ems_chats') || '[]'),
-      dailyReports: JSON.parse(localStorage.getItem('ems_reports') || '[]'),
-      announcements: JSON.parse(localStorage.getItem('ems_announcements') || '[]'),
-      notices: JSON.parse(localStorage.getItem('ems_notices') || '[]'),
-      reimbursements: JSON.parse(localStorage.getItem('ems_reimbursements') || '[]'),
-      tickets: JSON.parse(localStorage.getItem('ems_tickets') || '[]'),
-      nationalHolidays: JSON.parse(localStorage.getItem('ems_national_holidays') || '[]'),
-      celebrationDays: JSON.parse(localStorage.getItem('ems_celebration_days') || '[]'),
-      smsNotifications: JSON.parse(localStorage.getItem('ems_notifications') || '[]')
+      employees: state.employees || [],
+      requests: state.requests || [],
+      projects: state.projects || [],
+      tasks: state.tasks || [],
+      departments: state.departments || [],
+      chats: state.chats || [],
+      dailyReports: state.dailyReports || [],
+      announcements: state.announcements || [],
+      notices: state.notices || [],
+      reimbursements: state.reimbursements || [],
+      tickets: state.tickets || [],
+      nationalHolidays: state.nationalHolidays || [],
+      celebrationDays: state.celebrationDays || [],
+      smsNotifications: state.smsNotifications || []
     };
 
     fetch('/api/sync', {
@@ -94,39 +107,70 @@ async function fetchCentralizedState() {
       const s = data.state;
       if (s.employees) {
         const cleanResult = cleanBloatedEmployees(s.employees);
-        originalSetItem.call(localStorage, 'ems_employees', JSON.stringify(cleanResult.employees));
+        state.employees = cleanResult.employees;
+        safeOriginalSetItem('ems_employees', JSON.stringify(cleanResult.employees));
       }
-      if (s.requests) originalSetItem.call(localStorage, 'ems_requests', JSON.stringify(s.requests));
-      if (s.projects) originalSetItem.call(localStorage, 'ems_projects', JSON.stringify(s.projects));
+      if (s.requests) {
+        state.requests = s.requests;
+        safeOriginalSetItem('ems_requests', JSON.stringify(s.requests));
+      }
+      if (s.projects) {
+        state.projects = s.projects;
+        safeOriginalSetItem('ems_projects', JSON.stringify(s.projects));
+      }
       if (s.tasks) {
         cleanBloatedAttachments(s.tasks);
-        originalSetItem.call(localStorage, 'ems_tasks', JSON.stringify(s.tasks));
+        state.tasks = s.tasks;
+        safeOriginalSetItem('ems_tasks', JSON.stringify(s.tasks));
       }
-      if (s.departments) originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(['AI', 'Electronics', 'Lab Setup', 'Instructor']));
-      if (s.chats) originalSetItem.call(localStorage, 'ems_chats', JSON.stringify(s.chats));
-      if (s.dailyReports) originalSetItem.call(localStorage, 'ems_reports', JSON.stringify(s.dailyReports));
+      if (s.departments) {
+        state.departments = ['AI', 'Electronics', 'Lab Setup', 'Instructor'];
+        safeOriginalSetItem('ems_departments', JSON.stringify(state.departments));
+      }
+      if (s.chats) {
+        state.chats = s.chats;
+        safeOriginalSetItem('ems_chats', JSON.stringify(s.chats));
+      }
+      if (s.dailyReports) {
+        state.dailyReports = s.dailyReports;
+        safeOriginalSetItem('ems_reports', JSON.stringify(s.dailyReports));
+      }
       if (s.announcements) {
         cleanBloatedAttachments(s.announcements);
-        originalSetItem.call(localStorage, 'ems_announcements', JSON.stringify(s.announcements));
+        state.announcements = s.announcements;
+        safeOriginalSetItem('ems_announcements', JSON.stringify(s.announcements));
       }
       if (s.notices) {
         cleanBloatedAttachments(s.notices);
-        originalSetItem.call(localStorage, 'ems_notices', JSON.stringify(s.notices));
+        state.notices = s.notices;
+        safeOriginalSetItem('ems_notices', JSON.stringify(s.notices));
       }
       if (s.reimbursements) {
         cleanBloatedAttachments(s.reimbursements);
-        originalSetItem.call(localStorage, 'ems_reimbursements', JSON.stringify(s.reimbursements));
+        state.reimbursements = s.reimbursements;
+        safeOriginalSetItem('ems_reimbursements', JSON.stringify(s.reimbursements));
       }
       if (s.tickets) {
         cleanBloatedAttachments(s.tickets);
-        originalSetItem.call(localStorage, 'ems_tickets', JSON.stringify(s.tickets));
+        state.tickets = s.tickets;
+        safeOriginalSetItem('ems_tickets', JSON.stringify(s.tickets));
       }
-      if (s.nationalHolidays) originalSetItem.call(localStorage, 'ems_national_holidays', JSON.stringify(s.nationalHolidays));
-      if (s.celebrationDays) originalSetItem.call(localStorage, 'ems_celebration_days', JSON.stringify(s.celebrationDays));
-      if (s.smsNotifications) originalSetItem.call(localStorage, 'ems_notifications', JSON.stringify(s.smsNotifications));
+      if (s.nationalHolidays) {
+        state.nationalHolidays = s.nationalHolidays;
+        safeOriginalSetItem('ems_national_holidays', JSON.stringify(s.nationalHolidays));
+      }
+      if (s.celebrationDays) {
+        state.celebrationDays = s.celebrationDays;
+        safeOriginalSetItem('ems_celebration_days', JSON.stringify(s.celebrationDays));
+      }
+      if (s.smsNotifications) {
+        state.smsNotifications = s.smsNotifications;
+        safeOriginalSetItem('ems_notifications', JSON.stringify(s.smsNotifications));
+      }
 
       state.lastSyncedTimestamp = data.timestamp;
       isSyncingToServer = false;
+      wasStateFetchedFromServer = true;
     }
   } catch (err) {
     console.error('Failed to load state from database server:', err, '— keeping local state intact.');
@@ -175,20 +219,20 @@ function initSyncPolling() {
 
         state.lastSyncedTimestamp = data.timestamp;
 
-        if (s.employees) originalSetItem.call(localStorage, 'ems_employees', JSON.stringify(s.employees));
-        if (s.requests) originalSetItem.call(localStorage, 'ems_requests', JSON.stringify(s.requests));
-        if (s.projects) originalSetItem.call(localStorage, 'ems_projects', JSON.stringify(s.projects));
-        if (s.tasks) originalSetItem.call(localStorage, 'ems_tasks', JSON.stringify(s.tasks));
-        if (s.departments) originalSetItem.call(localStorage, 'ems_departments', JSON.stringify(s.departments));
-        if (s.chats) originalSetItem.call(localStorage, 'ems_chats', JSON.stringify(s.chats));
-        if (s.dailyReports) originalSetItem.call(localStorage, 'ems_reports', JSON.stringify(s.dailyReports));
-        if (s.announcements) originalSetItem.call(localStorage, 'ems_announcements', JSON.stringify(s.announcements));
-        if (s.notices) originalSetItem.call(localStorage, 'ems_notices', JSON.stringify(s.notices));
-        if (s.reimbursements) originalSetItem.call(localStorage, 'ems_reimbursements', JSON.stringify(s.reimbursements));
-        if (s.tickets) originalSetItem.call(localStorage, 'ems_tickets', JSON.stringify(s.tickets));
-        if (s.nationalHolidays) originalSetItem.call(localStorage, 'ems_national_holidays', JSON.stringify(s.nationalHolidays));
-        if (s.celebrationDays) originalSetItem.call(localStorage, 'ems_celebration_days', JSON.stringify(s.celebrationDays));
-        if (s.smsNotifications) originalSetItem.call(localStorage, 'ems_notifications', JSON.stringify(s.smsNotifications));
+        if (s.employees) safeOriginalSetItem('ems_employees', JSON.stringify(s.employees));
+        if (s.requests) safeOriginalSetItem('ems_requests', JSON.stringify(s.requests));
+        if (s.projects) safeOriginalSetItem('ems_projects', JSON.stringify(s.projects));
+        if (s.tasks) safeOriginalSetItem('ems_tasks', JSON.stringify(s.tasks));
+        if (s.departments) safeOriginalSetItem('ems_departments', JSON.stringify(s.departments));
+        if (s.chats) safeOriginalSetItem('ems_chats', JSON.stringify(s.chats));
+        if (s.dailyReports) safeOriginalSetItem('ems_reports', JSON.stringify(s.dailyReports));
+        if (s.announcements) safeOriginalSetItem('ems_announcements', JSON.stringify(s.announcements));
+        if (s.notices) safeOriginalSetItem('ems_notices', JSON.stringify(s.notices));
+        if (s.reimbursements) safeOriginalSetItem('ems_reimbursements', JSON.stringify(s.reimbursements));
+        if (s.tickets) safeOriginalSetItem('ems_tickets', JSON.stringify(s.tickets));
+        if (s.nationalHolidays) safeOriginalSetItem('ems_national_holidays', JSON.stringify(s.nationalHolidays));
+        if (s.celebrationDays) safeOriginalSetItem('ems_celebration_days', JSON.stringify(s.celebrationDays));
+        if (s.smsNotifications) safeOriginalSetItem('ems_notifications', JSON.stringify(s.smsNotifications));
 
         isSyncingToServer = false;
 
@@ -1327,10 +1371,22 @@ async function init() {
     localStorage.setItem('ems_celebration_days', JSON.stringify(DEFAULT_CELEBRATION_DAYS));
   }
 
-  state.employees = JSON.parse(localStorage.getItem('ems_employees'));
-  state.requests = JSON.parse(localStorage.getItem('ems_requests'));
-  state.projects = JSON.parse(localStorage.getItem('ems_projects'));
-  state.tasks = JSON.parse(localStorage.getItem('ems_tasks')) || [];
+  if (!wasStateFetchedFromServer) {
+    state.employees = JSON.parse(localStorage.getItem('ems_employees')) || [];
+    state.requests = JSON.parse(localStorage.getItem('ems_requests')) || [];
+    state.projects = JSON.parse(localStorage.getItem('ems_projects')) || [];
+    state.tasks = JSON.parse(localStorage.getItem('ems_tasks')) || [];
+    state.departments = JSON.parse(localStorage.getItem('ems_departments')) || [];
+    state.chats = JSON.parse(localStorage.getItem('ems_chats')) || [];
+    state.announcements = JSON.parse(localStorage.getItem('ems_announcements')) || [];
+    state.notices = JSON.parse(localStorage.getItem('ems_notices')) || [];
+    state.smsNotifications = JSON.parse(localStorage.getItem('ems_notifications') || '[]');
+    state.nationalHolidays = JSON.parse(localStorage.getItem('ems_national_holidays')) || [];
+    state.celebrationDays = JSON.parse(localStorage.getItem('ems_celebration_days')) || [];
+  } else {
+    if (!state.tasks) state.tasks = [];
+  }
+
   let tasksUpdated = false;
   state.tasks.forEach(t => {
     if (t.status !== 'Completed' && t.status !== 'Not Completed') {
@@ -1341,10 +1397,6 @@ async function init() {
   if (tasksUpdated) {
     localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
   }
-  state.departments = JSON.parse(localStorage.getItem('ems_departments'));
-  state.chats = JSON.parse(localStorage.getItem('ems_chats'));
-  state.announcements = JSON.parse(localStorage.getItem('ems_announcements'));
-  state.notices = JSON.parse(localStorage.getItem('ems_notices'));
 
   // Clean local bloated items
   let noticesUpdated = cleanBloatedAttachments(state.notices);
@@ -1360,15 +1412,17 @@ async function init() {
     localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
   }
 
-  state.smsNotifications = JSON.parse(localStorage.getItem('ems_notifications') || '[]');
-  state.nationalHolidays = JSON.parse(localStorage.getItem('ems_national_holidays'));
-  state.celebrationDays = JSON.parse(localStorage.getItem('ems_celebration_days'));
+  // notifications, nationalHolidays, celebrationDays are loaded in the wasStateFetchedFromServer block above
 
   // Load and seed Reimbursements
-  try {
-    state.reimbursements = JSON.parse(localStorage.getItem('ems_reimbursements') || '[]');
-  } catch (e) {
-    state.reimbursements = [];
+  if (!wasStateFetchedFromServer) {
+    try {
+      state.reimbursements = JSON.parse(localStorage.getItem('ems_reimbursements') || '[]');
+    } catch (e) {
+      state.reimbursements = [];
+    }
+  } else {
+    if (!state.reimbursements) state.reimbursements = [];
   }
   if (state.reimbursements.length > 0) {
     let reimbursementsUpdated = cleanBloatedAttachments(state.reimbursements);
@@ -1433,7 +1487,11 @@ async function init() {
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
   }
 
-  state.dailyReports = JSON.parse(localStorage.getItem('ems_reports')) || [];
+  if (!wasStateFetchedFromServer) {
+    state.dailyReports = JSON.parse(localStorage.getItem('ems_reports')) || [];
+  } else {
+    if (!state.dailyReports) state.dailyReports = [];
+  }
   let reportsUpdated = false;
   state.dailyReports.forEach(r => {
     // Migrate old hasStar boolean to starRating number (0-10)
@@ -1452,10 +1510,14 @@ async function init() {
   }
 
   // Load and seed Support Tickets
-  try {
-    state.tickets = JSON.parse(localStorage.getItem('ems_tickets') || '[]');
-  } catch (e) {
-    state.tickets = [];
+  if (!wasStateFetchedFromServer) {
+    try {
+      state.tickets = JSON.parse(localStorage.getItem('ems_tickets') || '[]');
+    } catch (e) {
+      state.tickets = [];
+    }
+  } else {
+    if (!state.tickets) state.tickets = [];
   }
   if (state.tickets.length === 0) {
     state.tickets = DEFAULT_TICKETS;
