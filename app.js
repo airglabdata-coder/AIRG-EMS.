@@ -977,8 +977,10 @@ function setupEditTaskListeners(taskId) {
         const reader = new FileReader();
         reader.onload = function (event) {
           const base64Data = event.target.result;
-          state.editingTaskImages.push(base64Data);
-          renderEditPreviews(taskId);
+          compressImage(base64Data, 800, 800, 0.6, function (compressedDataUrl) {
+            state.editingTaskImages.push(compressedDataUrl);
+            renderEditPreviews(taskId);
+          });
         };
         reader.readAsDataURL(blob);
       }
@@ -993,8 +995,10 @@ function setupEditTaskListeners(taskId) {
         const reader = new FileReader();
         reader.onload = function (event) {
           const base64Data = event.target.result;
-          state.editingTaskImages.push(base64Data);
-          renderEditPreviews(taskId);
+          compressImage(base64Data, 800, 800, 0.6, function (compressedDataUrl) {
+            state.editingTaskImages.push(compressedDataUrl);
+            renderEditPreviews(taskId);
+          });
         };
         reader.readAsDataURL(file);
       }
@@ -3654,20 +3658,20 @@ function groupTasksByMonth(tasksList) {
 function renderEmployeeTasksAndProjects() {
   const user = state.currentUser;
 
+  // Get unique project IDs where user has at least one assigned task
+  const userTaskProjectIds = state.tasks
+    .filter(t => t.assigneeId === user.id && t.projectId)
+    .map(t => t.projectId);
+
+  const activeProjects = state.projects.filter(p => {
+    const isDeptMember = user.dept && p.dept && user.dept.split(',').map(d => d.trim().toLowerCase()).includes(p.dept.toLowerCase());
+    return isDeptMember || userTaskProjectIds.includes(p.id) || (p.employeeIds && p.employeeIds.includes(user.id));
+  });
+
   // Render Projects (filtered by employee's department OR projects they are assigned tasks in)
   const grid = document.getElementById('emp-projects-grid');
   if (grid) {
     grid.innerHTML = '';
-
-    // Get unique project IDs where user has at least one assigned task
-    const userTaskProjectIds = state.tasks
-      .filter(t => t.assigneeId === user.id && t.projectId)
-      .map(t => t.projectId);
-
-    const activeProjects = state.projects.filter(p => {
-      const isDeptMember = user.dept && p.dept && user.dept.split(',').map(d => d.trim().toLowerCase()).includes(p.dept.toLowerCase());
-      return isDeptMember || userTaskProjectIds.includes(p.id) || (p.employeeIds && p.employeeIds.includes(user.id));
-    });
 
     if (activeProjects.length === 0) {
       grid.innerHTML = `
@@ -4370,22 +4374,24 @@ function uploadProjectFile(projId, input) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const base64Data = e.target.result;
-    const proj = state.projects.find(p => p.id === projId);
-    if (proj) {
-      if (!proj.files) proj.files = [];
-      proj.files.push({
-        name: file.name,
-        type: file.type,
-        data: base64Data
-      });
-      localStorage.setItem('ems_projects', JSON.stringify(state.projects));
-      showToast(`File "${file.name}" uploaded successfully!`, 'success');
-      if (state.currentRole === 'hr' || state.currentRole === 'admin') {
-        renderHRTasksAndProjects();
-      } else {
-        renderEmployeeTasksAndProjects();
+    compressImage(base64Data, 800, 800, 0.6, function (compressedDataUrl) {
+      const proj = state.projects.find(p => p.id === projId);
+      if (proj) {
+        if (!proj.files) proj.files = [];
+        proj.files.push({
+          name: file.name,
+          type: file.type,
+          data: compressedDataUrl
+        });
+        localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+        showToast(`File "${file.name}" uploaded successfully!`, 'success');
+        if (state.currentRole === 'hr' || state.currentRole === 'admin') {
+          renderHRTasksAndProjects();
+        } else {
+          renderEmployeeTasksAndProjects();
+        }
       }
-    }
+    });
   };
   reader.readAsDataURL(file);
 }
@@ -5913,25 +5919,27 @@ function handleChatFileSelected(input) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const base64Data = e.target.result;
-    const newMsg = {
-      id: `MSG${String(state.chats.length + 1).padStart(3, '0')}`,
-      senderId: state.currentUser.id,
-      senderName: state.currentUser.name,
-      receiverId: state.activeChatType === 'group' ? 'group' : state.activeChatTargetId,
-      content: `Sent a file: ${file.name}`,
-      file: {
-        name: file.name,
-        type: file.type,
-        data: base64Data
-      },
-      timestamp: new Date().toISOString()
-    };
+    compressImage(base64Data, 800, 800, 0.6, function (compressedDataUrl) {
+      const newMsg = {
+        id: `MSG${String(state.chats.length + 1).padStart(3, '0')}`,
+        senderId: state.currentUser.id,
+        senderName: state.currentUser.name,
+        receiverId: state.activeChatType === 'group' ? 'group' : state.activeChatTargetId,
+        content: `Sent a file: ${file.name}`,
+        file: {
+          name: file.name,
+          type: file.type,
+          data: compressedDataUrl
+        },
+        timestamp: new Date().toISOString()
+      };
 
-    state.chats.push(newMsg);
-    localStorage.setItem('ems_chats', JSON.stringify(state.chats));
-    triggerChatNotification(newMsg);
-    input.value = '';
-    renderChatRoom();
+      state.chats.push(newMsg);
+      localStorage.setItem('ems_chats', JSON.stringify(state.chats));
+      triggerChatNotification(newMsg);
+      input.value = '';
+      renderChatRoom();
+    });
   };
   reader.readAsDataURL(file);
 }
