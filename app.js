@@ -1437,37 +1437,18 @@ async function init() {
       localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
     }
   }
+  // One-time cleanup: remove old dummy seed reimbursements
+  if (!localStorage.getItem('ems_dummy_reimbursements_cleaned')) {
+    const dummyIds = ['REIM001', 'REIM002'];
+    const beforeLen = state.reimbursements.length;
+    state.reimbursements = state.reimbursements.filter(r => !dummyIds.includes(r.id));
+    if (state.reimbursements.length !== beforeLen) {
+      localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
+    }
+    localStorage.setItem('ems_dummy_reimbursements_cleaned', '1');
+  }
   if (state.reimbursements.length === 0) {
-    state.reimbursements = [
-      {
-        id: 'REIM001',
-        employeeId: 'EMP002',
-        employeeName: 'Alex Rivera',
-        type: 'Food',
-        amount: 1200,
-        date: '2026-05-20',
-        purpose: 'Team dinner following the successful launch of core modules.',
-        location: 'Mainland China, Mumbai',
-        attachments: [],
-        status: 'approved',
-        comment: 'Approved. Valid receipt.',
-        submittedAt: '2026-05-20'
-      },
-      {
-        id: 'REIM002',
-        employeeId: 'EMP007',
-        employeeName: 'Elena Rostova',
-        type: 'Travel',
-        amount: 3500,
-        date: '2026-06-02',
-        purpose: 'Travel tickets for client briefing meeting.',
-        location: 'New Delhi Office',
-        attachments: [],
-        status: 'pending',
-        comment: '',
-        submittedAt: '2026-06-02'
-      }
-    ];
+    state.reimbursements = [];
     localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
   }
 
@@ -2229,7 +2210,7 @@ function getEmployeeLeaveAccumulation(employeeId, targetYearMonth) {
   let lwpInTarget = 0;
 
   for (let m = 1; m <= targetMonth; m++) {
-    // Accrue this month (cap at yearly max)
+    // Accrue 1.5 days this month
     accruedBalance = Math.min(accruedBalance + ACCRUAL_PER_MONTH, MAX_YEARLY);
     totalAccrued = Math.min(totalAccrued + ACCRUAL_PER_MONTH, MAX_YEARLY);
 
@@ -2237,9 +2218,8 @@ function getEmployeeLeaveAccumulation(employeeId, targetYearMonth) {
     const leaveDays = leavesPerMonth[ym] || 0;
     totalApprovedDays += leaveDays;
 
-    // Paid leave = max 1.5 days/month (hard cap), deducted from accrued balance
-    // Any leave beyond the 1.5/month paid cap is LWP regardless of accrued balance size
-    const paidLeave = Math.min(leaveDays, ACCRUAL_PER_MONTH, accruedBalance);
+    // Paid leave can use any accrued balance from carry forwards
+    const paidLeave = Math.min(leaveDays, accruedBalance);
     const unpaidLeave = leaveDays - paidLeave;
 
     accruedBalance = Math.max(0, accruedBalance - paidLeave);
@@ -2465,7 +2445,7 @@ function populateEmployeeDropdown() {
   state.employees.filter(emp => emp.role === 'Employee' || emp.role === 'Tech Lead').forEach(emp => {
     const option = document.createElement('option');
     option.value = emp.id;
-    option.textContent = `${emp.name} (${emp.dept} - ${emp.role})`;
+    option.textContent = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
     empSelect.appendChild(option);
   });
 }
@@ -2598,11 +2578,13 @@ function switchView(viewName) {
     if (isLeadOrHR) {
       if (leaveSubTabs) leaveSubTabs.style.display = 'flex';
       if (!state.activeLeaveSubTab) {
-        state.activeLeaveSubTab = 'apply';
+        state.activeLeaveSubTab = 'approve';
       }
       const applyTab = document.getElementById('leave-tab-apply');
       const approveTab = document.getElementById('leave-tab-approve');
       if (applyTab && approveTab) {
+        applyTab.textContent = 'My Reports';
+        approveTab.textContent = 'Manage Reports';
         applyTab.classList.toggle('active', state.activeLeaveSubTab === 'apply');
         approveTab.classList.toggle('active', state.activeLeaveSubTab === 'approve');
       }
@@ -2678,6 +2660,8 @@ function switchView(viewName) {
         const applyTab = document.getElementById('leave-tab-apply');
         const approveTab = document.getElementById('leave-tab-approve');
         if (applyTab && approveTab) {
+          applyTab.textContent = 'My Applications';
+          approveTab.textContent = 'Manage Approvals';
           applyTab.classList.toggle('active', state.activeLeaveSubTab === 'apply');
           approveTab.classList.toggle('active', state.activeLeaveSubTab === 'approve');
         }
@@ -2791,7 +2775,7 @@ function renderEmployeeDashboard(viewName = 'tasks') {
 
   const leaveHeader = document.getElementById('leave-remarks-header');
   if (leaveHeader) {
-    leaveHeader.textContent = state.currentRole === 'hr' ? 'Admin Remarks / Comments' : 'HR / Admin Remarks / Comments';
+    leaveHeader.textContent = 'Remarks';
   }
 
   if (userRequests.length === 0) {
@@ -2965,10 +2949,10 @@ function renderHRDashboard(viewName = 'dashboard') {
     `;
   } else {
     queueTbody.innerHTML = '';
-    // Sort oldest first for fairness
-    const oldestPending = [...pendingRequests].sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt));
+    // Sort newest first
+    const sortedPending = [...pendingRequests].sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
 
-    oldestPending.forEach(req => {
+    sortedPending.forEach(req => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>
@@ -4068,13 +4052,15 @@ function createProjectCard(proj, isMyProject) {
   // Dropdown for non-member employees
   const nonMemberEmployees = state.employees.filter(e => !seenIds.has(e.id));
   const existingEmployeesToAssignOptions = nonMemberEmployees.map(emp => {
-    return `<option value="${emp.id}">${emp.name} (${emp.dept} - ${emp.role})</option>`;
+    const label = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
+    return `<option value="${emp.id}">${label}</option>`;
   }).join('');
 
   // Dropdown options for all employees to appoint as Tech Lead
   const allEmployeesOptions = state.employees.map(emp => {
     const isCurrent = emp.id === proj.techLeadId;
-    return `<option value="${emp.id}" ${isCurrent ? 'selected' : ''}>${emp.name} (${emp.dept} - ${emp.role})</option>`;
+    const label = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
+    return `<option value="${emp.id}" ${isCurrent ? 'selected' : ''}>${label}</option>`;
   }).join('');
 
   // Determine if deletable by Admin, HR, or the assigned Tech Lead of the project
@@ -4849,7 +4835,7 @@ function populateTechLeadOptions() {
   state.employees.forEach(emp => {
     const opt = document.createElement('option');
     opt.value = emp.id;
-    opt.textContent = `${emp.name} (${emp.dept} - ${emp.role})`;
+    opt.textContent = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
     select.appendChild(opt);
   });
 }
@@ -4901,7 +4887,8 @@ function openCreateProjectModal() {
     // Admin or HR: fully enable and populate both
     if (projectDeptSelect) {
       projectDeptSelect.innerHTML = '<option value="" disabled selected>Select department...</option>';
-      state.departments.forEach(dept => {
+      const depts = state.departments && state.departments.length > 0 ? state.departments : DEFAULT_DEPARTMENTS;
+      depts.forEach(dept => {
         const opt = document.createElement('option');
         opt.value = dept;
         opt.textContent = dept;
@@ -5151,10 +5138,12 @@ function deleteTask(taskId) {
 // --- 4. Dynamic Employees & Departments Management ---
 
 function populateDepartmentDropdowns() {
+  const depts = state.departments && state.departments.length > 0 ? state.departments : DEFAULT_DEPARTMENTS;
+
   const projectDeptSelect = document.getElementById('project-dept');
   if (projectDeptSelect) {
     projectDeptSelect.innerHTML = '<option value="" disabled selected>Select department...</option>';
-    state.departments.forEach(dept => {
+    depts.forEach(dept => {
       const opt = document.createElement('option');
       opt.value = dept;
       opt.textContent = dept;
@@ -5165,7 +5154,7 @@ function populateDepartmentDropdowns() {
   const empDeptSelect = document.getElementById('new-emp-dept');
   if (empDeptSelect) {
     empDeptSelect.innerHTML = '<option value="" disabled selected>Select department...</option>';
-    state.departments.forEach(dept => {
+    depts.forEach(dept => {
       const opt = document.createElement('option');
       opt.value = dept;
       opt.textContent = dept;
@@ -6344,9 +6333,10 @@ function populateNoticeEmployeeCheckboxes() {
     item.className = 'employee-checkbox-item';
     item.dataset.name = emp.name.toLowerCase();
     item.dataset.dept = (emp.dept || 'AI').toLowerCase();
+    const label = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept || 'AI'} - ${emp.role})`;
     item.innerHTML = `
       <input type="checkbox" value="${emp.id}">
-      <span>${emp.name} (${emp.dept || 'AI'} - ${emp.role})</span>
+      <span>${label}</span>
     `;
     container.appendChild(item);
   });
@@ -6670,14 +6660,17 @@ function canUserReviewReport(currentUserRole, reporterRole) {
 }
 
 function canUserStarReport(currentUserRole, reporterRole) {
-  if (reporterRole === 'employee') {
-    return currentUserRole === 'techlead';
+  // Admin can star everyone below them
+  if (currentUserRole === 'admin') {
+    return ['employee', 'techlead', 'hr'].includes(reporterRole);
   }
-  if (reporterRole === 'techlead') {
-    return currentUserRole === 'hr';
+  // HR can star employees and tech leads
+  if (currentUserRole === 'hr') {
+    return ['employee', 'techlead'].includes(reporterRole);
   }
-  if (reporterRole === 'hr') {
-    return currentUserRole === 'admin';
+  // Tech lead can star employees
+  if (currentUserRole === 'techlead') {
+    return reporterRole === 'employee';
   }
   return false;
 }
@@ -7224,6 +7217,12 @@ function saveHRRemarks(reportId, event) {
   const originalReviewedAt = report.reviewedAt;
 
   const remarksText = textarea.value.trim();
+
+  if (!remarksText) {
+    showToast('Please enter remarks/comments before submitting a review.', 'error');
+    return;
+  }
+
   report.remarks = remarksText;
   report.reviewedBy = state.currentUser.name;
   report.reviewedAt = new Date().toISOString().split('T')[0];
@@ -7449,120 +7448,136 @@ function renderPayslips() {
   const monthName = dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
   card.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid var(--border-color); padding-bottom: 20px; margin-bottom: 24px;">
-      <div>
-        <h2 style="font-weight: 800; color: var(--primary); margin: 0; font-size: 1.6rem;">AIR G International</h2>
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 4px 0 0 0;">100 Innovation Way, Tech District</p>
-      </div>
-      <div style="text-align: right;">
-        <h3 style="font-weight: 700; margin: 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.5px;">Payslip</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 0 0; font-weight: 600;">For the Month of ${monthName}</p>
-      </div>
-    </div>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; font-size: 0.85rem; background-color: var(--bg-tertiary); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
-      <div>
-        <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Employee Name</span>
-        <strong style="color: var(--text-primary); font-size: 0.95rem;">${targetEmp.name}</strong>
-      </div>
-      <div>
-        <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Employee ID</span>
-        <strong style="color: var(--text-primary); font-size: 0.95rem;">${targetEmp.id}</strong>
-      </div>
-      <div>
-        <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Department</span>
-        <strong style="color: var(--text-primary); font-size: 0.95rem;">${targetEmp.dept || 'AI'}</strong>
-      </div>
-      <div>
-        <span style="color: var(--text-muted); display: block; font-size: 0.75rem; text-transform: uppercase;">Designation</span>
-        <strong style="color: var(--text-primary); font-size: 0.95rem;">${targetEmp.role}</strong>
-      </div>
-    </div>
-
-    <!-- Earnings & Deductions Tables -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-      <!-- Earnings -->
-      <div>
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr>
-              <th style="padding: 10px; text-align: left; background-color: var(--bg-tertiary); border-bottom: 2px solid var(--border-color);">Earnings</th>
-              <th style="padding: 10px; text-align: right; background-color: var(--bg-tertiary); border-bottom: 2px solid var(--border-color);">Amount (₹)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">Basic Pay</td>
-              <td style="padding: 10px; text-align: right; border-bottom: 1px solid var(--border-color);">${basic.toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">House Rent Allowance</td>
-              <td style="padding: 10px; text-align: right; border-bottom: 1px solid var(--border-color);">${hra.toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">Other Allowance</td>
-              <td style="padding: 10px; text-align: right; border-bottom: 1px solid var(--border-color);">${other.toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">Expense Reimbursement</td>
-              <td style="padding: 10px; text-align: right; border-bottom: 1px solid var(--border-color);">${approvedReimbSum.toLocaleString()}</td>
-            </tr>
-            <tr style="font-weight: 700; background-color: var(--bg-tertiary);">
-              <td style="padding: 10px;">Total Earnings</td>
-              <td style="padding: 10px; text-align: right;">${totalEarnings.toLocaleString()}</td>
-            </tr>
-          </tbody>
-        </table>
+    <div style="background-color: #fff; color: #000; padding: 40px; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; box-sizing: border-box; width: 100%; max-width: 800px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); position: relative;">
+      <!-- Header -->
+      <div style="display: flex; flex-direction: column; align-items: center; position: relative; margin-bottom: 30px; width: 100%;">
+        <div style="position: absolute; left: 0; top: 0;">
+          <img src="air g logo black.png" alt="AIR G International" style="max-height: 45px; object-fit: contain;">
+        </div>
+        <div style="text-align: center; margin-top: 10px;">
+          <h2 style="font-size: 1.5rem; font-weight: 700; margin: 0; color: #000; font-family: inherit;">AIR G International</h2>
+          <h3 style="font-size: 1.25rem; font-weight: 600; margin: 5px 0 0 0; color: #000; font-family: inherit;">Payslip</h3>
+        </div>
       </div>
 
-      <!-- Deductions -->
-      <div>
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr>
-              <th style="padding: 10px; text-align: left; background-color: var(--bg-tertiary); border-bottom: 2px solid var(--border-color);">Deductions</th>
-              <th style="padding: 10px; text-align: right; background-color: var(--bg-tertiary); border-bottom: 2px solid var(--border-color);">Amount (₹)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">Professional Tax</td>
-              <td style="padding: 10px; text-align: right; border-bottom: 1px solid var(--border-color);">${profTax.toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">Leave Without Pay (${lwpDays} days)</td>
-              <td style="padding: 10px; text-align: right; border-bottom: 1px solid var(--border-color);">${lwpDeduction.toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">Leave With Pay (${paidLeaveDays} days)</td>
-              <td style="padding: 10px; text-align: right; border-bottom: 1px solid var(--border-color);">0</td>
-            </tr>
-            <tr style="height: 40px; border-bottom: 1px solid var(--border-color);">
-              <td style="padding: 10px;"></td>
-              <td style="padding: 10px;"></td>
-            </tr>
-            <tr style="font-weight: 700; background-color: var(--bg-tertiary);">
-              <td style="padding: 10px;">Total Deductions</td>
-              <td style="padding: 10px; text-align: right;">${totalDeductions.toLocaleString()}</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Employee Metadata Block -->
+      <table class="meta-table" style="width: 100%; border: none !important; margin-bottom: 30px; font-size: 0.9rem; border-collapse: collapse; line-height: 1.6; color: #000;">
+        <tr style="border: none !important;">
+          <td style="width: 18%; padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Date of Joining</td>
+          <td style="width: 32%; padding: 4px 0; border: none !important; color: #000;">: ${targetEmp.joiningDate || targetEmp.dateOfJoining || '25-07-2025'}</td>
+          <td style="width: 18%; padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Employee Name</td>
+          <td style="width: 32%; padding: 4px 0; border: none !important; color: #000;">: ${targetEmp.name}</td>
+        </tr>
+        <tr style="border: none !important;">
+          <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Pay Period</td>
+          <td style="padding: 4px 0; border: none !important; color: #000;">: ${monthName}</td>
+          <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Designation</td>
+          <td style="padding: 4px 0; border: none !important; color: #000;">: ${targetEmp.role}</td>
+        </tr>
+        <tr style="border: none !important;">
+          <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Total Working Days</td>
+          <td style="padding: 4px 0; border: none !important; color: #000;">: </td>
+          <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Department</td>
+          <td style="padding: 4px 0; border: none !important; color: #000;">: ${targetEmp.dept ? targetEmp.dept.split(',')[0].trim() : 'AI'}</td>
+        </tr>
+        <tr style="border: none !important;">
+          <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Worked Days</td>
+          <td style="padding: 4px 0; border: none !important; color: #000;">: ${30 - lwpDays}</td>
+          <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Absent Days</td>
+          <td style="padding: 4px 0; border: none !important; color: #000;">: ${leavesThisMonth}</td>
+        </tr>
+      </table>
+
+      <!-- Earnings Table -->
+      <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 25px; font-size: 0.9rem; color: #000;">
+        <thead>
+          <tr>
+            <th style="border: 1px solid #000; background-color: #d3d3d3; padding: 8px 12px; text-align: left; font-weight: bold; color: #000;">Earnings</th>
+            <th style="border: 1px solid #000; background-color: #d3d3d3; padding: 8px 12px; text-align: right; font-weight: bold; color: #000; width: 18%;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: left; color: #000;">Basic Pay</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${basic || ''}</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: left; color: #000;">House Rent Allowance</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${hra || ''}</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: left; color: #000;">Other Allowance</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${other || ''}</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: left; color: #000;">Expense Reimbursement</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${approvedReimbSum > 0 ? approvedReimbSum : ''}</td>
+          </tr>
+          <tr style="font-weight: bold;">
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">Total Earnings</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${totalEarnings}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Deductions Table -->
+      <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 25px; font-size: 0.9rem; color: #000;">
+        <thead>
+          <tr>
+            <th style="border: 1px solid #000; background-color: #d3d3d3; padding: 8px 12px; text-align: left; font-weight: bold; color: #000;">Deductions</th>
+            <th style="border: 1px solid #000; background-color: #d3d3d3; padding: 8px 12px; text-align: right; font-weight: bold; color: #000; width: 18%;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: left; color: #000;">Professional Tax</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${profTax || ''}</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: left; color: #000;">Leave Without Pay</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${lwpDeduction > 0 ? lwpDeduction : ''}</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: left; color: #000;">Leave With Pay</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;"></td>
+          </tr>
+          <tr style="font-weight: bold;">
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">Total Deductions</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${totalDeductions}</td>
+          </tr>
+          <tr style="font-weight: bold;">
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">Net Pay</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${netPay}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Signatures Block -->
+      <div style="display: flex; justify-content: space-between; margin-top: 60px; margin-bottom: 40px; padding: 0 20px; font-size: 0.9rem; color: #000; width: 100%; box-sizing: border-box;">
+        <div style="text-align: center; width: 35%;">
+          <p style="margin: 0 0 50px 0; font-weight: 500; color: #000;">Employer Signature</p>
+          <div style="border-bottom: 1.5px solid #000; width: 100%;"></div>
+        </div>
+        <div style="text-align: center; width: 35%;">
+          <p style="margin: 0 0 50px 0; font-weight: 500; color: #000;">Employee Signature</p>
+          <div style="border-bottom: 1.5px solid #000; width: 100%;"></div>
+        </div>
       </div>
-    </div>
 
-    <!-- Net Pay Block -->
-    <div style="display: flex; justify-content: space-between; align-items: center; background: var(--primary-gradient); padding: 18px 24px; border-radius: 8px; color: #fff; margin-bottom: 24px; box-shadow: var(--primary-glow);">
-      <div style="font-size: 1.1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Net Take-Home Pay</div>
-      <div style="font-size: 1.8rem; font-weight: 800;">₹${netPay.toLocaleString()}</div>
-    </div>
+      <!-- Footnote -->
+      <div style="text-align: center; font-size: 0.8rem; color: #555; margin-top: 20px; width: 100%;">
+        This is system generated payslip
+      </div>
 
-    <div style="display: flex; justify-content: flex-end;">
-      <button class="btn btn-secondary" id="payslip-print-btn" onclick="printPayslip()" style="display: inline-flex; align-items: center; gap: 8px;">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-        </svg>
-        Print / Download Payslip
-      </button>
+      <!-- Print Button Control (hidden in printout) -->
+      <div style="position: absolute; right: 20px; bottom: 20px;" class="print-hide">
+        <button class="btn btn-secondary" id="payslip-print-btn" onclick="printPayslip()" style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 0.8rem; cursor: pointer; border-radius: 6px; background-color: var(--primary); color: white; border: none; font-weight: 600;">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          Print / Download Payslip
+        </button>
+      </div>
     </div>
   `;
 }
@@ -7585,7 +7600,7 @@ function printPayslip() {
             background: #fff !important;
             color: #000 !important;
             padding: 40px !important;
-            font-family: system-ui, -apple-system, sans-serif !important;
+            font-family: Arial, sans-serif !important;
           }
           .card {
             border: none !important;
@@ -7593,21 +7608,32 @@ function printPayslip() {
             background: transparent !important;
             padding: 0 !important;
           }
-          .btn, #payslip-print-btn {
+          .btn, #payslip-print-btn, .print-hide {
             display: none !important;
           }
-          table {
+          table:not(.meta-table) {
             width: 100% !important;
             border-collapse: collapse !important;
-            margin-bottom: 20px !important;
+            margin-bottom: 25px !important;
+            border: 1px solid #000 !important;
           }
-          th, td {
-            border: 1px solid #ddd !important;
-            padding: 12px !important;
+          table:not(.meta-table) th, table:not(.meta-table) td {
+            border: 1px solid #000 !important;
+            padding: 8px 12px !important;
           }
-          th {
-            background-color: #f5f5f5 !important;
+          table:not(.meta-table) th {
+            background-color: #d3d3d3 !important;
             color: #000 !important;
+          }
+          .meta-table {
+            width: 100% !important;
+            border: none !important;
+            margin-bottom: 30px !important;
+            border-collapse: collapse !important;
+          }
+          .meta-table td {
+            border: none !important;
+            padding: 4px 0 !important;
           }
         </style>
       </head>
@@ -7632,16 +7658,17 @@ function populateSalaryEmployeeSelect() {
   if (!select) return;
   const currentVal = select.value;
   select.innerHTML = '';
-  state.employees.forEach(emp => {
+  const eligibleEmployees = state.employees.filter(emp => emp.role.toLowerCase() !== 'admin');
+  eligibleEmployees.forEach(emp => {
     const opt = document.createElement('option');
     opt.value = emp.id;
     opt.textContent = `${emp.name} (${emp.dept} - ${emp.role})`;
     select.appendChild(opt);
   });
-  if (currentVal && state.employees.some(e => e.id === currentVal)) {
+  if (currentVal && eligibleEmployees.some(e => e.id === currentVal)) {
     select.value = currentVal;
-  } else {
-    select.value = state.employees[0].id;
+  } else if (eligibleEmployees.length > 0) {
+    select.value = eligibleEmployees[0].id;
   }
 
   // Set the dataset attribute to check if initialized, and load details
