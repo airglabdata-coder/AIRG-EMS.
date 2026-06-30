@@ -7416,24 +7416,27 @@ function getEmployeeSalaryForMonth(emp, month) {
   const accrualForMonth = getEmployeeLeaveAccumulation(emp.id, month);
   const computedLwp = accrualForMonth.lwpDays;
 
+  // Formula: total earning base of 10000
+  const totalEarningBase = 10000;
+  const basic = Math.round(totalEarningBase * 0.50); // 5000
+  const hra = Math.round(basic * 0.40); // 2000
+  const other = totalEarningBase - (basic + hra); // 3000
+  const profTax = totalEarningBase > 7500 ? 200 : 0;
+
   if (!emp.salaries[month]) {
-    if (emp.salary) {
-      emp.salaries[month] = { ...emp.salary, lwpDays: computedLwp };
-    } else {
-      let basic = 45000;
-      if (emp.role === 'Admin') basic = 90000;
-      else if (emp.role === 'HR') basic = 60000;
-      else if (emp.role === 'Tech Lead') basic = 75000;
-      emp.salaries[month] = {
-        basic: basic,
-        hra: Math.round(basic * 0.40),
-        other: Math.round(basic * 0.15),
-        profTax: 200,
-        lwpDays: computedLwp
-      };
-    }
+    emp.salaries[month] = {
+      basic: basic,
+      hra: hra,
+      other: other,
+      profTax: profTax,
+      lwpDays: computedLwp
+    };
   } else {
-    // Always refresh LWP from simulator (unless HR has a manual override flag)
+    // Always refresh with current formula values
+    emp.salaries[month].basic = basic;
+    emp.salaries[month].hra = hra;
+    emp.salaries[month].other = other;
+    emp.salaries[month].profTax = profTax;
     if (!emp.salaries[month]._lwpManualOverride) {
       emp.salaries[month].lwpDays = computedLwp;
     }
@@ -7488,7 +7491,12 @@ function renderPayslips() {
 
   const profTax = Number(salary.profTax);
   const lwpDays = Number(salary.lwpDays || 0);
-  const lwpDeduction = Math.round((basic / 30) * lwpDays);
+  
+  // Calculate LWP deduction rate: base total earning (basic + hra + other) divided by number of days in the month
+  const [yearVal, monthVal] = selectedMonth.split('-').map(Number);
+  const daysInMonth = new Date(yearVal, monthVal, 0).getDate();
+  const lwpDeduction = Math.round(((basic + hra + other) / daysInMonth) * lwpDays);
+  
   const totalDeductions = profTax + lwpDeduction;
 
   // Compute paid leave days for this month (total approved - lwp)
@@ -7532,13 +7540,13 @@ function renderPayslips() {
         </tr>
         <tr style="border: none !important;">
           <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Total Working Days</td>
-          <td style="padding: 4px 0; border: none !important; color: #000;">: </td>
+          <td style="padding: 4px 0; border: none !important; color: #000;">: 26</td>
           <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Department</td>
           <td style="padding: 4px 0; border: none !important; color: #000;">: ${targetEmp.dept ? targetEmp.dept.split(',')[0].trim() : 'AI'}</td>
         </tr>
         <tr style="border: none !important;">
           <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Worked Days</td>
-          <td style="padding: 4px 0; border: none !important; color: #000;">: ${30 - lwpDays}</td>
+          <td style="padding: 4px 0; border: none !important; color: #000;">: ${Math.max(0, 26 - lwpDays)}</td>
           <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Absent Days</td>
           <td style="padding: 4px 0; border: none !important; color: #000;">: ${leavesThisMonth}</td>
         </tr>
