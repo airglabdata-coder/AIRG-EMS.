@@ -7767,11 +7767,15 @@ function handleSalaryEmpChange() {
     const selectedMonth = monthSelect ? monthSelect.value : '2026-06';
     const salary = getEmployeeSalaryForMonth(emp, selectedMonth);
 
-    document.getElementById('salary-basic').value = salary.basic;
-    document.getElementById('salary-hra').value = salary.hra;
-    document.getElementById('salary-other').value = salary.other;
-    document.getElementById('salary-proftax').value = salary.profTax;
-    document.getElementById('salary-lwp').value = salary.lwpDays || 0;
+    const totalEarning = Number(salary.basic || 0) + Number(salary.hra || 0) + Number(salary.other || 0);
+    const totalEarningEl = document.getElementById('salary-total-earning');
+    if (totalEarningEl) {
+      totalEarningEl.value = totalEarning;
+    }
+    const lwpEl = document.getElementById('salary-lwp');
+    if (lwpEl) {
+      lwpEl.value = salary.lwpDays || 0;
+    }
   }
   renderPayslips();
 }
@@ -7790,12 +7794,19 @@ function handleSalaryConfigSubmit(e) {
     emp.salaries = {};
   }
 
+  const totalEarningBase = Number(document.getElementById('salary-total-earning').value || 0);
+  const basic = Math.round(totalEarningBase * 0.50);
+  const hra = Math.round(basic * 0.40);
+  const other = totalEarningBase - (basic + hra);
+  const profTax = totalEarningBase > 7500 ? 200 : 0;
+  const lwpDays = Number(document.getElementById('salary-lwp').value || 0);
+
   const salaryData = {
-    basic: Number(document.getElementById('salary-basic').value),
-    hra: Number(document.getElementById('salary-hra').value),
-    other: Number(document.getElementById('salary-other').value),
-    profTax: Number(document.getElementById('salary-proftax').value),
-    lwpDays: Number(document.getElementById('salary-lwp').value || 0),
+    basic: basic,
+    hra: hra,
+    other: other,
+    profTax: profTax,
+    lwpDays: lwpDays,
     _lwpManualOverride: true  // HR explicitly set LWP — preserve it
   };
 
