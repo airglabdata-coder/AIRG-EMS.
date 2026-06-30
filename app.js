@@ -2112,6 +2112,16 @@ async function init() {
 
   checkAuthSession();
   initSyncPolling();
+
+  // Smoothly transition out the loading overlay
+  const loader = document.getElementById('loading-overlay');
+  if (loader) {
+    loader.style.opacity = '0';
+    loader.style.pointerEvents = 'none';
+    setTimeout(() => {
+      loader.style.display = 'none';
+    }, 300);
+  }
 }
 
 function updateThemeIcon(theme) {
@@ -2471,6 +2481,11 @@ function switchLeaveSubTab(tab) {
 }
 
 function switchView(viewName) {
+  const leaveSubTabs = document.getElementById('leave-sub-tabs');
+  if (leaveSubTabs && viewName !== 'dashboard' && viewName !== 'requests' && viewName !== 'reports') {
+    leaveSubTabs.style.display = 'none';
+  }
+
   // Mark resolved requests as read for employee
   if (state.currentUser && (viewName === 'dashboard' || viewName === 'requests')) {
     if (state.currentRole === 'employee' || state.activeLeaveSubTab === 'apply') {
@@ -2571,6 +2586,23 @@ function switchView(viewName) {
     // Update Page Header Label
     const titleLabel = document.getElementById('page-title-label');
     if (titleLabel) titleLabel.textContent = 'Daily Reports';
+
+    const isLeadOrHR = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin');
+    const leaveSubTabs = document.getElementById('leave-sub-tabs');
+    if (isLeadOrHR) {
+      if (leaveSubTabs) leaveSubTabs.style.display = 'flex';
+      if (!state.activeLeaveSubTab) {
+        state.activeLeaveSubTab = 'apply';
+      }
+      const applyTab = document.getElementById('leave-tab-apply');
+      const approveTab = document.getElementById('leave-tab-approve');
+      if (applyTab && approveTab) {
+        applyTab.classList.toggle('active', state.activeLeaveSubTab === 'apply');
+        approveTab.classList.toggle('active', state.activeLeaveSubTab === 'approve');
+      }
+    } else {
+      if (leaveSubTabs) leaveSubTabs.style.display = 'none';
+    }
 
     renderDailyReports();
   } else if (viewName === 'payslips') {
@@ -2751,6 +2783,11 @@ function renderEmployeeDashboard(viewName = 'tasks') {
   const tbody = document.getElementById('employee-requests-tbody');
   tbody.innerHTML = '';
 
+  const leaveHeader = document.getElementById('leave-remarks-header');
+  if (leaveHeader) {
+    leaveHeader.textContent = state.currentRole === 'hr' ? 'Admin Remarks / Comments' : 'HR / Admin Remarks / Comments';
+  }
+
   if (userRequests.length === 0) {
     tbody.innerHTML = `
       <tr>
@@ -2782,8 +2819,8 @@ function renderEmployeeDashboard(viewName = 'tasks') {
       <td>${formatDate(req.startDate)} - ${formatDate(req.endDate)}</td>
       <td><strong>${req.duration} day${req.duration > 1 ? 's' : ''}</strong></td>
       <td><span class="badge badge-${req.status}">${req.status}</span></td>
-      <td><span class="text-muted" title="${req.reason}">${truncateText(req.reason, 30)}</span></td>
-      <td><span class="text-muted" title="${req.comment || 'No comment'}">${truncateText(req.comment || '-', 25)}</span></td>
+      <td><span class="text-muted">${renderClickableText(req.reason, 35)}</span></td>
+      <td><span class="text-muted">${renderClickableText(req.comment, 35)}</span></td>
     `;
     tbody.appendChild(tr);
   });
@@ -2942,7 +2979,7 @@ function renderHRDashboard(viewName = 'dashboard') {
         <td><strong>${req.type}</strong></td>
         <td>${formatDate(req.startDate)} - ${formatDate(req.endDate)}</td>
         <td><strong>${req.duration} day${req.duration > 1 ? 's' : ''}</strong></td>
-        <td><span class="text-muted" title="${req.reason}">${truncateText(req.reason, 30)}</span></td>
+        <td><span class="text-muted">${renderClickableText(req.reason, 35)}</span></td>
         <td><span class="text-muted">${formatDate(req.submittedAt)}</span></td>
         <td>
           <div style="display:flex; gap: 8px;">
@@ -2984,8 +3021,8 @@ function renderHRDashboard(viewName = 'dashboard') {
         <td>${formatDate(req.startDate)} - ${formatDate(req.endDate)}</td>
         <td><strong>${req.duration} day${req.duration > 1 ? 's' : ''}</strong></td>
         <td><span class="badge badge-${req.status}">${req.status}</span></td>
-        <td><span class="text-muted" title="${req.reason}">${truncateText(req.reason, 20)}</span></td>
-        <td><span class="text-muted" title="${req.comment || 'No comment'}">${truncateText(req.comment || '-', 20)}</span></td>
+        <td><span class="text-muted">${renderClickableText(req.reason, 35)}</span></td>
+        <td><span class="text-muted">${renderClickableText(req.comment, 35)}</span></td>
       `;
       allTbody.appendChild(tr);
     });
@@ -3018,9 +3055,12 @@ function renderEmployeeRoster() {
   listEl.innerHTML = '';
 
 
-  let employeesToRender = state.employees;
+  let employeesToRender = state.employees.filter(emp => {
+    const isSystemAdmin = emp.role.toLowerCase() === 'admin' || emp.email.toLowerCase() === 'admin@company.com';
+    return !isSystemAdmin;
+  });
   if (state.currentRole === 'techlead' && state.currentUser) {
-    employeesToRender = state.employees.filter(emp => {
+    employeesToRender = employeesToRender.filter(emp => {
       if (!emp.dept) return false;
       const leadDepts = (state.currentUser.dept || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
       const empDepts = emp.dept.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
@@ -3055,14 +3095,39 @@ function renderEmployeeRoster() {
 
     const avatarStyle = emp.photo ? 'style="border-radius: 50%; overflow: hidden; background: none; padding: 0;"' : '';
 
+    let badgeLabel = 'Bronze Performer';
+    let badgeColor = '#b45309';
+    let badgeBg = 'rgba(180, 83, 9, 0.15)';
+    let badgeBorder = 'rgba(180, 83, 9, 0.3)';
+
+    if (points >= 30) {
+      badgeLabel = 'Diamond Champion 👑';
+      badgeColor = '#0284c7';
+      badgeBg = 'rgba(2, 132, 199, 0.15)';
+      badgeBorder = 'rgba(2, 132, 199, 0.3)';
+    } else if (points >= 15) {
+      badgeLabel = 'Gold Achiever 🏆';
+      badgeColor = '#d97706';
+      badgeBg = 'rgba(217, 119, 6, 0.15)';
+      badgeBorder = 'rgba(217, 119, 6, 0.3)';
+    } else if (points >= 5) {
+      badgeLabel = 'Silver Contributor ⭐';
+      badgeColor = '#4b5563';
+      badgeBg = 'rgba(75, 85, 99, 0.15)';
+      badgeBorder = 'rgba(75, 85, 99, 0.3)';
+    }
+
     const headerHTML = `
       <div class="roster-header" style="display: flex; align-items: center; gap: 16px; width: 100%; ${state.currentRole !== 'techlead' ? 'cursor: pointer;' : ''}" ${state.currentRole !== 'techlead' ? `onclick="toggleEmployeeRosterExpand('${emp.id}')"` : ''}>
         <div class="roster-avatar" ${avatarStyle}>${avatarHTML}</div>
         <div class="roster-info">
-          <div class="roster-name" style="display: flex; align-items: center; gap: 8px;">
-            ${emp.name}
+          <div class="roster-name" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span>${emp.name}</span>
             <span style="display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; background-color: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; font-size: 0.7rem; font-weight: 700;">
               ★ ${points} Star${points !== 1 ? 's' : ''}
+            </span>
+            <span style="display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; background-color: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; border-radius: 12px; font-size: 0.7rem; font-weight: 700;">
+              ${badgeLabel}
             </span>
           </div>
           <div class="roster-dept">${(emp.dept && emp.dept.toLowerCase() !== 'engineering') ? `${emp.dept} • ` : ''}${emp.email}</div>
@@ -3094,14 +3159,6 @@ function renderEmployeeRoster() {
 
     let detailsHTML = '';
     if (isExpanded) {
-      const aadharContent = (emp.aadhar && emp.aadhar.startsWith('data:'))
-        ? `<img src="${emp.aadhar}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.aadhar}')" title="Click to view full Aadhar card image" />`
-        : '<span class="text-muted" style="font-weight: 500;">Not Uploaded</span>';
-
-      const panContent = (emp.pan && emp.pan.startsWith('data:'))
-        ? `<img src="${emp.pan}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.pan}')" title="Click to view full PAN card image" />`
-        : '<span class="text-muted" style="font-weight: 500;">Not Uploaded</span>';
-
       let deleteBtnHTML = '';
       if ((state.currentRole === 'hr' || state.currentRole === 'admin') && emp.id !== state.currentUser.id) {
         deleteBtnHTML = `
@@ -3116,79 +3173,28 @@ function renderEmployeeRoster() {
         `;
       }
 
-      const bankAccImg = (emp.bankAcc && emp.bankAcc.startsWith('data:'))
-        ? `<img src="${emp.bankAcc}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.bankAcc}')" title="Click to view full Bank Account document image" />`
-        : '<span class="text-muted" style="font-weight: 500;">Not Uploaded</span>';
-
-      const bankIfscImg = (emp.bankIfsc && emp.bankIfsc.startsWith('data:'))
-        ? `<img src="${emp.bankIfsc}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer;" onclick="openRosterDocModal('${emp.bankIfsc}')" title="Click to view full IFSC document image" />`
-        : '<span class="text-muted" style="font-weight: 500;">Not Uploaded</span>';
-
-      const bankDetailsHTML = `
-        <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-          <div style="flex: 1; min-width: 150px;">
-            <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Bank Account Doc</span>
-            <div style="margin-top: 4px;">${bankAccImg}</div>
+      detailsHTML = `
+        <div class="roster-details" style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; width: 100%;">
+          <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center;">
+            <div style="flex: 1; min-width: 150px;">
+              <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Role</span>
+              ${state.currentRole === 'admin' && !isSystemAdmin ? `
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <select id="role-select-${emp.id}" style="padding: 6px 12px; font-size: 0.85rem; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); cursor: pointer; outline: none;">
+                    <option value="Employee" ${emp.role === 'Employee' ? 'selected' : ''}>Employee</option>
+                    <option value="HR" ${emp.role === 'HR' ? 'selected' : ''}>HR</option>
+                    <option value="Tech Lead" ${emp.role === 'Tech Lead' ? 'selected' : ''}>Tech Lead</option>
+                  </select>
+                  <button class="btn btn-primary btn-sm" onclick="updateEmployeeRole('${emp.id}', event)" style="padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;">Save Role</button>
+                </div>
+              ` : `
+                <strong style="color: var(--text-primary); font-size: 0.9rem;">${emp.role}</strong>
+              `}
+            </div>
           </div>
-          <div style="flex: 1; min-width: 150px;">
-            <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">IFSC & Bank Name Doc</span>
-            <div style="margin-top: 4px;">${bankIfscImg}</div>
-          </div>
+          ${deleteBtnHTML}
         </div>
       `;
-
-      if (state.currentRole === 'techlead') {
-        detailsHTML = `
-          <div class="roster-details" style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; width: 100%;">
-            <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-              <div style="flex: 1; min-width: 150px;">
-                <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Role</span>
-                <strong style="color: var(--text-primary); font-size: 0.9rem;">${emp.role}</strong>
-              </div>
-            </div>
-            <div style="display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(239, 68, 68, 0.08); border: 1px dashed rgba(239, 68, 68, 0.3); border-radius: var(--border-radius-sm); color: var(--text-primary); font-weight: 500;">
-              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: #ef4444; margin-right: 8px; flex-shrink: 0;">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              Aadhar, PAN, and Bank details are restricted to HR & Admin only.
-            </div>
-          </div>
-        `;
-      } else {
-        detailsHTML = `
-          <div class="roster-details" style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; width: 100%;">
-            <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-              <div style="flex: 1; min-width: 150px;">
-                <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Aadhar Card</span>
-                <div style="margin-top: 4px;">${aadharContent}</div>
-              </div>
-              <div style="flex: 1; min-width: 150px;">
-                <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">PAN Card</span>
-                <div style="margin-top: 4px;">${panContent}</div>
-              </div>
-            </div>
-            ${bankDetailsHTML}
-            <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 4px;">
-              <div style="flex: 1; min-width: 150px;">
-                <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Role</span>
-                ${state.currentRole === 'admin' && !isSystemAdmin ? `
-                  <div style="display: flex; gap: 8px; align-items: center;">
-                    <select id="role-select-${emp.id}" style="padding: 6px 12px; font-size: 0.85rem; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); cursor: pointer; outline: none;">
-                      <option value="Employee" ${emp.role === 'Employee' ? 'selected' : ''}>Employee</option>
-                      <option value="HR" ${emp.role === 'HR' ? 'selected' : ''}>HR</option>
-                      <option value="Tech Lead" ${emp.role === 'Tech Lead' ? 'selected' : ''}>Tech Lead</option>
-                    </select>
-                    <button class="btn btn-primary btn-sm" onclick="updateEmployeeRole('${emp.id}', event)" style="padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;">Save Role</button>
-                  </div>
-                ` : `
-                  <strong style="color: var(--text-primary); font-size: 0.9rem;">${emp.role}</strong>
-                `}
-              </div>
-            </div>
-            ${deleteBtnHTML}
-          </div>
-        `;
-      }
     }
 
     item.innerHTML = headerHTML + detailsHTML;
@@ -3617,6 +3623,44 @@ function truncateText(text, length) {
   return text.substr(0, length) + '...';
 }
 
+function renderClickableText(text, limit) {
+  if (!text || text.trim() === '-' || text.trim() === '') return '-';
+  if (text.length <= limit) return text;
+
+  const truncated = text.substring(0, limit) + '...';
+  const escapedText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+  return `
+    <span class="clickable-text-span" 
+          data-full="${escapedText}" 
+          data-truncated="${truncated}" 
+          data-expanded="false" 
+          onclick="toggleClickableText(this, event)" 
+          style="cursor: pointer; text-decoration: underline dotted var(--primary); font-weight: 500;" 
+          title="Click to view full text">
+      ${truncated}
+    </span>
+  `;
+}
+
+function toggleClickableText(el, event) {
+  if (event) event.stopPropagation();
+  const isExpanded = el.getAttribute('data-expanded') === 'true';
+  const fullText = el.getAttribute('data-full');
+  const truncatedText = el.getAttribute('data-truncated');
+
+  if (isExpanded) {
+    el.innerHTML = truncatedText;
+    el.setAttribute('data-expanded', 'false');
+    el.title = "Click to view full text";
+  } else {
+    el.innerHTML = fullText;
+    el.setAttribute('data-expanded', 'true');
+    el.title = "Click to collapse";
+  }
+}
+window.toggleClickableText = toggleClickableText;
+
 // --- Handle Hamburger Menu for Mobile Responsive View ---
 document.getElementById('mobile-hamburger').addEventListener('click', function () {
   this.classList.toggle('open');
@@ -3627,18 +3671,19 @@ document.getElementById('mobile-hamburger').addEventListener('click', function (
 
 // --- 1. Employee View Logic ---
 function groupTasksByMonth(tasksList) {
-  // Sort tasks chronologically by dueDate
+  // Sort tasks by ID descending (newest first)
   const sorted = [...tasksList].sort((a, b) => {
-    const da = a.dueDate ? new Date(a.dueDate) : new Date(0);
-    const db = b.dueDate ? new Date(b.dueDate) : new Date(0);
-    return da - db;
+    const idA = parseInt(a.id.replace(/\D/g, '')) || 0;
+    const idB = parseInt(b.id.replace(/\D/g, '')) || 0;
+    return idB - idA;
   });
 
   const groups = {};
   sorted.forEach(task => {
     let monthKey = 'No Timeline';
-    if (task.dueDate) {
-      const parts = task.dueDate.split('-');
+    const dateToUse = task.startDate || task.dueDate;
+    if (dateToUse) {
+      const parts = dateToUse.split('-');
       if (parts.length >= 2) {
         const year = parseInt(parts[0]);
         const month = parseInt(parts[1]);
@@ -3665,7 +3710,7 @@ function renderEmployeeTasksAndProjects() {
 
   const activeProjects = state.projects.filter(p => {
     const isDeptMember = user.dept && p.dept && user.dept.split(',').map(d => d.trim().toLowerCase()).includes(p.dept.toLowerCase());
-    return isDeptMember || userTaskProjectIds.includes(p.id) || (p.employeeIds && p.employeeIds.includes(user.id));
+    return isDeptMember || p.techLeadId === user.id || userTaskProjectIds.includes(p.id) || (p.employeeIds && p.employeeIds.includes(user.id));
   });
 
   // Render Projects (filtered by employee's department OR projects they are assigned tasks in)
@@ -3955,8 +4000,8 @@ function createProjectCard(proj, isMyProject) {
     `;
   }
 
-  // Determine if editable by the project lead (the assigned Tech Lead) or Admin
-  const isEditable = (state.currentUser.id === proj.techLeadId || state.currentUser.role === 'Admin');
+  // Determine if editable by the project lead (the assigned Tech Lead), Admin, or HR
+  const isEditable = (state.currentUser.id === proj.techLeadId || state.currentUser.role === 'Admin' || state.currentUser.role === 'HR');
 
   // Get all employees associated with the project
   const taskAssigneeIds = state.tasks.filter(t => t.projectId === proj.id).map(t => t.assigneeId);
@@ -3967,7 +4012,7 @@ function createProjectCard(proj, isMyProject) {
   };
 
   const deptEmployees = state.employees.filter(e => isDeptMember(e, proj.dept));
-  const externalEmployees = state.employees.filter(e => !isDeptMember(e, proj.dept) && ((proj.employeeIds && proj.employeeIds.includes(e.id)) || taskAssigneeIds.includes(e.id)));
+  const externalEmployees = state.employees.filter(e => !isDeptMember(e, proj.dept) && (e.id === proj.techLeadId || (proj.employeeIds && proj.employeeIds.includes(e.id)) || taskAssigneeIds.includes(e.id)));
   const allProjectEmployees = [...deptEmployees, ...externalEmployees];
 
   const uniqueEmployees = [];
@@ -4001,7 +4046,7 @@ function createProjectCard(proj, isMyProject) {
           ${emp.avatar || emp.name.split(' ').map(n => n[0]).join('')}
         </div>
         <span>${emp.name}</span>
-        <span style="font-size: 0.65rem; color: var(--text-muted);">${isLead ? '(Tech Lead)' : isExternal ? `(${emp.dept} - Contributor)` : '(Dept)'}</span>
+        <span style="font-size: 0.65rem; color: var(--text-muted);">(${emp.designation || emp.role || (isLead ? 'Tech Lead' : 'Employee')})</span>
         ${canRemove ? `
           <button onclick="removeEmployeeFromProject('${proj.id}', '${emp.id}')" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.85rem; font-weight: bold; margin-left: 4px; padding: 0; line-height: 1;" title="Remove from project">&times;</button>
         ` : ''}
@@ -4013,6 +4058,12 @@ function createProjectCard(proj, isMyProject) {
   const nonMemberEmployees = state.employees.filter(e => !seenIds.has(e.id));
   const existingEmployeesToAssignOptions = nonMemberEmployees.map(emp => {
     return `<option value="${emp.id}">${emp.name} (${emp.dept} - ${emp.role})</option>`;
+  }).join('');
+
+  // Dropdown options for all employees to appoint as Tech Lead
+  const allEmployeesOptions = state.employees.map(emp => {
+    const isCurrent = emp.id === proj.techLeadId;
+    return `<option value="${emp.id}" ${isCurrent ? 'selected' : ''}>${emp.name} (${emp.dept} - ${emp.role})</option>`;
   }).join('');
 
   // Determine if deletable by Admin, HR, or the assigned Tech Lead of the project
@@ -4053,31 +4104,11 @@ function createProjectCard(proj, isMyProject) {
     `;
   } else {
     // My project (full view) or Admin/HR view (isMyProject is null)
-    let leadDisplay = '';
-    if (isMyProject === null) {
-      if (state.currentRole === 'admin') {
-        let selectOptions = '';
-        state.employees.forEach(emp => {
-          const isSelected = emp.id === proj.techLeadId;
-          selectOptions += `<option value="${emp.id}" ${isSelected ? 'selected' : ''}>${emp.name} (${emp.dept} - ${emp.role})</option>`;
-        });
-        leadDisplay = `
-          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px; display: flex; flex-direction: column; gap: 4px;">
-            <span>Assign Tech Lead:</span>
-            <select class="project-card-tech-lead-select" data-project-id="${proj.id}" onchange="changeProjectTechLead('${proj.id}', this.value)" style="padding: 4px 8px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); outline: none; cursor: pointer;">
-              ${selectOptions}
-            </select>
-          </div>
-        `;
-      } else {
-        // In Tech Lead or HR view, display which Tech Lead is assigned
-        leadDisplay = `
-          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
-            Tech Lead: <strong style="color: var(--text-primary);">${leadName}</strong>
-          </div>
-        `;
-      }
-    }
+    let leadDisplay = `
+      <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+        Tech Lead: <strong style="color: var(--text-primary);">${leadName}</strong>
+      </div>
+    `;
 
     leftColHtml = `
       <div style="display: flex; flex-direction: column; gap: 12px; height: 100%;">
@@ -4224,12 +4255,22 @@ function createProjectCard(proj, isMyProject) {
           Project & Department Team
         </h4>
         ${isEditable ? `
-          <button type="button" class="btn btn-secondary btn-xs" onclick="toggleAddMemberForm('${proj.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 600;">
-            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Add Member
-          </button>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-secondary btn-xs" onclick="toggleAddMemberForm('${proj.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 600;">
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Add Member
+            </button>
+            ${(state.currentRole === 'admin' || state.currentRole === 'hr') ? `
+              <button type="button" class="btn btn-secondary btn-xs" onclick="toggleChangeTechLeadForm('${proj.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 600;">
+                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Change Tech Lead
+              </button>
+            ` : ''}
+          </div>
         ` : ''}
       </div>
 
@@ -4255,6 +4296,18 @@ function createProjectCard(proj, isMyProject) {
           </button>
         </div>
       ` : ''}
+
+      ${isEditable && (state.currentRole === 'admin' || state.currentRole === 'hr') ? `
+        <div id="change-tech-lead-form-${proj.id}" class="change-tech-lead-form-container" style="display: none; align-items: center; gap: 12px; margin-top: 16px; background: var(--bg-secondary); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); flex-wrap: wrap; width: 100%; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px;">
+            <select id="select-change-tech-lead-${proj.id}" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-tertiary); color: var(--text-primary); outline: none; cursor: pointer; flex: 1;">
+              <option value="" disabled>Select Tech Lead to appoint...</option>
+              ${allEmployeesOptions}
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="submitChangeTechLead('${proj.id}')" style="padding: 6px 16px; font-size: 0.8rem; font-weight: 600; white-space: nowrap;">Appoint Tech Lead</button>
+          </div>
+        </div>
+      ` : ''}
     </div>
   `;
 
@@ -4269,6 +4322,27 @@ function toggleAddMemberForm(projId, event) {
   }
 }
 window.toggleAddMemberForm = toggleAddMemberForm;
+
+function toggleChangeTechLeadForm(projId, event) {
+  if (event) event.preventDefault();
+  const form = document.getElementById(`change-tech-lead-form-${projId}`);
+  if (form) {
+    form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+  }
+}
+window.toggleChangeTechLeadForm = toggleChangeTechLeadForm;
+
+function submitChangeTechLead(projId) {
+  const select = document.getElementById(`select-change-tech-lead-${projId}`);
+  if (!select) return;
+  const newTechLeadId = select.value;
+  if (!newTechLeadId) {
+    showToast('Please select a Tech Lead.', 'error');
+    return;
+  }
+  changeProjectTechLead(projId, newTechLeadId);
+}
+window.submitChangeTechLead = submitChangeTechLead;
 
 function assignEmployeeToProject(projId) {
   const select = document.getElementById(`select-add-member-${projId}`);
@@ -4286,6 +4360,19 @@ function assignEmployeeToProject(projId) {
   if (!proj.employeeIds.includes(empId)) {
     proj.employeeIds.push(empId);
   }
+
+  // Automatically add the project's department to the employee's department list if not already present
+  const employee = state.employees.find(e => e.id === empId);
+  if (employee && proj.dept) {
+    const currentDepts = employee.dept ? employee.dept.split(',').map(d => d.trim()) : [];
+    if (!currentDepts.map(d => d.toLowerCase()).includes(proj.dept.toLowerCase())) {
+      currentDepts.push(proj.dept);
+      employee.dept = currentDepts.join(', ');
+      localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+      triggerBackendSync();
+    }
+  }
+
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
 
   // Refresh views
@@ -5202,10 +5289,26 @@ function handleEmployeeCreationSubmit(e) {
   const pan = currentUploadedPanFile || '';
   const bankAcc = currentUploadedBankAccFile || '';
   const bankIfsc = currentUploadedBankIfscFile || '';
-  const password = document.getElementById('new-emp-password') ? document.getElementById('new-emp-password').value : 'password123';
+  const passwordEl = document.getElementById('new-emp-password');
+  const password = passwordEl ? passwordEl.value : '';
+  const passwordConfirmEl = document.getElementById('new-emp-password-confirm');
+  const passwordConfirm = passwordConfirmEl ? passwordConfirmEl.value : '';
 
-  if (!id || !name || !email || !dept || !role || !phone || isNaN(balance)) {
+  if (!id || !name || !email || !dept || !role || !phone || isNaN(balance) || !password) {
     showToast('Please fill out all fields.', 'error');
+    return;
+  }
+
+  // Validate passwords match
+  if (password !== passwordConfirm) {
+    showToast('Passwords do not match. Please re-enter.', 'error');
+    return;
+  }
+
+  // Validate password strength: min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+  const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+  if (!strongRegex.test(password)) {
+    showToast('Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character.', 'error');
     return;
   }
 
@@ -5284,7 +5387,7 @@ function handleEmployeeCreationSubmit(e) {
   hideEmployeeModal();
 
   if (!state.currentUser) {
-    showToast(`Employee "${name}" registered successfully! You can now sign in.`, 'success');
+    showToast(`Employee "${name}" registered successfully! You can now log in.`, 'success');
     return;
   }
 
@@ -6589,22 +6692,25 @@ function renderDailyReports() {
   const hrSection = document.getElementById('reports-hr-section');
   if (!empSection || !hrSection) return;
 
-  if (state.currentRole === 'employee') {
+  const isLeadOrHR = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin');
+
+  if (isLeadOrHR) {
+    if (state.activeLeaveSubTab === 'apply') {
+      empSection.style.display = 'flex';
+      empSection.style.marginBottom = '0';
+      hrSection.style.display = 'none';
+      renderEmployeeReports();
+    } else {
+      empSection.style.display = 'none';
+      empSection.style.marginBottom = '0';
+      hrSection.style.display = 'flex';
+      renderHRReports();
+    }
+  } else {
     empSection.style.display = 'flex';
     empSection.style.marginBottom = '0';
     hrSection.style.display = 'none';
     renderEmployeeReports();
-  } else if (state.currentRole === 'techlead' || state.currentRole === 'hr') {
-    empSection.style.display = 'flex';
-    empSection.style.marginBottom = '32px';
-    hrSection.style.display = 'flex';
-    renderEmployeeReports();
-    renderHRReports();
-  } else if (state.currentRole === 'admin') {
-    empSection.style.display = 'none';
-    empSection.style.marginBottom = '0';
-    hrSection.style.display = 'flex';
-    renderHRReports();
   }
 }
 
@@ -6612,6 +6718,11 @@ function renderEmployeeReports() {
   const tbody = document.getElementById('emp-reports-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
+
+  const reportsHeader = document.getElementById('reports-remarks-header');
+  if (reportsHeader) {
+    reportsHeader.textContent = state.currentRole === 'hr' ? 'Admin Remarks' : 'HR / Admin Remarks';
+  }
 
   const userReports = state.dailyReports.filter(r => r.employeeId === state.currentUser.id);
 
