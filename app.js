@@ -6744,7 +6744,13 @@ function renderEmployeeReports() {
     return;
   }
 
-  const sortedReports = [...userReports].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sortedReports = [...userReports].sort((a, b) => {
+    const dateDiff = new Date(b.date) - new Date(a.date);
+    if (dateDiff !== 0) return dateDiff;
+    const idA = parseInt(a.id.replace(/\D/g, '')) || 0;
+    const idB = parseInt(b.id.replace(/\D/g, '')) || 0;
+    return idB - idA;
+  });
 
   sortedReports.forEach(report => {
     const isExpanded = state.expandedReportIds && state.expandedReportIds.has(report.id);
@@ -6781,9 +6787,31 @@ function renderEmployeeReports() {
     if (report.images && report.images.length > 0) {
       imagesHtml = `
         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
-          ${report.images.map((imgBase64, idx) => `
-            <img src="${imgBase64}" onclick="openFullImageViewModal('${report.id}', ${idx}, event)" class="report-image-thumbnail">
-          `).join('')}
+          ${report.images.map((fileObj, idx) => {
+            const isString = typeof fileObj === 'string';
+            const fileData = isString ? fileObj : fileObj.data;
+            const fileName = isString ? 'Attachment' : fileObj.name;
+            const fileType = isString ? 'image/png' : (fileObj.type || '');
+            
+            const isPdf = fileType === 'application/pdf' || 
+                          fileName.toLowerCase().endsWith('.pdf') || 
+                          fileData.startsWith('data:application/pdf');
+
+            if (isPdf) {
+              return `
+                <div onclick="openPdfInNewWindow('${fileData}', event)" class="report-image-thumbnail" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; padding: 4px; box-sizing: border-box;" title="${fileName}">
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--danger); margin-bottom: 2px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2v-9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span style="font-size: 0.65rem; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--text-primary);">${fileName}</span>
+                </div>
+              `;
+            } else {
+              return `
+                <img src="${fileData}" onclick="openFullImageViewModal('${report.id}', ${idx}, event)" class="report-image-thumbnail" title="${fileName}">
+              `;
+            }
+          }).join('')}
         </div>
       `;
     }
@@ -6946,7 +6974,13 @@ function renderHRReports() {
   }
 
   // Sort reports chronologically descending (newest first)
-  const sortedReports = [...filteredReports].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sortedReports = [...filteredReports].sort((a, b) => {
+    const dateDiff = new Date(b.date) - new Date(a.date);
+    if (dateDiff !== 0) return dateDiff;
+    const idA = parseInt(a.id.replace(/\D/g, '')) || 0;
+    const idB = parseInt(b.id.replace(/\D/g, '')) || 0;
+    return idB - idA;
+  });
 
   // Group by month
   const grouped = {};
@@ -7031,9 +7065,31 @@ function renderHRReports() {
       if (report.images && report.images.length > 0) {
         imagesHtml = `
           <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
-            ${report.images.map((imgBase64, idx) => `
-              <img src="${imgBase64}" onclick="openFullImageViewModal('${report.id}', ${idx}, event)" class="report-image-thumbnail">
-            `).join('')}
+            ${report.images.map((fileObj, idx) => {
+              const isString = typeof fileObj === 'string';
+              const fileData = isString ? fileObj : fileObj.data;
+              const fileName = isString ? 'Attachment' : fileObj.name;
+              const fileType = isString ? 'image/png' : (fileObj.type || '');
+              
+              const isPdf = fileType === 'application/pdf' || 
+                            fileName.toLowerCase().endsWith('.pdf') || 
+                            fileData.startsWith('data:application/pdf');
+
+              if (isPdf) {
+                return `
+                  <div onclick="openPdfInNewWindow('${fileData}', event)" class="report-image-thumbnail" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; padding: 4px; box-sizing: border-box;" title="${fileName}">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--danger); margin-bottom: 2px;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2v-9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <span style="font-size: 0.65rem; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--text-primary);">${fileName}</span>
+                  </div>
+                `;
+              } else {
+                return `
+                  <img src="${fileData}" onclick="openFullImageViewModal('${report.id}', ${idx}, event)" class="report-image-thumbnail" title="${fileName}">
+                `;
+              }
+            }).join('')}
           </div>
         `;
       }
@@ -7553,19 +7609,19 @@ function renderPayslips() {
       </table>
 
       <!-- Signatures Block -->
-      <div style="display: flex; justify-content: space-between; margin-top: 60px; margin-bottom: 40px; padding: 0 20px; font-size: 0.9rem; color: #000; width: 100%; box-sizing: border-box;">
+      <div class="payslip-signatures" style="display: flex; justify-content: space-between; margin-top: 60px; margin-bottom: 40px; padding: 0 20px; font-size: 0.9rem; color: #000; width: 100%; box-sizing: border-box;">
         <div style="text-align: center; width: 35%;">
-          <p style="margin: 0 0 50px 0; font-weight: 500; color: #000;">Employer Signature</p>
+          <p class="payslip-sig-label" style="margin: 0 0 50px 0; font-weight: 500; color: #000;">Employer Signature</p>
           <div style="border-bottom: 1.5px solid #000; width: 100%;"></div>
         </div>
         <div style="text-align: center; width: 35%;">
-          <p style="margin: 0 0 50px 0; font-weight: 500; color: #000;">Employee Signature</p>
+          <p class="payslip-sig-label" style="margin: 0 0 50px 0; font-weight: 500; color: #000;">Employee Signature</p>
           <div style="border-bottom: 1.5px solid #000; width: 100%;"></div>
         </div>
       </div>
 
       <!-- Footnote -->
-      <div style="text-align: center; font-size: 0.8rem; color: #555; margin-top: 20px; width: 100%;">
+      <div class="payslip-footnote" style="text-align: center; font-size: 0.8rem; color: #555; margin-top: 20px; width: 100%;">
         This is system generated payslip
       </div>
 
@@ -7599,7 +7655,7 @@ function printPayslip() {
           body {
             background: #fff !important;
             color: #000 !important;
-            padding: 40px !important;
+            padding: 20px !important;
             font-family: Arial, sans-serif !important;
           }
           .card {
@@ -7608,18 +7664,24 @@ function printPayslip() {
             background: transparent !important;
             padding: 0 !important;
           }
+          .card > div {
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+          }
           .btn, #payslip-print-btn, .print-hide {
             display: none !important;
           }
           table:not(.meta-table) {
             width: 100% !important;
             border-collapse: collapse !important;
-            margin-bottom: 25px !important;
+            margin-bottom: 15px !important;
             border: 1px solid #000 !important;
           }
           table:not(.meta-table) th, table:not(.meta-table) td {
             border: 1px solid #000 !important;
-            padding: 8px 12px !important;
+            padding: 6px 10px !important;
           }
           table:not(.meta-table) th {
             background-color: #d3d3d3 !important;
@@ -7628,12 +7690,22 @@ function printPayslip() {
           .meta-table {
             width: 100% !important;
             border: none !important;
-            margin-bottom: 30px !important;
+            margin-bottom: 15px !important;
             border-collapse: collapse !important;
           }
           .meta-table td {
             border: none !important;
-            padding: 4px 0 !important;
+            padding: 3px 0 !important;
+          }
+          .payslip-signatures {
+            margin-top: 30px !important;
+            margin-bottom: 20px !important;
+          }
+          .payslip-sig-label {
+            margin-bottom: 30px !important;
+          }
+          .payslip-footnote {
+            margin-top: 15px !important;
           }
         </style>
       </head>
@@ -8079,6 +8151,16 @@ function openReimbursementAttachment(fileObj) {
   }
 }
 
+function openPdfInNewWindow(dataUrl, event) {
+  if (event) event.stopPropagation();
+  const newWindow = window.open();
+  if (newWindow) {
+    newWindow.document.write(`<iframe src="${dataUrl}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+  } else {
+    showToast('Popup blocked! Please allow popups to view files.', 'error');
+  }
+}
+
 // Window/Global bindings for new features
 window.renderPayslips = renderPayslips;
 window.printPayslip = printPayslip;
@@ -8090,6 +8172,7 @@ window.handleReimbursementFilesChange = handleReimbursementFilesChange;
 window.approveReimbursement = approveReimbursement;
 window.rejectReimbursement = rejectReimbursement;
 window.openReimbursementAttachment = openReimbursementAttachment;
+window.openPdfInNewWindow = openPdfInNewWindow;
 
 function sanitizeEmployeeRoles() {
   if (!state.employees || !state.projects) return;
