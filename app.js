@@ -1737,6 +1737,14 @@ async function init() {
   if (salaryEmpSelect) {
     salaryEmpSelect.addEventListener('change', handleSalaryEmpChange);
   }
+  const salaryTotalEarning = document.getElementById('salary-total-earning');
+  if (salaryTotalEarning) {
+    salaryTotalEarning.addEventListener('input', renderPayslips);
+  }
+  const salaryLwp = document.getElementById('salary-lwp');
+  if (salaryLwp) {
+    salaryLwp.addEventListener('input', renderPayslips);
+  }
   const hrReimbSearch = document.getElementById('hr-reimbursement-search');
   if (hrReimbSearch) {
     hrReimbSearch.addEventListener('input', renderReimbursements);
@@ -7416,15 +7424,27 @@ function getEmployeeSalaryForMonth(emp, month) {
   const accrualForMonth = getEmployeeLeaveAccumulation(emp.id, month);
   const computedLwp = accrualForMonth.lwpDays;
 
-  // Formula: total earning base of 10000
-  const totalEarningBase = 10000;
-  const basic = Math.round(totalEarningBase * 0.50); // 5000
-  const hra = Math.round(basic * 0.40); // 2000
-  const other = totalEarningBase - (basic + hra); // 3000
+  let totalEarningBase = 10000; // default total earning
+
+  if (emp.salaries[month]) {
+    if (emp.salaries[month].totalEarning !== undefined) {
+      totalEarningBase = Number(emp.salaries[month].totalEarning);
+    } else {
+      totalEarningBase = Number(emp.salaries[month].basic || 0) + 
+                         Number(emp.salaries[month].hra || 0) + 
+                         Number(emp.salaries[month].other || 0);
+      if (totalEarningBase === 0) totalEarningBase = 10000;
+    }
+  }
+
+  const basic = Math.round(totalEarningBase * 0.50); // 50% basic
+  const hra = Math.round(basic * 0.40); // 40% HRA of basic
+  const other = totalEarningBase - (basic + hra); // remainder other
   const profTax = totalEarningBase > 7500 ? 200 : 0;
 
   if (!emp.salaries[month]) {
     emp.salaries[month] = {
+      totalEarning: totalEarningBase,
       basic: basic,
       hra: hra,
       other: other,
@@ -7432,7 +7452,7 @@ function getEmployeeSalaryForMonth(emp, month) {
       lwpDays: computedLwp
     };
   } else {
-    // Always refresh with current formula values
+    emp.salaries[month].totalEarning = totalEarningBase;
     emp.salaries[month].basic = basic;
     emp.salaries[month].hra = hra;
     emp.salaries[month].other = other;
@@ -7484,13 +7504,26 @@ function renderPayslips() {
     .filter(r => r.employeeId === targetEmp.id && r.status === 'approved' && r.date.startsWith(selectedMonth))
     .reduce((sum, r) => sum + Number(r.amount), 0);
 
-  const basic = Number(salary.basic);
-  const hra = Number(salary.hra);
-  const other = Number(salary.other);
-  const totalEarnings = basic + hra + other + approvedReimbSum;
+  let basic = Number(salary.basic);
+  let hra = Number(salary.hra);
+  let other = Number(salary.other);
+  let profTax = Number(salary.profTax);
+  let lwpDays = Number(salary.lwpDays || 0);
 
-  const profTax = Number(salary.profTax);
-  const lwpDays = Number(salary.lwpDays || 0);
+  if (isHRorAdmin) {
+    const totalEarningEl = document.getElementById('salary-total-earning');
+    const lwpEl = document.getElementById('salary-lwp');
+    if (totalEarningEl && lwpEl && totalEarningEl.value !== '') {
+      const totalEarningBase = Number(totalEarningEl.value || 0);
+      basic = Math.round(totalEarningBase * 0.50);
+      hra = Math.round(basic * 0.40);
+      other = totalEarningBase - (basic + hra);
+      profTax = totalEarningBase > 7500 ? 200 : 0;
+      lwpDays = Number(lwpEl.value || 0);
+    }
+  }
+
+  const totalEarnings = basic + hra + other + approvedReimbSum;
   
   // Calculate LWP deduction rate: base total earning (basic + hra + other) divided by number of days in the month
   const [yearVal, monthVal] = selectedMonth.split('-').map(Number);
@@ -7802,6 +7835,7 @@ function handleSalaryConfigSubmit(e) {
   const lwpDays = Number(document.getElementById('salary-lwp').value || 0);
 
   const salaryData = {
+    totalEarning: totalEarningBase,
     basic: basic,
     hra: hra,
     other: other,
