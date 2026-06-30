@@ -171,6 +171,7 @@ async function fetchCentralizedState() {
       state.lastSyncedTimestamp = data.timestamp;
       isSyncingToServer = false;
       wasStateFetchedFromServer = true;
+      sanitizeEmployeeRoles();
     }
   } catch (err) {
     console.error('Failed to load state from database server:', err, '— keeping local state intact.');
@@ -235,6 +236,8 @@ function initSyncPolling() {
         if (s.smsNotifications) safeOriginalSetItem('ems_notifications', JSON.stringify(s.smsNotifications));
 
         isSyncingToServer = false;
+
+        sanitizeEmployeeRoles();
 
         if (!state.currentUser) return;
 
@@ -1532,6 +1535,9 @@ async function init() {
       localStorage.setItem('ems_tickets', JSON.stringify(state.tickets));
     }
   }
+
+  // Self-heal employee roles on startup
+  sanitizeEmployeeRoles();
 
   // Bind role toggles
   document.getElementById('btn-role-employee').addEventListener('click', () => setRole('employee'));
@@ -4040,13 +4046,18 @@ function createProjectCard(proj, isMyProject) {
     const isExternal = !isDeptMember(emp, proj.dept);
     const canRemove = isEditable && !isLead && isExternal;
 
+    let chipRole = emp.designation || emp.role || (isLead ? 'Tech Lead' : 'Employee');
+    if (chipRole.toLowerCase() === 'tech lead' && !isLead) {
+      chipRole = 'Employee';
+    }
+
     return `
       <div class="project-member-chip" style="display: inline-flex; align-items: center; gap: 6px; background: ${isLead ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-secondary)'}; border: 1px solid ${isLead ? 'rgba(239, 68, 68, 0.25)' : 'var(--border-color)'}; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; color: ${isLead ? 'var(--primary)' : 'var(--text-primary)'};">
         <div class="avatar-xs" style="width: 20px; height: 20px; border-radius: 50%; background: ${isLead ? 'var(--primary-gradient)' : 'var(--bg-tertiary)'}; color: ${isLead ? 'white' : 'var(--text-secondary)'}; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; border: 1px solid var(--border-color);">
           ${emp.avatar || emp.name.split(' ').map(n => n[0]).join('')}
         </div>
         <span>${emp.name}</span>
-        <span style="font-size: 0.65rem; color: var(--text-muted);">(${emp.designation || emp.role || (isLead ? 'Tech Lead' : 'Employee')})</span>
+        <span style="font-size: 0.65rem; color: var(--text-muted);">(${chipRole})</span>
         ${canRemove ? `
           <button onclick="removeEmployeeFromProject('${proj.id}', '${emp.id}')" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.85rem; font-weight: bold; margin-left: 4px; padding: 0; line-height: 1;" title="Remove from project">&times;</button>
         ` : ''}
@@ -8052,6 +8063,44 @@ window.handleReimbursementFilesChange = handleReimbursementFilesChange;
 window.approveReimbursement = approveReimbursement;
 window.rejectReimbursement = rejectReimbursement;
 window.openReimbursementAttachment = openReimbursementAttachment;
+
+function sanitizeEmployeeRoles() {
+  if (!state.employees || !state.projects) return;
+  let updated = false;
+  state.employees.forEach(emp => {
+    if (emp.role === 'Tech Lead') {
+      const isLead = state.projects.some(p => p.techLeadId === emp.id);
+      if (!isLead) {
+        emp.role = 'Employee';
+        updated = true;
+        console.log(`Self-healed role for ${emp.name} from Tech Lead to Employee`);
+        if (state.currentUser && state.currentUser.id === emp.id) {
+          state.currentUser.role = 'Employee';
+          state.currentRole = 'employee';
+          localStorage.setItem('ems_logged_in_user', JSON.stringify(state.currentUser));
+        }
+      }
+    }
+  });
+  if (updated) {
+    localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+    triggerBackendSync();
+
+    if (state.currentUser) {
+      updateHeaderAvatar(state.currentUser);
+      const headerName = document.getElementById('header-name');
+      if (headerName) headerName.textContent = state.currentUser.name;
+      const headerRole = document.getElementById('header-role');
+      if (headerRole) headerRole.textContent = state.currentUser.role;
+      setRole(state.currentRole);
+
+      const activeMenuItem = document.querySelector('.menu-item.active');
+      const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
+      switchView(currentView);
+    }
+  }
+}
+window.sanitizeEmployeeRoles = sanitizeEmployeeRoles;
 
 function checkAuthSession() {
   const loggedInStr = localStorage.getItem('ems_logged_in_user');
