@@ -1594,105 +1594,7 @@ async function init() {
     });
   }
 
-  // Set up Aadhar card upload listener
-  const aadharInput = document.getElementById('new-emp-aadhar');
-  const aadharPreview = document.getElementById('new-emp-aadhar-preview');
-  const aadharImg = document.getElementById('new-emp-aadhar-img');
-  if (aadharInput && aadharPreview && aadharImg) {
-    aadharInput.addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
-            currentUploadedAadharFile = compressed;
-            aadharImg.src = compressed;
-            aadharPreview.style.display = 'block';
-          });
-        };
-        reader.readAsDataURL(file);
-      } else {
-        currentUploadedAadharFile = null;
-        aadharImg.src = '';
-        aadharPreview.style.display = 'none';
-      }
-    });
-  }
 
-  // Set up PAN card upload listener
-  const panInput = document.getElementById('new-emp-pan');
-  const panPreview = document.getElementById('new-emp-pan-preview');
-  const panImg = document.getElementById('new-emp-pan-img');
-  if (panInput && panPreview && panImg) {
-    panInput.addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
-            currentUploadedPanFile = compressed;
-            panImg.src = compressed;
-            panPreview.style.display = 'block';
-          });
-        };
-        reader.readAsDataURL(file);
-      } else {
-        currentUploadedPanFile = null;
-        panImg.src = '';
-        panPreview.style.display = 'none';
-      }
-    });
-  }
-
-  // Set up Bank Account Document upload listener
-  const bankAccInput = document.getElementById('new-emp-bank-acc');
-  const bankAccPreview = document.getElementById('new-emp-bank-acc-preview');
-  const bankAccImg = document.getElementById('new-emp-bank-acc-img');
-  if (bankAccInput && bankAccPreview && bankAccImg) {
-    bankAccInput.addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
-            currentUploadedBankAccFile = compressed;
-            bankAccImg.src = compressed;
-            bankAccPreview.style.display = 'block';
-          });
-        };
-        reader.readAsDataURL(file);
-      } else {
-        currentUploadedBankAccFile = null;
-        bankAccImg.src = '';
-        bankAccPreview.style.display = 'none';
-      }
-    });
-  }
-
-  // Set up IFSC Code & Bank Name Doc upload listener
-  const bankIfscInput = document.getElementById('new-emp-bank-ifsc');
-  const bankIfscPreview = document.getElementById('new-emp-bank-ifsc-preview');
-  const bankIfscImg = document.getElementById('new-emp-bank-ifsc-img');
-  if (bankIfscInput && bankIfscPreview && bankIfscImg) {
-    bankIfscInput.addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
-            currentUploadedBankIfscFile = compressed;
-            bankIfscImg.src = compressed;
-            bankIfscPreview.style.display = 'block';
-          });
-        };
-        reader.readAsDataURL(file);
-      } else {
-        currentUploadedBankIfscFile = null;
-        bankIfscImg.src = '';
-        bankIfscPreview.style.display = 'none';
-      }
-    });
-  }
 
   // Set up daily reports image upload & paste listeners
   const dailyReportForm = document.getElementById('daily-report-form');
@@ -1861,97 +1763,7 @@ async function init() {
     });
   }
 
-  const profileAadharInput = document.getElementById('profile-edit-aadhar-file');
-  if (profileAadharInput) {
-    profileAadharInput.addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
-            tempAadharFile = compressed;
-            const imgEl = document.getElementById('profile-aadhar-preview-img');
-            const placeholderEl = document.getElementById('profile-aadhar-placeholder');
-            if (imgEl && placeholderEl) {
-              imgEl.src = compressed;
-              imgEl.style.display = 'block';
-              placeholderEl.style.display = 'none';
-            }
-          });
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }
 
-  const profilePanInput = document.getElementById('profile-edit-pan-file');
-  if (profilePanInput) {
-    profilePanInput.addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
-            tempPanFile = compressed;
-            const imgEl = document.getElementById('profile-pan-preview-img');
-            const placeholderEl = document.getElementById('profile-pan-placeholder');
-            if (imgEl && placeholderEl) {
-              imgEl.src = compressed;
-              imgEl.style.display = 'block';
-              placeholderEl.style.display = 'none';
-            }
-          });
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }
-
-  const profileBankAccInput = document.getElementById('profile-edit-bank-acc-file');
-  if (profileBankAccInput) {
-    profileBankAccInput.addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
-            tempBankAccFile = compressed;
-            const imgEl = document.getElementById('profile-bank-acc-preview-img');
-            const placeholderEl = document.getElementById('profile-bank-acc-placeholder');
-            if (imgEl && placeholderEl) {
-              imgEl.src = compressed;
-              imgEl.style.display = 'block';
-              placeholderEl.style.display = 'none';
-            }
-          });
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }
-
-  const profileBankIfscInput = document.getElementById('profile-edit-bank-ifsc-file');
-  if (profileBankIfscInput) {
-    profileBankIfscInput.addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          compressImage(event.target.result, 800, 800, 0.7, function (compressed) {
-            tempBankIfscFile = compressed;
-            const imgEl = document.getElementById('profile-bank-ifsc-preview-img');
-            const placeholderEl = document.getElementById('profile-bank-ifsc-placeholder');
-            if (imgEl && placeholderEl) {
-              imgEl.src = compressed;
-              imgEl.style.display = 'block';
-              placeholderEl.style.display = 'none';
-            }
-          });
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }
 
   // Set Theme Toggle
   const themeToggle = document.getElementById('theme-toggle');
@@ -3454,18 +3266,11 @@ function showProfileModal() {
     }
   };
 
-  updateDocPreview('profile-aadhar-preview-img', 'profile-aadhar-placeholder', tempAadharFile);
-  updateDocPreview('profile-pan-preview-img', 'profile-pan-placeholder', tempPanFile);
-  updateDocPreview('profile-bank-acc-preview-img', 'profile-bank-acc-placeholder', tempBankAccFile);
-  updateDocPreview('profile-bank-ifsc-preview-img', 'profile-bank-ifsc-placeholder', tempBankIfscFile);
+
 
   // Reset file input values
   const fileInputs = [
-    'profile-edit-photo-file',
-    'profile-edit-aadhar-file',
-    'profile-edit-pan-file',
-    'profile-edit-bank-acc-file',
-    'profile-edit-bank-ifsc-file'
+    'profile-edit-photo-file'
   ];
   fileInputs.forEach(id => {
     const el = document.getElementById(id);
@@ -3491,10 +3296,6 @@ function handleProfileSave(e) {
   emp.phone = document.getElementById('profile-edit-phone').value.trim() || emp.phone;
   emp.password = document.getElementById('profile-edit-password').value || emp.password || 'password123';
   emp.photo = tempProfilePhoto || emp.photo;
-  emp.aadhar = tempAadharFile || emp.aadhar || '';
-  emp.pan = tempPanFile || emp.pan || '';
-  emp.bankAcc = tempBankAccFile || emp.bankAcc || '';
-  emp.bankIfsc = tempBankIfscFile || emp.bankIfsc || '';
 
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
   state.currentUser = emp;
@@ -5227,25 +5028,7 @@ function openCreateEmployeeModal() {
   const photoImg = document.getElementById('new-emp-photo-img');
   if (photoImg) photoImg.src = '';
 
-  const aadharPreview = document.getElementById('new-emp-aadhar-preview');
-  if (aadharPreview) aadharPreview.style.display = 'none';
-  const aadharImg = document.getElementById('new-emp-aadhar-img');
-  if (aadharImg) aadharImg.src = '';
 
-  const panPreview = document.getElementById('new-emp-pan-preview');
-  if (panPreview) panPreview.style.display = 'none';
-  const panImg = document.getElementById('new-emp-pan-img');
-  if (panImg) panImg.src = '';
-
-  const bankAccPreview = document.getElementById('new-emp-bank-acc-preview');
-  if (bankAccPreview) bankAccPreview.style.display = 'none';
-  const bankAccImg = document.getElementById('new-emp-bank-acc-img');
-  if (bankAccImg) bankAccImg.src = '';
-
-  const bankIfscPreview = document.getElementById('new-emp-bank-ifsc-preview');
-  if (bankIfscPreview) bankIfscPreview.style.display = 'none';
-  const bankIfscImg = document.getElementById('new-emp-bank-ifsc-img');
-  if (bankIfscImg) bankIfscImg.src = '';
 
   // Populate dynamic role options based on current user role privilege
   const roleSelect = document.getElementById('new-emp-role');
@@ -5293,10 +5076,7 @@ function handleEmployeeCreationSubmit(e) {
   const designation = document.getElementById('new-emp-designation') ? document.getElementById('new-emp-designation').value.trim() : '';
   const phone = document.getElementById('new-emp-phone') ? document.getElementById('new-emp-phone').value.trim() : '';
 
-  const aadhar = currentUploadedAadharFile || '';
-  const pan = currentUploadedPanFile || '';
-  const bankAcc = currentUploadedBankAccFile || '';
-  const bankIfsc = currentUploadedBankIfscFile || '';
+
   const passwordEl = document.getElementById('new-emp-password');
   const password = passwordEl ? passwordEl.value : '';
   const passwordConfirmEl = document.getElementById('new-emp-password-confirm');
@@ -5341,10 +5121,10 @@ function handleEmployeeCreationSubmit(e) {
     avatar: initials,
     designation: designation,
     phone: phone,
-    aadhar: aadhar,
-    pan: pan,
-    bankAcc: bankAcc,
-    bankIfsc: bankIfsc,
+    aadhar: '',
+    pan: '',
+    bankAcc: '',
+    bankIfsc: '',
     photo: currentUploadedEmployeePhoto,
     password: password || 'password123'
   };
@@ -5359,21 +5139,7 @@ function handleEmployeeCreationSubmit(e) {
     photoPreview.style.display = 'none';
   }
 
-  // Reset Aadhar/PAN upload states
-  currentUploadedAadharFile = null;
-  const aadharPreview = document.getElementById('new-emp-aadhar-preview');
-  if (aadharPreview) aadharPreview.style.display = 'none';
-  currentUploadedPanFile = null;
-  const panPreview = document.getElementById('new-emp-pan-preview');
-  if (panPreview) panPreview.style.display = 'none';
 
-  // Reset Bank details upload states
-  currentUploadedBankAccFile = null;
-  const bankAccPreview = document.getElementById('new-emp-bank-acc-preview');
-  if (bankAccPreview) bankAccPreview.style.display = 'none';
-  currentUploadedBankIfscFile = null;
-  const bankIfscPreview = document.getElementById('new-emp-bank-ifsc-preview');
-  if (bankIfscPreview) bankIfscPreview.style.display = 'none';
 
   // Re-populate all dropdown switchers and modal option lists
   populateEmployeeDropdown();
