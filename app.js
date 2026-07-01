@@ -275,7 +275,7 @@ const DEFAULT_EMPLOYEES = [
     name: "Suyash Patil",
     dept: "AI, Electronics, Lab Setup",
     email: "suyash@gurujiair.com",
-    role: "Tech Lead",
+    role: "Tech Lead, Manager",
     balance: 20,
     absent: 0,
     avatar: "SP",
@@ -339,7 +339,7 @@ const DEFAULT_EMPLOYEES = [
     name: "Prasad Shelke",
     dept: "Electronics, Lab Setup",
     email: "prasad@gurujiair.com",
-    role: "Tech Lead",
+    role: "Tech Lead, Manager",
     balance: 20,
     absent: 0,
     avatar: "PS",
@@ -499,7 +499,7 @@ const DEFAULT_EMPLOYEES = [
     name: "Shravani Khanvilkar",
     dept: "AI, Electronics, Lab Setup, Instructor",
     email: "shravani@gurujiair.com",
-    role: "HR",
+    role: "HR, Manager",
     balance: 20,
     absent: 0,
     avatar: "SK",
@@ -2311,6 +2311,16 @@ function updateSidebarMenu() {
   } else {
     rosterMenu.style.display = 'none';
   }
+
+  const schoolMenu = document.getElementById('menu-item-school');
+  if (schoolMenu) {
+    const isUserManager = state.currentUser && (state.currentUser.role || '').toLowerCase().includes('manager');
+    if (isUserManager) {
+      schoolMenu.style.display = 'flex';
+    } else {
+      schoolMenu.style.display = 'none';
+    }
+  }
 }
 
 function switchLeaveSubTab(tab) {
@@ -2382,6 +2392,9 @@ function switchView(viewName) {
   const payslipsContainer = document.getElementById('payslips-view-container');
   const reimbursementsContainer = document.getElementById('reimbursements-view-container');
   const ticketsContainer = document.getElementById('tickets-view-container');
+  const schoolContainer = document.getElementById('school-management-view-container');
+
+  if (schoolContainer) schoolContainer.style.display = 'none';
 
   if (viewName === 'communications') {
     if (empContainer) empContainer.style.display = 'none';
@@ -2492,6 +2505,21 @@ function switchView(viewName) {
     if (titleLabel) titleLabel.textContent = 'Support Tickets';
 
     renderTickets();
+  } else if (viewName === 'school-management') {
+    if (empContainer) empContainer.style.display = 'none';
+    if (hrContainer) hrContainer.style.display = 'none';
+    if (commContainer) commContainer.style.display = 'none';
+    if (calendarContainer) calendarContainer.style.display = 'none';
+    if (reportsContainer) reportsContainer.style.display = 'none';
+    if (payslipsContainer) payslipsContainer.style.display = 'none';
+    if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
+    if (ticketsContainer) ticketsContainer.style.display = 'none';
+    if (schoolContainer) schoolContainer.style.display = 'block';
+
+    const titleLabel = document.getElementById('page-title-label');
+    if (titleLabel) titleLabel.textContent = 'School Management';
+
+    renderSchoolManagement();
   } else {
     if (commContainer) commContainer.style.display = 'none';
     if (calendarContainer) calendarContainer.style.display = 'none';
@@ -8169,8 +8197,7 @@ function loginAsUser(user) {
   const assignedRoles = ['employee']; // Everyone has Employee view
   if (roleStr.includes('admin')) assignedRoles.push('admin');
   if (roleStr.includes('hr')) assignedRoles.push('hr');
-  if (roleStr.includes('tech lead')) assignedRoles.push('techlead');
-  if (roleStr.includes('manager')) assignedRoles.push('manager');
+  if (roleStr.includes('tech lead') || roleStr.includes('manager')) assignedRoles.push('techlead');
 
   const switcherContainer = document.querySelector('.role-switcher-container');
   if (switcherContainer) {
@@ -8178,7 +8205,6 @@ function loginAsUser(user) {
       switcherContainer.style.display = 'flex';
       document.getElementById('btn-role-employee').style.display = assignedRoles.includes('employee') ? 'inline-block' : 'none';
       document.getElementById('btn-role-techlead').style.display = assignedRoles.includes('techlead') ? 'inline-block' : 'none';
-      document.getElementById('btn-role-manager').style.display = assignedRoles.includes('manager') ? 'inline-block' : 'none';
       document.getElementById('btn-role-hr').style.display = assignedRoles.includes('hr') ? 'inline-block' : 'none';
       const adminBtn = document.getElementById('btn-role-admin');
       if (adminBtn) adminBtn.style.display = assignedRoles.includes('admin') ? 'inline-block' : 'none';
@@ -8191,8 +8217,7 @@ function loginAsUser(user) {
   let initialRole = 'employee';
   if (roleStr.includes('admin')) initialRole = 'admin';
   else if (roleStr.includes('hr')) initialRole = 'hr';
-  else if (roleStr.includes('tech lead')) initialRole = 'techlead';
-  else if (roleStr.includes('manager')) initialRole = 'manager';
+  else if (roleStr.includes('tech lead') || roleStr.includes('manager')) initialRole = 'techlead';
 
   setRole(initialRole);
 
@@ -8948,6 +8973,130 @@ window.openFullImageViewModalWithData = openFullImageViewModalWithData;
 window.setupPushSubscription = setupPushSubscription;
 window.updateNotificationButtonState = updateNotificationButtonState;
 window.toggleProfilePasswordVisibility = toggleProfilePasswordVisibility;
+
+const SCHOOLS_DATA = {
+  "Shravani": [
+    "Holy Convent School",
+    "Sakharwadi Vidyalay",
+    "Sheron English School",
+    "PDEA English School, Akurdi / Mahalsakant",
+    "Lonkar Vidyalay, Mundhwa"
+  ],
+  "Prasad": [
+    "Eon Gyankur, Kharadi",
+    "Sant Tukaram, Lohegaon",
+    "Sharadabai Pawar (SP), Kharadi",
+    "MalikArjun Vidyalaya, Nhaware",
+    "Gurudev Datta Vidyalaya Savindane",
+    "Bhairavnath Vidyalaya, Karde",
+    "Charoli English / Marathi"
+  ],
+  "Rajendra Sir": [
+    "YC, Venutai – Phaltan",
+    "Rajendra Vidyalay, Khandala",
+    "Shaurya Sainiki, phaltan Golewadi",
+    "Shahaji High School, Supe",
+    "New English, Wanewadi",
+    "Ketkeshwar Vidyalaya, Nimgaon Ketki",
+    "Swami Ramanand Bharti High School, Sangli",
+    "Kshitij School, Sangli"
+  ],
+  "Suyash": [
+    "Shri Shivaji Vidyalay, Dehu Road",
+    "Koteshwar , Gove",
+    "Shivtej School, Aare",
+    "Pirangut School",
+    "Aditya Birla School",
+    "Vishnuji Shekuji Satav, Wagholi",
+    "Mudhoji School, Phaltan",
+    "SS Nikam"
+  ]
+};
+
+const MANAGER_THEMES = {
+  "Shravani": { bg: "linear-gradient(135deg, #ec4899, #f43f5e)", avatar: "SK", designation: "HR, Manager" },
+  "Prasad": { bg: "linear-gradient(135deg, #3b82f6, #06b6d4)", avatar: "PS", designation: "Tech Lead, Manager" },
+  "Rajendra Sir": { bg: "linear-gradient(135deg, #10b981, #059669)", avatar: "RS", designation: "Manager" },
+  "Suyash": { bg: "linear-gradient(135deg, #f59e0b, #d97706)", avatar: "SP", designation: "Tech Lead, Manager" }
+};
+
+function renderSchoolManagement() {
+  const grid = document.getElementById('schools-grid');
+  if (!grid) return;
+
+  const searchQuery = (document.getElementById('school-search-input')?.value || '').toLowerCase().trim();
+
+  grid.innerHTML = '';
+
+  Object.entries(SCHOOLS_DATA).forEach(([manager, schools]) => {
+    const filteredSchools = schools.filter(school => 
+      school.toLowerCase().includes(searchQuery) || manager.toLowerCase().includes(searchQuery)
+    );
+
+    if (searchQuery !== '' && filteredSchools.length === 0 && !manager.toLowerCase().includes(searchQuery)) {
+      return;
+    }
+
+    const theme = MANAGER_THEMES[manager] || { bg: "var(--primary-gradient)", avatar: manager.substring(0,2).toUpperCase(), designation: "Manager" };
+
+    const card = document.createElement('div');
+    card.className = 'project-card';
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
+    card.style.padding = '20px';
+    card.style.boxSizing = 'border-box';
+    card.style.gap = '16px';
+    card.style.background = 'var(--bg-secondary)';
+    card.style.border = '1px solid var(--border-color)';
+    card.style.borderRadius = 'var(--border-radius)';
+    card.style.transition = 'transform 0.3s ease, box-shadow 0.3s ease';
+
+    let schoolsListHtml = '';
+    if (filteredSchools.length === 0) {
+      schoolsListHtml = `<div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; padding: 8px 0;">No matching schools found.</div>`;
+    } else {
+      schoolsListHtml = filteredSchools.map((school, index) => {
+        let displayName = school;
+        if (searchQuery !== '') {
+          const regex = new RegExp(`(${searchQuery.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+          displayName = school.replace(regex, '<mark style="background-color: rgba(245, 158, 11, 0.3); color: var(--text-primary); border-radius: 2px; padding: 0 2px;">$1</mark>');
+        }
+        return `
+          <div style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.85rem; color: var(--text-primary); padding: 8px 0; border-bottom: 1px dashed var(--border-color);" class="school-list-item">
+            <span style="font-weight: 700; color: var(--text-secondary); min-width: 18px;">${index + 1}.</span>
+            <span style="line-height: 1.4;">${displayName}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    card.innerHTML = `
+      <!-- Card Header -->
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 42px; height: 42px; border-radius: 50%; background: ${theme.bg}; color: white; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; box-shadow: var(--shadow-sm);">
+            ${theme.avatar}
+          </div>
+          <div>
+            <div style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">${manager}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500; margin-top: 2px;">${theme.designation}</div>
+          </div>
+        </div>
+        <span class="badge" style="background-color: var(--bg-tertiary); color: var(--text-primary); font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 12px; border: 1px solid var(--border-color);">
+          ${schools.length} School${schools.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      <!-- Schools List -->
+      <div style="display: flex; flex-direction: column; overflow-y: auto; max-height: 350px; padding-right: 4px;">
+        ${schoolsListHtml}
+      </div>
+    `;
+
+    grid.appendChild(card);
+  });
+}
+window.renderSchoolManagement = renderSchoolManagement;
 
 // Run application on DOM loaded
 window.addEventListener('DOMContentLoaded', init);
