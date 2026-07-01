@@ -5016,7 +5016,7 @@ function populateDepartmentDropdowns() {
 
   const empDeptSelect = document.getElementById('new-emp-dept');
   if (empDeptSelect) {
-    empDeptSelect.innerHTML = '<option value="" disabled selected>Select department...</option>';
+    empDeptSelect.innerHTML = '<option value="">None (No Department)</option>';
     depts.forEach(dept => {
       const opt = document.createElement('option');
       opt.value = dept;
@@ -5121,7 +5121,7 @@ function handleEmployeeCreationSubmit(e) {
   const name = document.getElementById('new-emp-name').value.trim();
   const email = document.getElementById('new-emp-email').value.trim();
   const deptEl = document.getElementById('new-emp-dept');
-  let dept = deptEl ? deptEl.value : 'AI';
+  let dept = deptEl ? deptEl.value : '';
   if (autoAssignToProjectAfterCreate) {
     dept = autoAssignToProjectAfterCreate.dept;
   }
@@ -5138,7 +5138,7 @@ function handleEmployeeCreationSubmit(e) {
   const passwordConfirmEl = document.getElementById('new-emp-password-confirm');
   const passwordConfirm = passwordConfirmEl ? passwordConfirmEl.value : '';
 
-  if (!id || !name || !email || !dept || !role || !phone || isNaN(balance) || !password) {
+  if (!id || !name || !email || !role || !phone || isNaN(balance) || !password) {
     showToast('Please fill out all fields.', 'error');
     return;
   }
