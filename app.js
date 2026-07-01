@@ -899,7 +899,7 @@ function startEditTask(taskId, event) {
   state.editingTaskId = taskId;
   state.editingTaskImages = [...(task.images || [])];
 
-  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin') {
+  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
     renderHRTasksAndProjects();
   } else {
     renderEmployeeTasksAndProjects();
@@ -911,7 +911,7 @@ function cancelEditTask(event) {
   state.editingTaskId = null;
   state.editingTaskImages = [];
 
-  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin') {
+  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
     renderHRTasksAndProjects();
   } else {
     renderEmployeeTasksAndProjects();
@@ -954,7 +954,7 @@ function saveEditTask(taskId, event) {
   state.editingTaskId = null;
   state.editingTaskImages = [];
 
-  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin') {
+  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
     renderHRTasksAndProjects();
   } else {
     renderEmployeeTasksAndProjects();
@@ -1523,6 +1523,10 @@ async function init() {
   // Bind role toggles
   document.getElementById('btn-role-employee').addEventListener('click', () => setRole('employee'));
   document.getElementById('btn-role-techlead').addEventListener('click', () => setRole('techlead'));
+  const managerBtn = document.getElementById('btn-role-manager');
+  if (managerBtn) {
+    managerBtn.addEventListener('click', () => setRole('manager'));
+  }
   document.getElementById('btn-role-hr').addEventListener('click', () => setRole('hr'));
   const adminBtn = document.getElementById('btn-role-admin');
   if (adminBtn) {
@@ -2112,6 +2116,8 @@ function setRole(role) {
   document.getElementById('btn-role-employee').classList.remove('active');
   const leadBtn = document.getElementById('btn-role-techlead');
   if (leadBtn) leadBtn.classList.remove('active');
+  const managerBtn = document.getElementById('btn-role-manager');
+  if (managerBtn) managerBtn.classList.remove('active');
   const hrBtn = document.getElementById('btn-role-hr');
   if (hrBtn) hrBtn.classList.remove('active');
   const adminBtn = document.getElementById('btn-role-admin');
@@ -2119,8 +2125,12 @@ function setRole(role) {
 
   const matchesTargetRole = (user, target) => {
     if (!user) return false;
-    const norm = user.role.toLowerCase() === 'tech lead' ? 'techlead' : user.role.toLowerCase() === 'hr' ? 'hr' : user.role.toLowerCase() === 'admin' ? 'admin' : 'employee';
-    return norm === target;
+    const roleStr = (user.role || '').toLowerCase();
+    if (target === 'admin') return roleStr.includes('admin');
+    if (target === 'hr') return roleStr.includes('hr');
+    if (target === 'techlead') return roleStr.includes('tech lead');
+    if (target === 'manager') return roleStr.includes('manager');
+    return true; // employee is allowed for everyone
   };
 
   if (role === 'employee') {
@@ -2131,7 +2141,7 @@ function setRole(role) {
       if (empSelect && empSelect.value) {
         state.currentUser = state.employees.find(emp => emp.id === empSelect.value);
       } else {
-        state.currentUser = state.employees.find(emp => emp.role === 'Employee'); // Default employee
+        state.currentUser = state.employees.find(emp => emp.role.toLowerCase() === 'employee'); // Default employee
       }
     }
 
@@ -2143,7 +2153,7 @@ function setRole(role) {
 
     // Only switch current user if not already matching the techlead role
     if (!matchesTargetRole(state.currentUser, 'techlead')) {
-      let leadEmp = state.employees.find(emp => emp.role === 'Tech Lead');
+      let leadEmp = state.employees.find(emp => emp.role.toLowerCase().includes('tech lead'));
       if (!leadEmp) {
         leadEmp = {
           id: "AIRG00008",
@@ -2154,10 +2164,6 @@ function setRole(role) {
           balance: 20,
           absent: 0,
           avatar: "SP",
-          aadhar: "5250 6200 0000",
-          pan: "SUYAS1234P",
-          bankAcc: "98765432101",
-          bankIfsc: "HDFC0000123",
           password: "suyash",
           phone: "+91 99752 59016"
         };
@@ -2171,12 +2177,48 @@ function setRole(role) {
     if (empSelectorWrapper) {
       empSelectorWrapper.style.display = 'none';
     }
+  } else if (role === 'manager') {
+    if (managerBtn) managerBtn.classList.add('active');
+
+    // Only switch current user if not already matching the manager role
+    if (!matchesTargetRole(state.currentUser, 'manager')) {
+      let managerEmp = state.employees.find(emp => emp.role.toLowerCase().includes('manager'));
+      if (!managerEmp) {
+        managerEmp = state.employees.find(emp => emp.name === "Suyash Patil");
+        if (managerEmp) {
+          if (!managerEmp.role.toLowerCase().includes('manager')) {
+            managerEmp.role += ", Manager";
+          }
+        } else {
+          managerEmp = {
+            id: "AIRG00008",
+            name: "Suyash Patil",
+            dept: "AI, Electronics, Lab Setup",
+            email: "suyash@gurujiair.com",
+            role: "Tech Lead, Manager",
+            balance: 20,
+            absent: 0,
+            avatar: "SP",
+            password: "suyash",
+            phone: "+91 99752 59016"
+          };
+          state.employees.push(managerEmp);
+        }
+        localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+        populateEmployeeDropdown();
+      }
+      state.currentUser = managerEmp;
+    }
+
+    if (empSelectorWrapper) {
+      empSelectorWrapper.style.display = 'none';
+    }
   } else if (role === 'admin') {
     if (adminBtn) adminBtn.classList.add('active');
 
     // Only switch current user if not already matching the admin role
     if (!matchesTargetRole(state.currentUser, 'admin')) {
-      let adminEmp = state.employees.find(emp => emp.role === 'Admin');
+      let adminEmp = state.employees.find(emp => emp.role.toLowerCase().includes('admin'));
       if (!adminEmp) {
         adminEmp = {
           id: "AIRG00001",
@@ -2187,10 +2229,6 @@ function setRole(role) {
           balance: 20,
           absent: 0,
           avatar: "PP",
-          aadhar: "1234 5700 0000",
-          pan: "PRATA1234P",
-          bankAcc: "98765432112",
-          bankIfsc: "HDFC0000123",
           password: "pratap",
           phone: "+91 98607 79172"
         };
@@ -2209,7 +2247,7 @@ function setRole(role) {
 
     // Only switch current user if not already matching the hr role
     if (!matchesTargetRole(state.currentUser, 'hr')) {
-      let hrEmp = state.employees.find(emp => emp.role === 'HR');
+      let hrEmp = state.employees.find(emp => emp.role.toLowerCase().includes('hr'));
       if (!hrEmp) {
         hrEmp = {
           id: "AIRG00042",
@@ -2220,10 +2258,6 @@ function setRole(role) {
           balance: 20,
           absent: 0,
           avatar: "SK",
-          aadhar: "2275 9500 0000",
-          pan: "SHRAV1234K",
-          bankAcc: "98765432115",
-          bankIfsc: "HDFC0000123",
           password: "shravani",
           phone: "+91 84465 31087"
         };
@@ -2272,7 +2306,7 @@ function populateEmployeeDropdown() {
 
 function updateSidebarMenu() {
   const rosterMenu = document.getElementById('menu-item-roster');
-  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin') {
+  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
     rosterMenu.style.display = 'flex';
   } else {
     rosterMenu.style.display = 'none';
@@ -2393,7 +2427,7 @@ function switchView(viewName) {
     const titleLabel = document.getElementById('page-title-label');
     if (titleLabel) titleLabel.textContent = 'Daily Reports';
 
-    const isLeadOrHR = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin');
+    const isLeadOrHR = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
     const leaveSubTabs = document.getElementById('leave-sub-tabs');
     if (isLeadOrHR) {
       if (leaveSubTabs) leaveSubTabs.style.display = 'flex';
@@ -2466,7 +2500,7 @@ function switchView(viewName) {
     if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
     if (ticketsContainer) ticketsContainer.style.display = 'none';
 
-    const isLeadOrHR = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin');
+    const isLeadOrHR = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
     const leaveSubTabs = document.getElementById('leave-sub-tabs');
 
     if (viewName === 'dashboard' || viewName === 'requests') {
@@ -2646,19 +2680,19 @@ function renderHRDashboard(viewName = 'dashboard') {
   // Filter requests (History Archive)
   let filteredRequests = state.requests.filter(req => {
     // Role based visibility filtering
-    if (state.currentRole === 'techlead') {
+    if (state.currentRole === 'techlead' || state.currentRole === 'manager') {
       const applicant = state.employees.find(e => e.id === req.employeeId);
-      const applicantRole = applicant ? (applicant.role.toLowerCase() === 'tech lead' ? 'techlead' : applicant.role.toLowerCase() === 'hr' ? 'hr' : applicant.role.toLowerCase() === 'admin' ? 'admin' : 'employee') : 'employee';
-      // Tech Lead only views history of their own department employees (no other leads/HR, except themselves)
+      const applicantRole = applicant ? (applicant.role.toLowerCase().includes('tech lead') ? 'techlead' : applicant.role.toLowerCase().includes('manager') ? 'manager' : applicant.role.toLowerCase().includes('hr') ? 'hr' : applicant.role.toLowerCase().includes('admin') ? 'admin' : 'employee') : 'employee';
+      // Tech Lead / Manager only views history of their own department employees (no other leads/HR, except themselves)
       if (req.employeeId !== state.currentUser.id) {
         const leadDepts = (state.currentUser.dept || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
         const reqDept = (req.dept || '').trim().toLowerCase();
-        if (!leadDepts.includes(reqDept) || applicantRole !== 'employee') return false;
+        if (!leadDepts.includes(reqDept) || (applicantRole !== 'employee')) return false;
       }
     } else if (state.currentRole === 'hr') {
-      // HR views history of employees and techleads (no other HR for privacy unless admin, except their own)
+      // HR views history of employees and techleads/managers (no other HR for privacy unless admin, except their own)
       const applicant = state.employees.find(e => e.id === req.employeeId);
-      const isHR = applicant && (applicant.role === 'HR' || applicant.role.toLowerCase() === 'hr');
+      const isHR = applicant && (applicant.role || '').toLowerCase().includes('hr');
       if (isHR && req.employeeId !== state.currentUser.id) return false;
     }
 
@@ -2668,8 +2702,8 @@ function renderHRDashboard(viewName = 'dashboard') {
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  // Calculate HR stats cards (clamped by department for Tech Leads)
-  const deptEmployees = state.currentRole === 'techlead'
+  // Calculate HR stats cards (clamped by department for Tech Leads & Managers)
+  const deptEmployees = (state.currentRole === 'techlead' || state.currentRole === 'manager')
     ? state.employees.filter(emp => {
       if (!emp.dept) return false;
       const leadDepts = (state.currentUser.dept || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
@@ -2686,13 +2720,13 @@ function renderHRDashboard(viewName = 'dashboard') {
     if (req.employeeId === state.currentUser.id) return false;
 
     const applicant = state.employees.find(e => e.id === req.employeeId);
-    const applicantRole = applicant ? (applicant.role.toLowerCase() === 'tech lead' ? 'techlead' : applicant.role.toLowerCase() === 'hr' ? 'hr' : applicant.role.toLowerCase() === 'admin' ? 'admin' : 'employee') : 'employee';
+    const applicantRole = applicant ? (applicant.role.toLowerCase().includes('tech lead') ? 'techlead' : applicant.role.toLowerCase().includes('manager') ? 'manager' : applicant.role.toLowerCase().includes('hr') ? 'hr' : applicant.role.toLowerCase().includes('admin') ? 'admin' : 'employee') : 'employee';
 
     if (state.currentRole === 'admin') {
       return true;
     } else if (state.currentRole === 'hr') {
-      return applicantRole === 'employee' || applicantRole === 'techlead';
-    } else if (state.currentRole === 'techlead') {
+      return applicantRole === 'employee' || applicantRole === 'techlead' || applicantRole === 'manager';
+    } else if (state.currentRole === 'techlead' || state.currentRole === 'manager') {
       const leadDepts = (state.currentUser.dept || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
       const reqDept = (req.dept || '').trim().toLowerCase();
       return applicantRole === 'employee' && leadDepts.includes(reqDept);
@@ -2739,13 +2773,13 @@ function renderHRDashboard(viewName = 'dashboard') {
     if (req.employeeId === state.currentUser.id) return false;
 
     const applicant = state.employees.find(e => e.id === req.employeeId);
-    const applicantRole = applicant ? (applicant.role.toLowerCase() === 'tech lead' ? 'techlead' : applicant.role.toLowerCase() === 'hr' ? 'hr' : applicant.role.toLowerCase() === 'admin' ? 'admin' : 'employee') : 'employee';
+    const applicantRole = applicant ? (applicant.role.toLowerCase().includes('tech lead') ? 'techlead' : applicant.role.toLowerCase().includes('manager') ? 'manager' : applicant.role.toLowerCase().includes('hr') ? 'hr' : applicant.role.toLowerCase().includes('admin') ? 'admin' : 'employee') : 'employee';
 
     if (state.currentRole === 'admin') {
       return true;
     } else if (state.currentRole === 'hr') {
-      return applicantRole === 'employee' || applicantRole === 'techlead';
-    } else if (state.currentRole === 'techlead') {
+      return applicantRole === 'employee' || applicantRole === 'techlead' || applicantRole === 'manager';
+    } else if (state.currentRole === 'techlead' || state.currentRole === 'manager') {
       const leadDepts = state.currentUser.dept ? state.currentUser.dept.split(',').map(d => d.trim().toLowerCase()) : [];
       return applicantRole === 'employee' && req.dept && leadDepts.includes(req.dept.toLowerCase());
     }
@@ -2845,7 +2879,7 @@ function renderHRDashboard(viewName = 'dashboard') {
 }
 
 function toggleEmployeeRosterExpand(empId) {
-  if (state.currentRole === 'techlead') return;
+  if (state.currentRole === 'techlead' || state.currentRole === 'manager') return;
   if (!state.expandedEmployeeIds) {
     state.expandedEmployeeIds = new Set();
   }
@@ -2869,7 +2903,7 @@ function renderEmployeeRoster() {
     const isSystemAdmin = emp.role.toLowerCase() === 'admin' || emp.email.toLowerCase() === 'admin@company.com';
     return !isSystemAdmin;
   });
-  if (state.currentRole === 'techlead' && state.currentUser) {
+  if ((state.currentRole === 'techlead' || state.currentRole === 'manager') && state.currentUser) {
     employeesToRender = employeesToRender.filter(emp => {
       if (!emp.dept) return false;
       const leadDepts = (state.currentUser.dept || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
@@ -2928,7 +2962,7 @@ function renderEmployeeRoster() {
     }
 
     const headerHTML = `
-      <div class="roster-header" style="display: flex; align-items: center; gap: 16px; width: 100%; ${state.currentRole !== 'techlead' ? 'cursor: pointer;' : ''}" ${state.currentRole !== 'techlead' ? `onclick="toggleEmployeeRosterExpand('${emp.id}')"` : ''}>
+      <div class="roster-header" style="display: flex; align-items: center; gap: 16px; width: 100%; ${(state.currentRole !== 'techlead' && state.currentRole !== 'manager') ? 'cursor: pointer;' : ''}" ${(state.currentRole !== 'techlead' && state.currentRole !== 'manager') ? `onclick="toggleEmployeeRosterExpand('${emp.id}')"` : ''}>
         <div class="roster-avatar" ${avatarStyle}>${avatarHTML}</div>
         <div class="roster-info">
           <div class="roster-name" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
@@ -2956,7 +2990,7 @@ function renderEmployeeRoster() {
               <span>Accrued: ${rosterTotalAccrued}d</span>
             </div>
           </div>
-          ${state.currentRole !== 'techlead' ? `
+          ${(state.currentRole !== 'techlead' && state.currentRole !== 'manager') ? `
           <div class="roster-chevron" style="display: flex; align-items: center;">
             <svg class="chevron-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="6 9 12 15 18 9"></polyline>
@@ -2988,18 +3022,36 @@ function renderEmployeeRoster() {
           <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center;">
             <div style="flex: 1; min-width: 150px;">
               <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Role</span>
-              ${state.currentRole === 'admin' && !isSystemAdmin ? `
-                <div style="display: flex; gap: 8px; align-items: center;">
-                  <select id="role-select-${emp.id}" style="padding: 6px 12px; font-size: 0.85rem; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); cursor: pointer; outline: none;">
-                    <option value="Employee" ${emp.role === 'Employee' ? 'selected' : ''}>Employee</option>
-                    <option value="HR" ${emp.role === 'HR' ? 'selected' : ''}>HR</option>
-                    <option value="Tech Lead" ${emp.role === 'Tech Lead' ? 'selected' : ''}>Tech Lead</option>
-                  </select>
-                  <button class="btn btn-primary btn-sm" onclick="updateEmployeeRole('${emp.id}', event)" style="padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;">Save Role</button>
-                </div>
-              ` : `
-                <strong style="color: var(--text-primary); font-size: 0.9rem;">${emp.role}</strong>
-              `}
+              ${(() => {
+                const normalizedRole = (emp.role || '').toLowerCase();
+                const hasHR = normalizedRole.includes('hr');
+                const hasTechLead = normalizedRole.includes('tech lead');
+                const hasManager = normalizedRole.includes('manager');
+
+                if (state.currentRole === 'admin' && !isSystemAdmin) {
+                  return `
+                    <div style="display: flex; flex-direction: column; gap: 8px; background-color: var(--bg-tertiary); padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; max-width: 250px;">
+                      <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; color: var(--text-primary);">
+                          <input type="checkbox" id="role-checkbox-hr-${emp.id}" ${hasHR ? 'checked' : ''} style="width: 15px; height: 15px; cursor: pointer; accent-color: var(--primary);">
+                          <span>HR</span>
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; color: var(--text-primary);">
+                          <input type="checkbox" id="role-checkbox-techlead-${emp.id}" ${hasTechLead ? 'checked' : ''} style="width: 15px; height: 15px; cursor: pointer; accent-color: var(--primary);">
+                          <span>Tech Lead</span>
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; color: var(--text-primary);">
+                          <input type="checkbox" id="role-checkbox-manager-${emp.id}" ${hasManager ? 'checked' : ''} style="width: 15px; height: 15px; cursor: pointer; accent-color: var(--primary);">
+                          <span>Manager</span>
+                        </label>
+                      </div>
+                      <button class="btn btn-primary btn-sm" onclick="updateEmployeeRole('${emp.id}', event)" style="padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; width: 100%; margin-top: 4px;">Save Roles</button>
+                    </div>
+                  `;
+                } else {
+                  return `<strong style="color: var(--text-primary); font-size: 0.9rem;">${emp.role}</strong>`;
+                }
+              })()}
             </div>
           </div>
           ${deleteBtnHTML}
@@ -3066,14 +3118,16 @@ function updateEmployeeRole(empId, event) {
     return;
   }
 
-  const roleSelect = document.getElementById(`role-select-${empId}`);
-  if (!roleSelect) return;
+  const hrChecked = document.getElementById(`role-checkbox-hr-${empId}`)?.checked;
+  const techleadChecked = document.getElementById(`role-checkbox-techlead-${empId}`)?.checked;
+  const managerChecked = document.getElementById(`role-checkbox-manager-${empId}`)?.checked;
 
-  const newRole = roleSelect.value;
-  if (!['Employee', 'HR', 'Tech Lead'].includes(newRole)) {
-    showToast('Invalid role selected.', 'error');
-    return;
-  }
+  const checkedRoles = [];
+  if (hrChecked) checkedRoles.push('HR');
+  if (techleadChecked) checkedRoles.push('Tech Lead');
+  if (managerChecked) checkedRoles.push('Manager');
+
+  const newRole = checkedRoles.length > 0 ? checkedRoles.join(', ') : 'Employee';
 
   const oldRole = emp.role;
   emp.role = newRole;
@@ -3083,7 +3137,7 @@ function updateEmployeeRole(empId, event) {
   populateTaskModalOptions();
   renderEmployeeRoster();
 
-  showToast(`Role of ${emp.name} updated from "${oldRole}" to "${newRole}"!`, 'success');
+  showToast(`Roles of ${emp.name} updated to "${newRole}"!`, 'success');
 }
 
 window.openRosterDocModal = openRosterDocModal;
@@ -3740,7 +3794,7 @@ function cycleTaskStatus(taskId) {
     return;
   }
 
-  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin') {
+  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
     renderHRTasksAndProjects();
   } else {
     renderEmployeeTasksAndProjects();
@@ -3765,7 +3819,7 @@ function toggleTaskCompletion(taskId) {
     return;
   }
 
-  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin') {
+  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
     renderHRTasksAndProjects();
   } else {
     renderEmployeeTasksAndProjects();
@@ -3876,7 +3930,7 @@ function createProjectCard(proj, isMyProject) {
   const canDelete = (
     state.currentRole === 'admin' ||
     state.currentRole === 'hr' ||
-    (state.currentRole === 'techlead' && state.currentUser.id === proj.techLeadId)
+    ((state.currentRole === 'techlead' || state.currentRole === 'manager') && state.currentUser.id === proj.techLeadId)
   );
 
   // LEFT COLUMN HTML
@@ -4349,7 +4403,7 @@ function renderHRTasksAndProjects() {
           <p>Click "Add New Project" to get started.</p>
         </div>
       `;
-    } else if (state.currentRole === 'techlead') {
+    } else if (state.currentRole === 'techlead' || state.currentRole === 'manager') {
       const myProjects = state.projects.filter(p => p.techLeadId === state.currentUser.id);
       if (myProjects.length === 0) {
         grid.innerHTML = `
@@ -4383,7 +4437,7 @@ function renderHRTasksAndProjects() {
     tbody.innerHTML = '';
 
     const filteredTasks = state.tasks.filter(t => {
-      if (state.currentRole === 'techlead') {
+      if (state.currentRole === 'techlead' || state.currentRole === 'manager') {
         const proj = state.projects.find(p => p.id === t.projectId);
         if (!proj || proj.techLeadId !== state.currentUser.id) {
           return false;
@@ -4603,7 +4657,7 @@ function populateTaskModalOptions() {
   if (filterProjSelect) {
     const prevVal = filterProjSelect.value;
     filterProjSelect.innerHTML = '<option value="all">All Projects</option>';
-    const allowedProjects = state.currentRole === 'techlead'
+    const allowedProjects = (state.currentRole === 'techlead' || state.currentRole === 'manager')
       ? state.projects.filter(p => p.techLeadId === state.currentUser.id)
       : state.projects;
     allowedProjects.forEach(p => {
@@ -4619,7 +4673,7 @@ function populateTaskModalOptions() {
   const modalProjSelect = document.getElementById('task-project-select');
   if (modalProjSelect) {
     modalProjSelect.innerHTML = '<option value="" disabled selected>Select project...</option>';
-    const allowedProjects = state.currentRole === 'techlead'
+    const allowedProjects = (state.currentRole === 'techlead' || state.currentRole === 'manager')
       ? state.projects.filter(p => p.techLeadId === state.currentUser.id)
       : state.projects;
     allowedProjects.forEach(p => {
@@ -4662,7 +4716,7 @@ function openCreateProjectModal() {
   const projectDeptSelect = document.getElementById('project-dept');
   const projectTechLeadSelect = document.getElementById('project-tech-lead');
 
-  if (state.currentRole === 'techlead') {
+  if (state.currentRole === 'techlead' || state.currentRole === 'manager') {
     // Restrict department selection to tech lead's department(s)
     if (projectDeptSelect) {
       projectDeptSelect.innerHTML = '';
@@ -5008,8 +5062,8 @@ let autoAssignToProjectAfterCreate = null;
 
 // Employee creation modal triggers
 function openCreateEmployeeModal() {
-  if (!document.body.classList.contains('auth-view') && state.currentRole !== 'admin' && state.currentRole !== 'techlead') {
-    showToast('Access denied: Only Administrators and Tech Leads can add employees inside the portal.', 'error');
+  if (!document.body.classList.contains('auth-view') && state.currentRole !== 'admin' && state.currentRole !== 'techlead' && state.currentRole !== 'manager') {
+    showToast('Access denied: Only Administrators, Tech Leads, and Managers can add employees inside the portal.', 'error');
     return;
   }
 
@@ -5038,14 +5092,16 @@ function openCreateEmployeeModal() {
       roleSelect.innerHTML = `
         <option value="Employee" selected>Employee</option>
         <option value="Tech Lead">Tech Lead</option>
+        <option value="Manager">Manager</option>
         <option value="HR">HR Manager</option>
         <option value="Admin">Admin</option>
       `;
     } else {
-      // HR or Tech Lead adding someone from the portal
+      // HR, Tech Lead or Manager adding someone from the portal
       roleSelect.innerHTML = `
         <option value="Employee" selected>Employee</option>
         <option value="Tech Lead">Tech Lead</option>
+        <option value="Manager">Manager</option>
       `;
     }
   }
@@ -5315,7 +5371,7 @@ function handleEmpTaskCreationSubmit(e) {
   }
 
   hideEmpTaskModal();
-  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin') {
+  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
     renderHRTasksAndProjects();
   } else {
     renderEmployeeTasksAndProjects();
@@ -6192,7 +6248,7 @@ function renderCalendar() {
       if (!matchRange) return false;
 
       // Visibility filters
-      if (state.currentRole === 'hr' || state.currentRole === 'techlead') {
+      if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager') {
         return true;
       } else {
         return req.employeeId === state.currentUser.id;
@@ -6202,7 +6258,7 @@ function renderCalendar() {
     leaves.forEach(req => {
       const lEl = document.createElement('div');
       lEl.className = 'calendar-event event-leave';
-      if (state.currentRole === 'hr' || state.currentRole === 'techlead') {
+      if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager') {
         lEl.title = `${req.employeeName} - ${req.type} Leave (${req.reason})`;
         lEl.textContent = `${req.employeeName.split(' ')[0]}: ${req.type}`;
       } else {
@@ -6344,7 +6400,7 @@ function renderInlineCalendar() {
       if (!matchRange) return false;
 
       // Visibility filters
-      if (state.currentRole === 'hr' || state.currentRole === 'techlead') {
+      if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager') {
         return true;
       } else {
         return req.employeeId === state.currentUser.id;
@@ -6354,7 +6410,7 @@ function renderInlineCalendar() {
     leaves.forEach(req => {
       const lEl = document.createElement('div');
       lEl.className = 'calendar-event event-leave';
-      if (state.currentRole === 'hr' || state.currentRole === 'techlead') {
+      if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager') {
         lEl.title = `${req.employeeName} - ${req.type} Leave (${req.reason})`;
         lEl.textContent = `${req.employeeName.split(' ')[0]}: ${req.type}`;
       } else {
@@ -6413,14 +6469,18 @@ function getReportReporterRole(report) {
     const emp = state.employees.find(e => e.id === report.employeeId);
     role = emp ? emp.role.toLowerCase() : 'employee';
   }
-  return role === 'tech lead' ? 'techlead' : role === 'hr' ? 'hr' : role === 'admin' ? 'admin' : 'employee';
+  if (role.includes('admin')) return 'admin';
+  if (role.includes('hr')) return 'hr';
+  if (role.includes('tech lead')) return 'techlead';
+  if (role.includes('manager')) return 'manager';
+  return 'employee';
 }
 
 function canUserSeeReport(currentUserRole, reporterRole) {
   if (reporterRole === 'employee') {
-    return ['techlead', 'hr', 'admin'].includes(currentUserRole);
+    return ['techlead', 'manager', 'hr', 'admin'].includes(currentUserRole);
   }
-  if (reporterRole === 'techlead') {
+  if (reporterRole === 'techlead' || reporterRole === 'manager') {
     return ['hr', 'admin'].includes(currentUserRole);
   }
   if (reporterRole === 'hr') {
@@ -6436,14 +6496,14 @@ function canUserReviewReport(currentUserRole, reporterRole) {
 function canUserStarReport(currentUserRole, reporterRole) {
   // Admin can star everyone below them
   if (currentUserRole === 'admin') {
-    return ['employee', 'techlead', 'hr'].includes(reporterRole);
+    return ['employee', 'techlead', 'manager', 'hr'].includes(reporterRole);
   }
-  // HR can star employees and tech leads
+  // HR can star employees, tech leads and managers
   if (currentUserRole === 'hr') {
-    return ['employee', 'techlead'].includes(reporterRole);
+    return ['employee', 'techlead', 'manager'].includes(reporterRole);
   }
-  // Tech lead can star employees
-  if (currentUserRole === 'techlead') {
+  // Tech lead and Manager can star employees
+  if (currentUserRole === 'techlead' || currentUserRole === 'manager') {
     return reporterRole === 'employee';
   }
   return false;
@@ -6470,7 +6530,7 @@ function renderDailyReports() {
   const hrSection = document.getElementById('reports-hr-section');
   if (!empSection || !hrSection) return;
 
-  const isLeadOrHR = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin');
+  const isLeadOrHR = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
 
   if (isLeadOrHR) {
     if (state.activeLeaveSubTab === 'apply') {
@@ -7619,7 +7679,7 @@ function handleSalaryConfigSubmit(e) {
 }
 
 function renderReimbursements() {
-  const isEmployee = state.currentRole === 'employee' || state.currentRole === 'techlead';
+  const isEmployee = state.currentRole === 'employee' || state.currentRole === 'techlead' || state.currentRole === 'manager';
   const empSection = document.getElementById('reimbursement-employee-section');
   const hrSection = document.getElementById('reimbursement-hr-section');
 
@@ -8104,9 +8164,37 @@ function loginAsUser(user) {
     headerRole.textContent = user.role;
   }
 
-  // Bind role UI display
-  const targetRole = user.role.toLowerCase() === 'tech lead' ? 'techlead' : user.role.toLowerCase() === 'hr' ? 'hr' : user.role.toLowerCase() === 'admin' ? 'admin' : 'employee';
-  setRole(targetRole);
+  // Show / hide role switcher buttons based on assigned roles list
+  const roleStr = (user.role || '').toLowerCase();
+  const assignedRoles = ['employee']; // Everyone has Employee view
+  if (roleStr.includes('admin')) assignedRoles.push('admin');
+  if (roleStr.includes('hr')) assignedRoles.push('hr');
+  if (roleStr.includes('tech lead')) assignedRoles.push('techlead');
+  if (roleStr.includes('manager')) assignedRoles.push('manager');
+
+  const switcherContainer = document.querySelector('.role-switcher-container');
+  if (switcherContainer) {
+    if (assignedRoles.length > 1) {
+      switcherContainer.style.display = 'flex';
+      document.getElementById('btn-role-employee').style.display = assignedRoles.includes('employee') ? 'inline-block' : 'none';
+      document.getElementById('btn-role-techlead').style.display = assignedRoles.includes('techlead') ? 'inline-block' : 'none';
+      document.getElementById('btn-role-manager').style.display = assignedRoles.includes('manager') ? 'inline-block' : 'none';
+      document.getElementById('btn-role-hr').style.display = assignedRoles.includes('hr') ? 'inline-block' : 'none';
+      const adminBtn = document.getElementById('btn-role-admin');
+      if (adminBtn) adminBtn.style.display = assignedRoles.includes('admin') ? 'inline-block' : 'none';
+    } else {
+      switcherContainer.style.display = 'none';
+    }
+  }
+
+  // Bind initial role UI display
+  let initialRole = 'employee';
+  if (roleStr.includes('admin')) initialRole = 'admin';
+  else if (roleStr.includes('hr')) initialRole = 'hr';
+  else if (roleStr.includes('tech lead')) initialRole = 'techlead';
+  else if (roleStr.includes('manager')) initialRole = 'manager';
+
+  setRole(initialRole);
 
   updateCommMenuBadges();
 
@@ -8120,6 +8208,12 @@ function logout() {
   localStorage.removeItem('ems_logged_in_user');
   state.currentUser = null;
   state.currentRole = null;
+  
+  const switcherContainer = document.querySelector('.role-switcher-container');
+  if (switcherContainer) {
+    switcherContainer.style.display = 'none';
+  }
+
   showLoginScreen();
   updateAllMenuBadges();
   showToast('Logged out successfully.', 'info');
@@ -8133,7 +8227,7 @@ window.logout = logout;
 // ==========================================
 
 function renderTickets() {
-  const isAgent = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin');
+  const isAgent = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
 
   const subTabs = document.getElementById('ticket-sub-tabs');
   const empSection = document.getElementById('ticket-employee-section');
@@ -8482,7 +8576,7 @@ function openTicketDetails(ticketId) {
   }
 
   // Display Agent Controls only to HR/TechLead/Admin
-  const isAgent = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'admin');
+  const isAgent = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
   const agentControls = document.getElementById('ticket-modal-agent-controls');
   if (agentControls) {
     agentControls.style.display = isAgent ? 'flex' : 'none';

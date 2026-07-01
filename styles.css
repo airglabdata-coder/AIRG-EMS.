@@ -1910,7 +1910,6 @@ body.auth-view #login-container {
 }
 
 /* Hide dev-only role/employee switcher panels when logged in */
-body:not(.auth-view) .role-switcher-container,
 body:not(.auth-view) .employee-select-container {
   display: none !important;
 }
