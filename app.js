@@ -63,7 +63,8 @@ function triggerBackendSync() {
       tickets: state.tickets || [],
       nationalHolidays: state.nationalHolidays || [],
       celebrationDays: state.celebrationDays || [],
-      smsNotifications: state.smsNotifications || []
+      smsNotifications: state.smsNotifications || [],
+      schools: state.schools || []
     };
 
     fetch('/api/sync', {
@@ -155,6 +156,10 @@ async function fetchCentralizedState() {
         state.tickets = s.tickets;
         safeOriginalSetItem('ems_tickets', JSON.stringify(s.tickets));
       }
+      if (s.schools) {
+        state.schools = s.schools;
+        safeOriginalSetItem('ems_schools', JSON.stringify(s.schools));
+      }
       if (s.nationalHolidays) {
         state.nationalHolidays = s.nationalHolidays;
         safeOriginalSetItem('ems_national_holidays', JSON.stringify(s.nationalHolidays));
@@ -217,6 +222,7 @@ function initSyncPolling() {
         state.nationalHolidays = s.nationalHolidays || state.nationalHolidays;
         state.celebrationDays = s.celebrationDays || state.celebrationDays;
         state.smsNotifications = s.smsNotifications || state.smsNotifications;
+        state.schools = s.schools || state.schools;
 
         state.lastSyncedTimestamp = data.timestamp;
 
@@ -234,6 +240,7 @@ function initSyncPolling() {
         if (s.nationalHolidays) safeOriginalSetItem('ems_national_holidays', JSON.stringify(s.nationalHolidays));
         if (s.celebrationDays) safeOriginalSetItem('ems_celebration_days', JSON.stringify(s.celebrationDays));
         if (s.smsNotifications) safeOriginalSetItem('ems_notifications', JSON.stringify(s.smsNotifications));
+        if (s.schools) safeOriginalSetItem('ems_schools', JSON.stringify(s.schools));
 
         isSyncingToServer = false;
 
@@ -1182,6 +1189,7 @@ async function init() {
       originalSetItem.call(localStorage, 'ems_notices', JSON.stringify([]));
       originalSetItem.call(localStorage, 'ems_reimbursements', JSON.stringify([]));
       originalSetItem.call(localStorage, 'ems_tickets', JSON.stringify([]));
+      originalSetItem.call(localStorage, 'ems_schools', JSON.stringify([]));
       originalSetItem.call(localStorage, 'ems_national_holidays', JSON.stringify(DEFAULT_NATIONAL_HOLIDAYS));
       originalSetItem.call(localStorage, 'ems_celebration_days', JSON.stringify(DEFAULT_CELEBRATION_DAYS));
       originalSetItem.call(localStorage, 'ems_seed_version', CURRENT_SEED_VERSION);
@@ -1198,6 +1206,7 @@ async function init() {
       state.notices = [];
       state.reimbursements = [];
       state.tickets = [];
+      state.schools = [];
       state.nationalHolidays = DEFAULT_NATIONAL_HOLIDAYS;
       state.celebrationDays = DEFAULT_CELEBRATION_DAYS;
       state.smsNotifications = [];
@@ -1515,6 +1524,31 @@ async function init() {
     if (ticketsUpdated) {
       localStorage.setItem('ems_tickets', JSON.stringify(state.tickets));
     }
+  }
+
+  // Load and seed Schools
+  if (!wasStateFetchedFromServer) {
+    try {
+      state.schools = JSON.parse(localStorage.getItem('ems_schools') || '[]');
+    } catch (e) {
+      state.schools = [];
+    }
+  } else {
+    if (!state.schools) state.schools = [];
+  }
+  if (state.schools.length === 0) {
+    let idCounter = 1;
+    Object.entries(SCHOOLS_DATA).forEach(([manager, schools]) => {
+      schools.forEach(schoolName => {
+        state.schools.push({
+          id: `SCH${String(idCounter++).padStart(5, '0')}`,
+          name: schoolName,
+          managerName: manager,
+          instructors: []
+        });
+      });
+    });
+    localStorage.setItem('ems_schools', JSON.stringify(state.schools));
   }
 
   // Self-heal employee roles on startup
@@ -2314,11 +2348,23 @@ function updateSidebarMenu() {
 
   const schoolMenu = document.getElementById('menu-item-school');
   if (schoolMenu) {
-    const isUserManager = state.currentUser && (state.currentUser.role || '').toLowerCase().includes('manager');
-    if (isUserManager) {
+    const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
+    const isHROrManager = userRole.includes('hr') || userRole.includes('manager');
+    if (isHROrManager) {
       schoolMenu.style.display = 'flex';
     } else {
       schoolMenu.style.display = 'none';
+    }
+  }
+
+  const empDetailsMenu = document.getElementById('menu-item-emp-details');
+  if (empDetailsMenu) {
+    const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
+    const isHROrAdmin = userRole.includes('hr') || userRole.includes('admin');
+    if (isHROrAdmin) {
+      empDetailsMenu.style.display = 'flex';
+    } else {
+      empDetailsMenu.style.display = 'none';
     }
   }
 }
@@ -2393,8 +2439,10 @@ function switchView(viewName) {
   const reimbursementsContainer = document.getElementById('reimbursements-view-container');
   const ticketsContainer = document.getElementById('tickets-view-container');
   const schoolContainer = document.getElementById('school-management-view-container');
+  const empDetailsContainer = document.getElementById('emp-details-view-container');
 
   if (schoolContainer) schoolContainer.style.display = 'none';
+  if (empDetailsContainer) empDetailsContainer.style.display = 'none';
 
   if (viewName === 'communications') {
     if (empContainer) empContainer.style.display = 'none';
@@ -2506,6 +2554,13 @@ function switchView(viewName) {
 
     renderTickets();
   } else if (viewName === 'school-management') {
+    const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
+    const isHROrManager = userRole.includes('hr') || userRole.includes('manager');
+    if (!isHROrManager) {
+      switchView('tasks');
+      return;
+    }
+
     if (empContainer) empContainer.style.display = 'none';
     if (hrContainer) hrContainer.style.display = 'none';
     if (commContainer) commContainer.style.display = 'none';
@@ -2520,6 +2575,29 @@ function switchView(viewName) {
     if (titleLabel) titleLabel.textContent = 'School Management';
 
     renderSchoolManagement();
+  } else if (viewName === 'emp-details') {
+    const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
+    const isHROrAdmin = userRole.includes('hr') || userRole.includes('admin');
+    if (!isHROrAdmin) {
+      switchView('tasks');
+      return;
+    }
+
+    if (empContainer) empContainer.style.display = 'none';
+    if (hrContainer) hrContainer.style.display = 'none';
+    if (commContainer) commContainer.style.display = 'none';
+    if (calendarContainer) calendarContainer.style.display = 'none';
+    if (reportsContainer) reportsContainer.style.display = 'none';
+    if (payslipsContainer) payslipsContainer.style.display = 'none';
+    if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
+    if (ticketsContainer) ticketsContainer.style.display = 'none';
+    if (schoolContainer) schoolContainer.style.display = 'none';
+    if (empDetailsContainer) empDetailsContainer.style.display = 'block';
+
+    const titleLabel = document.getElementById('page-title-label');
+    if (titleLabel) titleLabel.textContent = 'Employee Details';
+
+    renderEmployeeDetails();
   } else {
     if (commContainer) commContainer.style.display = 'none';
     if (calendarContainer) calendarContainer.style.display = 'none';
@@ -8201,16 +8279,7 @@ function loginAsUser(user) {
 
   const switcherContainer = document.querySelector('.role-switcher-container');
   if (switcherContainer) {
-    if (assignedRoles.length > 1) {
-      switcherContainer.style.display = 'flex';
-      document.getElementById('btn-role-employee').style.display = assignedRoles.includes('employee') ? 'inline-block' : 'none';
-      document.getElementById('btn-role-techlead').style.display = assignedRoles.includes('techlead') ? 'inline-block' : 'none';
-      document.getElementById('btn-role-hr').style.display = assignedRoles.includes('hr') ? 'inline-block' : 'none';
-      const adminBtn = document.getElementById('btn-role-admin');
-      if (adminBtn) adminBtn.style.display = assignedRoles.includes('admin') ? 'inline-block' : 'none';
-    } else {
-      switcherContainer.style.display = 'none';
-    }
+    switcherContainer.style.display = 'none';
   }
 
   // Bind initial role UI display
@@ -9024,20 +9093,12 @@ function renderSchoolManagement() {
   const grid = document.getElementById('schools-grid');
   if (!grid) return;
 
-  const searchQuery = (document.getElementById('school-search-input')?.value || '').toLowerCase().trim();
-
   grid.innerHTML = '';
 
-  Object.entries(SCHOOLS_DATA).forEach(([manager, schools]) => {
-    const filteredSchools = schools.filter(school => 
-      school.toLowerCase().includes(searchQuery) || manager.toLowerCase().includes(searchQuery)
-    );
-
-    if (searchQuery !== '' && filteredSchools.length === 0 && !manager.toLowerCase().includes(searchQuery)) {
-      return;
-    }
-
+  const managers = Object.keys(SCHOOLS_DATA);
+  managers.forEach(manager => {
     const theme = MANAGER_THEMES[manager] || { bg: "var(--primary-gradient)", avatar: manager.substring(0,2).toUpperCase(), designation: "Manager" };
+    const managerSchools = (state.schools || []).filter(sch => sch.managerName === manager);
 
     const card = document.createElement('div');
     card.className = 'project-card';
@@ -9051,24 +9112,34 @@ function renderSchoolManagement() {
     card.style.borderRadius = 'var(--border-radius)';
     card.style.transition = 'transform 0.3s ease, box-shadow 0.3s ease';
 
-    let schoolsListHtml = '';
-    if (filteredSchools.length === 0) {
-      schoolsListHtml = `<div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; padding: 8px 0;">No matching schools found.</div>`;
-    } else {
-      schoolsListHtml = filteredSchools.map((school, index) => {
-        let displayName = school;
-        if (searchQuery !== '') {
-          const regex = new RegExp(`(${searchQuery.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
-          displayName = school.replace(regex, '<mark style="background-color: rgba(245, 158, 11, 0.3); color: var(--text-primary); border-radius: 2px; padding: 0 2px;">$1</mark>');
-        }
-        return `
-          <div style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.85rem; color: var(--text-primary); padding: 8px 0; border-bottom: 1px dashed var(--border-color);" class="school-list-item">
+    const schoolsListHtml = managerSchools.map((sch, index) => {
+      const instructorsList = (sch.instructors || []).map(instId => {
+        const emp = state.employees.find(e => e.id === instId);
+        return emp ? emp.name : instId;
+      });
+
+      const instructorsBadgeHtml = instructorsList.length > 0 
+        ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+             ${instructorsList.map(name => `
+               <span style="font-size: 0.7rem; background: var(--primary-bg); color: var(--primary); padding: 2px 6px; border-radius: 4px; font-weight: 600; display: inline-flex; align-items: center; border: 1px solid rgba(220, 38, 38, 0.1);">
+                 👤 ${name}
+               </span>
+             `).join('')}
+           </div>`
+        : `<div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic; margin-top: 2px;">No instructors assigned</div>`;
+
+      return `
+        <div style="display: flex; flex-direction: column; padding: 10px 0; border-bottom: 1px dashed var(--border-color);" class="school-list-item">
+          <div style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.85rem; color: var(--text-primary);">
             <span style="font-weight: 700; color: var(--text-secondary); min-width: 18px;">${index + 1}.</span>
-            <span style="line-height: 1.4;">${displayName}</span>
+            <span style="line-height: 1.4; font-weight: 600;">${sch.name}</span>
           </div>
-        `;
-      }).join('');
-    }
+          <div style="margin-left: 28px;">
+            ${instructorsBadgeHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
 
     card.innerHTML = `
       <!-- Card Header -->
@@ -9083,7 +9154,7 @@ function renderSchoolManagement() {
           </div>
         </div>
         <span class="badge" style="background-color: var(--bg-tertiary); color: var(--text-primary); font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 12px; border: 1px solid var(--border-color);">
-          ${schools.length} School${schools.length !== 1 ? 's' : ''}
+          ${managerSchools.length} School${managerSchools.length !== 1 ? 's' : ''}
         </span>
       </div>
 
@@ -9096,7 +9167,406 @@ function renderSchoolManagement() {
     grid.appendChild(card);
   });
 }
+
+function openAddSchoolModal() {
+  document.getElementById('add-school-form').reset();
+  document.getElementById('add-school-modal-overlay').classList.add('active');
+}
+function closeAddSchoolModal() {
+  document.getElementById('add-school-modal-overlay').classList.remove('active');
+}
+
+function handleAddSchoolSubmit(e) {
+  e.preventDefault();
+  const name = document.getElementById('new-school-name').value.trim();
+  const managerName = document.getElementById('new-school-manager').value;
+
+  if (!name || !managerName) {
+    showToast('Please fill out all fields.', 'error');
+    return;
+  }
+
+  const exists = state.schools.some(sch => sch.name.toLowerCase() === name.toLowerCase());
+  if (exists) {
+    showToast('A school with this name already exists.', 'error');
+    return;
+  }
+
+  const nextSchoolId = `SCH${String(state.schools.length + 1).padStart(5, '0')}`;
+  const newSchool = {
+    id: nextSchoolId,
+    name: name,
+    managerName: managerName,
+    instructors: []
+  };
+
+  state.schools.push(newSchool);
+  localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+  triggerBackendSync();
+
+  renderSchoolManagement();
+  closeAddSchoolModal();
+  showToast(`School "${name}" added successfully.`, 'success');
+}
+
+function openAddInstructorModal() {
+  document.getElementById('add-instructor-form').reset();
+  const tbody = document.getElementById('instructor-rows-tbody');
+  tbody.innerHTML = '';
+  addInstructorRow();
+
+  const checklist = document.getElementById('instructor-schools-checklist');
+  checklist.innerHTML = '';
+  state.schools.forEach(sch => {
+    const div = document.createElement('div');
+    div.style.display = 'flex';
+    div.style.alignItems = 'center';
+    div.style.gap = '8px';
+    div.innerHTML = `
+      <input type="checkbox" id="inst-sch-${sch.id}" value="${sch.id}" style="width: auto; cursor: pointer;">
+      <label for="inst-sch-${sch.id}" style="cursor: pointer; font-size: 0.8rem; font-weight: 500;">${sch.name} (${sch.managerName})</label>
+    `;
+    checklist.appendChild(div);
+  });
+
+  document.getElementById('add-instructor-modal-overlay').classList.add('active');
+}
+function closeAddInstructorModal() {
+  document.getElementById('add-instructor-modal-overlay').classList.remove('active');
+}
+
+function addInstructorRow() {
+  const nextId = generateNextEmployeeId();
+  const tbody = document.getElementById('instructor-rows-tbody');
+  const rowCount = tbody.querySelectorAll('tr').length;
+  
+  let prefilledId = nextId;
+  const match = nextId.match(/^AIRG(\d+)$/i);
+  if (match) {
+    const num = parseInt(match[1], 10) + rowCount;
+    prefilledId = `AIRG${String(num).padStart(5, '0')}`;
+  }
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" class="inst-id-input" placeholder="e.g. AIRG00045" value="${prefilledId}" required style="padding: 6px; font-size: 0.8rem;"></td>
+    <td><input type="text" class="inst-name-input" placeholder="Name" required style="padding: 6px; font-size: 0.8rem;"></td>
+    <td><input type="email" class="inst-email-input" placeholder="Email" required style="padding: 6px; font-size: 0.8rem;"></td>
+    <td><input type="text" class="inst-phone-input" placeholder="Phone" required style="padding: 6px; font-size: 0.8rem;"></td>
+    <td><input type="password" class="inst-password-input" placeholder="Password" value="password123" required style="padding: 6px; font-size: 0.8rem;"></td>
+    <td style="text-align: center;"><button type="button" class="btn btn-danger btn-xs" onclick="removeInstructorRow(this)">Delete</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function removeInstructorRow(btn) {
+  const row = btn.closest('tr');
+  if (row) row.remove();
+}
+
+function generateNextEmployeeId() {
+  let maxIdNum = 0;
+  state.employees.forEach(emp => {
+    const match = emp.id.match(/^AIRG(\d+)$/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxIdNum) {
+        maxIdNum = num;
+      }
+    }
+  });
+  return `AIRG${String(maxIdNum + 1).padStart(5, '0')}`;
+}
+
+function handleAddInstructorSubmit(e) {
+  e.preventDefault();
+
+  const tbody = document.getElementById('instructor-rows-tbody');
+  const rows = tbody.querySelectorAll('tr');
+
+  if (rows.length === 0) {
+    showToast('Please add at least one instructor row.', 'error');
+    return;
+  }
+
+  const newInstructors = [];
+  let validationError = false;
+
+  rows.forEach((row, index) => {
+    const id = row.querySelector('.inst-id-input').value.trim();
+    const name = row.querySelector('.inst-name-input').value.trim();
+    const email = row.querySelector('.inst-email-input').value.trim().toLowerCase();
+    const phone = row.querySelector('.inst-phone-input').value.trim();
+    const password = row.querySelector('.inst-password-input').value.trim();
+
+    if (!id || !name || !email || !phone || !password) {
+      showToast(`Please fill in all fields in row ${index + 1}.`, 'error');
+      validationError = true;
+      return;
+    }
+
+    const idExists = state.employees.some(emp => emp.id.toLowerCase() === id.toLowerCase()) ||
+                     newInstructors.some(inst => inst.id.toLowerCase() === id.toLowerCase());
+    if (idExists) {
+      showToast(`Employee ID "${id}" is already in use.`, 'error');
+      validationError = true;
+      return;
+    }
+
+    const emailExists = state.employees.some(emp => emp.email.toLowerCase() === email) ||
+                        newInstructors.some(inst => inst.email === email);
+    if (emailExists) {
+      showToast(`Email "${email}" is already in use.`, 'error');
+      validationError = true;
+      return;
+    }
+
+    newInstructors.push({ id, name, email, phone, password });
+  });
+
+  if (validationError) return;
+
+  const selectedSchoolIds = [];
+  const checklist = document.getElementById('instructor-schools-checklist');
+  const checkboxes = checklist.querySelectorAll('input[type="checkbox"]:checked');
+  checkboxes.forEach(cb => {
+    selectedSchoolIds.push(cb.value);
+  });
+
+  newInstructors.forEach(inst => {
+    const initials = inst.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+
+    const employeeObj = {
+      id: inst.id,
+      name: inst.name,
+      dept: 'Instructor',
+      email: inst.email,
+      role: 'Employee',
+      balance: 20,
+      absent: 0,
+      avatar: initials,
+      designation: 'Instructor',
+      phone: inst.phone,
+      password: inst.password,
+      aadhar: '',
+      pan: '',
+      bankAcc: '',
+      bankIfsc: '',
+      photo: null
+    };
+
+    state.employees.push(employeeObj);
+
+    selectedSchoolIds.forEach(schId => {
+      const sch = state.schools.find(s => s.id === schId);
+      if (sch) {
+        if (!sch.instructors) sch.instructors = [];
+        if (!sch.instructors.includes(inst.id)) {
+          sch.instructors.push(inst.id);
+        }
+      }
+    });
+  });
+
+  localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+  localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+  triggerBackendSync();
+
+  populateEmployeeDropdown();
+  renderSchoolManagement();
+  closeAddInstructorModal();
+  showToast(`Successfully added ${newInstructors.length} instructor(s) and assigned them.`, 'success');
+}
+
+function openAssignExistingInstructorModal() {
+  document.getElementById('assign-existing-instructor-form').reset();
+
+  const instSelect = document.getElementById('assign-instructor-select');
+  instSelect.innerHTML = '<option value="" disabled selected>Select instructor...</option>';
+  state.employees.filter(emp => 
+    (emp.dept || '').toLowerCase().includes('instructor') || 
+    (emp.role || '').toLowerCase().includes('instructor') ||
+    (emp.designation || '').toLowerCase().includes('instructor')
+  ).forEach(emp => {
+    const opt = document.createElement('option');
+    opt.value = emp.id;
+    opt.textContent = `${emp.name} (${emp.id})`;
+    instSelect.appendChild(opt);
+  });
+
+  const schSelect = document.getElementById('assign-school-select');
+  schSelect.innerHTML = '<option value="" disabled selected>Select school...</option>';
+  state.schools.forEach(sch => {
+    const opt = document.createElement('option');
+    opt.value = sch.id;
+    opt.textContent = `${sch.name} (${sch.managerName})`;
+    schSelect.appendChild(opt);
+  });
+
+  document.getElementById('assign-instructor-modal-overlay').classList.add('active');
+}
+function closeAssignExistingInstructorModal() {
+  document.getElementById('assign-instructor-modal-overlay').classList.remove('active');
+}
+
+function handleAssignExistingInstructorSubmit(e) {
+  e.preventDefault();
+  const instId = document.getElementById('assign-instructor-select').value;
+  const schoolId = document.getElementById('assign-school-select').value;
+
+  if (!instId || !schoolId) {
+    showToast('Please select both instructor and school.', 'error');
+    return;
+  }
+
+  const sch = state.schools.find(s => s.id === schoolId);
+  if (sch) {
+    if (!sch.instructors) sch.instructors = [];
+    if (sch.instructors.includes(instId)) {
+      showToast('This instructor is already assigned to this school.', 'warning');
+      return;
+    }
+    sch.instructors.push(instId);
+    localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+    triggerBackendSync();
+
+    renderSchoolManagement();
+    closeAssignExistingInstructorModal();
+    showToast('Instructor successfully assigned to school.', 'success');
+  }
+}
+
+window.openAddSchoolModal = openAddSchoolModal;
+window.closeAddSchoolModal = closeAddSchoolModal;
+window.handleAddSchoolSubmit = handleAddSchoolSubmit;
+window.openAddInstructorModal = openAddInstructorModal;
+window.closeAddInstructorModal = closeAddInstructorModal;
+window.addInstructorRow = addInstructorRow;
+window.removeInstructorRow = removeInstructorRow;
+window.handleAddInstructorSubmit = handleAddInstructorSubmit;
+window.openAssignExistingInstructorModal = openAssignExistingInstructorModal;
+window.closeAssignExistingInstructorModal = closeAssignExistingInstructorModal;
+window.handleAssignExistingInstructorSubmit = handleAssignExistingInstructorSubmit;
+
 window.renderSchoolManagement = renderSchoolManagement;
+
+function openFillDetailsModal() {
+  if (!state.currentUser) return;
+  const user = state.currentUser;
+
+  document.getElementById('fd-name').value = user.name || '';
+  document.getElementById('fd-designation').value = user.designation || user.role || '';
+  document.getElementById('fd-bank-name').value = user.bankName || '';
+  document.getElementById('fd-branch').value = user.branch || '';
+  document.getElementById('fd-ifsc').value = user.bankIfsc || '';
+  document.getElementById('fd-account').value = user.bankAcc || '';
+  document.getElementById('fd-id-card').value = user.idCardNumber || '';
+  document.getElementById('fd-dob').value = user.birthDate || '';
+  document.getElementById('fd-contact').value = user.phone || '';
+  document.getElementById('fd-joining-date').value = user.joiningDate || '';
+  document.getElementById('fd-aadhar').value = user.aadhar || '';
+  document.getElementById('fd-pan').value = user.pan || '';
+
+  hideProfileModal();
+
+  document.getElementById('fill-details-modal-overlay').classList.add('active');
+}
+
+function closeFillDetailsModal() {
+  document.getElementById('fill-details-modal-overlay').classList.remove('active');
+  const overlay = document.getElementById('profile-modal-overlay');
+  if (overlay) overlay.classList.add('active');
+}
+
+function handleFillDetailsSubmit(e) {
+  e.preventDefault();
+  if (!state.currentUser) return;
+
+  const name = document.getElementById('fd-name').value.trim();
+  const designation = document.getElementById('fd-designation').value.trim();
+  const bankName = document.getElementById('fd-bank-name').value.trim();
+  const branch = document.getElementById('fd-branch').value.trim();
+  const bankIfsc = document.getElementById('fd-ifsc').value.trim();
+  const bankAcc = document.getElementById('fd-account').value.trim();
+  const idCardNumber = document.getElementById('fd-id-card').value.trim();
+  const birthDate = document.getElementById('fd-dob').value;
+  const phone = document.getElementById('fd-contact').value.trim();
+  const joiningDate = document.getElementById('fd-joining-date').value;
+  const aadhar = document.getElementById('fd-aadhar').value.trim();
+  const pan = document.getElementById('fd-pan').value.trim();
+
+  state.currentUser.name = name;
+  state.currentUser.designation = designation;
+  state.currentUser.bankName = bankName;
+  state.currentUser.branch = branch;
+  state.currentUser.bankIfsc = bankIfsc;
+  state.currentUser.bankAcc = bankAcc;
+  state.currentUser.idCardNumber = idCardNumber;
+  state.currentUser.birthDate = birthDate;
+  state.currentUser.phone = phone;
+  state.currentUser.joiningDate = joiningDate;
+  state.currentUser.aadhar = aadhar;
+  state.currentUser.pan = pan;
+
+  const empIndex = state.employees.findIndex(emp => emp.id === state.currentUser.id);
+  if (empIndex !== -1) {
+    state.employees[empIndex] = { ...state.employees[empIndex], ...state.currentUser };
+  }
+
+  localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+  localStorage.setItem('ems_logged_in_user', JSON.stringify(state.currentUser));
+
+  triggerBackendSync();
+
+  document.getElementById('fill-details-modal-overlay').classList.remove('active');
+
+  showToast('Profile and onboarding details submitted to HR successfully.', 'success');
+
+  const headerName = document.getElementById('header-name');
+  if (headerName) headerName.textContent = state.currentUser.name;
+  const headerRole = document.getElementById('header-role');
+  if (headerRole) headerRole.textContent = state.currentUser.role;
+  updateHeaderAvatar(state.currentUser);
+}
+
+function renderEmployeeDetails() {
+  const tbody = document.getElementById('emp-details-tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '';
+
+  state.employees.forEach(emp => {
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid var(--border-color)';
+    tr.innerHTML = `
+      <td style="padding: 12px; font-weight: 700; color: var(--text-primary);">${emp.id}</td>
+      <td style="padding: 12px; font-weight: 600; color: var(--text-primary);">${emp.name}<br><span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${emp.email}</span></td>
+      <td style="padding: 12px;"><span class="badge" style="background-color: var(--bg-tertiary); color: var(--text-primary); font-size: 0.75rem; padding: 4px 8px; border-radius: 4px;">${emp.designation || emp.role || 'Employee'}</span></td>
+      <td style="padding: 12px; line-height: 1.5;">
+        <strong>Bank:</strong> ${emp.bankName || '—'}<br>
+        <strong>Branch:</strong> ${emp.branch || '—'}<br>
+        <strong>IFSC:</strong> ${emp.bankIfsc || '—'}<br>
+        <strong>A/C No:</strong> ${emp.bankAcc || '—'}
+      </td>
+      <td style="padding: 12px; line-height: 1.5;">
+        <strong>ID Card:</strong> ${emp.idCardNumber || '—'}<br>
+        <strong>Aadhar:</strong> ${emp.aadhar || '—'}<br>
+        <strong>PAN:</strong> ${emp.pan || '—'}
+      </td>
+      <td style="padding: 12px; line-height: 1.5;">
+        <strong>DOB:</strong> ${emp.birthDate || '—'}<br>
+        <strong>Contact:</strong> ${emp.phone || '—'}<br>
+        <strong>Joined:</strong> ${emp.joiningDate || '—'}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+window.openFillDetailsModal = openFillDetailsModal;
+window.closeFillDetailsModal = closeFillDetailsModal;
+window.handleFillDetailsSubmit = handleFillDetailsSubmit;
+window.renderEmployeeDetails = renderEmployeeDetails;
 
 // Run application on DOM loaded
 window.addEventListener('DOMContentLoaded', init);

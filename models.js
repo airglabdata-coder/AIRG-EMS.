@@ -167,6 +167,13 @@ const PushSubscriptionSchema = new mongoose.Schema({
   subscription: { type: mongoose.Schema.Types.Mixed, required: true }
 });
 
+const SchoolSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  managerName: { type: String },
+  instructors: { type: Array, default: [] }
+}, { strict: false });
+
 // Compile and Export Models
 module.exports = {
   Employee: mongoose.model('Employee', EmployeeSchema),
@@ -182,5 +189,6 @@ module.exports = {
   NationalHoliday: mongoose.model('NationalHoliday', NationalHolidaySchema),
   CelebrationDay: mongoose.model('CelebrationDay', CelebrationDaySchema),
   SystemMetadata: mongoose.model('SystemMetadata', SystemMetadataSchema),
-  PushSubscription: mongoose.model('PushSubscription', PushSubscriptionSchema)
+  PushSubscription: mongoose.model('PushSubscription', PushSubscriptionSchema),
+  School: mongoose.model('School', SchoolSchema)
 };

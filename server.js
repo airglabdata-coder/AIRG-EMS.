@@ -52,7 +52,8 @@ async function getMongoDBState() {
     reimbursements,
     tickets,
     nationalHolidays,
-    celebrationDays
+    celebrationDays,
+    schools
   ] = await Promise.all([
     models.Employee.find({}),
     models.LeaveRequest.find({}),
@@ -65,7 +66,8 @@ async function getMongoDBState() {
     models.Reimbursement.find({}),
     models.Ticket.find({}),
     models.NationalHoliday.find({}),
-    models.CelebrationDay.find({})
+    models.CelebrationDay.find({}),
+    models.School.find({})
   ]);
 
   let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' });
@@ -86,7 +88,8 @@ async function getMongoDBState() {
       reimbursements: reimbursements.map(x => x.toJSON()),
       tickets: tickets.map(x => x.toJSON()),
       nationalHolidays: nationalHolidays.map(h => ({ date: h.date, name: h.name })),
-      celebrationDays: celebrationDays.map(c => ({ date: c.date, name: c.name }))
+      celebrationDays: celebrationDays.map(c => ({ date: c.date, name: c.name })),
+      schools: schools.map(x => x.toJSON())
     },
     timestamp: meta.timestamp
   };
@@ -132,7 +135,8 @@ async function saveMongoDBState(stateObj) {
     syncCollection(models.Reimbursement, stateObj.reimbursements, 'id'),
     syncCollection(models.Ticket, stateObj.tickets, 'id'),
     syncCollection(models.NationalHoliday, stateObj.nationalHolidays, 'date'),
-    syncCollection(models.CelebrationDay, stateObj.celebrationDays, 'date')
+    syncCollection(models.CelebrationDay, stateObj.celebrationDays, 'date'),
+    syncCollection(models.School, stateObj.schools, 'id')
   ];
 
   await Promise.all(syncOps);
@@ -165,7 +169,8 @@ async function clearAndSeedMongoDB() {
       models.NationalHoliday.deleteMany({}),
       models.CelebrationDay.deleteMany({}),
       models.SystemMetadata.deleteMany({}),
-      models.PushSubscription.deleteMany({})
+      models.PushSubscription.deleteMany({}),
+      models.School.deleteMany({})
     ]);
 
     console.log('Seeding default Admin user into MongoDB Atlas...');

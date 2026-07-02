@@ -65,6 +65,15 @@
           <span>Employee</span>
         </a>
       </li>
+      <li id="menu-item-emp-details" style="display: none;">
+        <a href="#" class="menu-item" data-view="emp-details">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span>Employee Details</span>
+        </a>
+      </li>
       <li>
         <a href="#" class="menu-item" data-view="communications" id="menu-item-comm">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -1642,19 +1651,50 @@
 
     <!-- ================= SCHOOL MANAGEMENT ================= -->
     <div id="school-management-view-container" style="display: none; width: 100%;">
-      <!-- Search/Filter Bar -->
-      <div style="margin-bottom: 24px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; background: var(--bg-secondary); padding: 16px; border-radius: var(--border-radius); border: 1px solid var(--border-color);">
-        <div style="flex: 1; min-width: 250px; position: relative;">
-          <label for="school-search-input" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; display: block;">Search Schools</label>
-          <input type="text" id="school-search-input" placeholder="Search by school name or manager name..." 
-                 style="width: 100%; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-tertiary); color: var(--text-primary); outline: none; font-size: 0.9rem;" 
-                 oninput="renderSchoolManagement()">
+
+      <!-- School Management Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; width: 100%;">
+        <div>
+          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">School Management Dashboard</h2>
+          <p class="text-muted" style="font-size: 0.85rem; margin-top: 4px;">Allocate and manage school assignments for managers and instructors.</p>
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn btn-primary btn-sm" onclick="openAddSchoolModal()">+ Add School</button>
+          <button class="btn btn-primary btn-sm" onclick="openAddInstructorModal()">+ Add Instructor(s)</button>
+          <button class="btn btn-secondary btn-sm" onclick="openAssignExistingInstructorModal()">+ Assign Existing Instructor</button>
         </div>
       </div>
 
       <!-- Responsive Grid for the 4 Managers -->
       <div id="schools-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; width: 100%;">
         <!-- Populated dynamically via JS -->
+      </div>
+    </div>
+
+    <!-- ================= EMPLOYEE DETAILS (HR View) ================= -->
+    <div id="emp-details-view-container" style="display: none; width: 100%;">
+      <div class="card" style="box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--bg-secondary); padding: 24px;">
+        <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px;">
+          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">Employee Details & Onboarding</h2>
+          <p class="text-muted" style="font-size: 0.85rem; margin-top: 4px;">Compliance, bank accounts, identity proofs, and personal information submitted by employees.</p>
+        </div>
+        <div class="table-container" style="border: 1px solid var(--border-color); border-radius: var(--border-radius-sm);">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background-color: var(--bg-tertiary); text-align: left; border-bottom: 1px solid var(--border-color);">
+                <th style="padding: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); width: 80px;">Emp ID</th>
+                <th style="padding: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); width: 140px;">Name</th>
+                <th style="padding: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); width: 100px;">Designation</th>
+                <th style="padding: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">Bank Details</th>
+                <th style="padding: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">Account & Cards</th>
+                <th style="padding: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">Personal Info</th>
+              </tr>
+            </thead>
+            <tbody id="emp-details-tbody" style="font-size: 0.85rem;">
+              <!-- Injected dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -2198,9 +2238,201 @@
 
 
         </div>
-        <div class="modal-footer" style="background-color: var(--bg-tertiary);">
+        <div class="modal-footer" style="background-color: var(--bg-tertiary); display: flex; justify-content: flex-end; gap: 12px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="openFillDetailsModal()" style="margin-right: auto; background-color: var(--primary-bg); color: var(--primary); border: 1px solid var(--primary-glow);">Fill Up Details</button>
           <button type="button" onclick="hideProfileModal()" class="btn btn-secondary btn-sm">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add School Modal Overlay -->
+  <div id="add-school-modal-overlay" class="modal-overlay">
+    <div class="modal" style="max-width: 500px; width: 95%;">
+      <div class="modal-header">
+        <h3>Add New School</h3>
+        <button type="button" onclick="closeAddSchoolModal()"
+          style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="add-school-form" onsubmit="handleAddSchoolSubmit(event)">
+        <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <div class="form-group">
+            <label for="new-school-name">School Name</label>
+            <input type="text" id="new-school-name" placeholder="e.g. Greenfield Public School" required>
+          </div>
+          <div class="form-group">
+            <label for="new-school-manager">Assign Manager</label>
+            <select id="new-school-manager" required>
+              <option value="" disabled selected>Select manager...</option>
+              <option value="Shravani">Shravani (HR, Manager)</option>
+              <option value="Prasad">Prasad (Tech Lead, Manager)</option>
+              <option value="Rajendra Sir">Rajendra Sir (Manager)</option>
+              <option value="Suyash">Suyash (Tech Lead, Manager)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeAddSchoolModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add School</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Instructor(s) Modal Overlay -->
+  <div id="add-instructor-modal-overlay" class="modal-overlay">
+    <div class="modal" style="max-width: 800px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <h3>Add New Instructor(s)</h3>
+        <button type="button" onclick="closeAddInstructorModal()"
+          style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="add-instructor-form" onsubmit="handleAddInstructorSubmit(event)" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
+        <div class="modal-body" style="padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; flex: 1;">
+          
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Instructor Profiles</span>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addInstructorRow()" style="padding: 4px 10px; font-size: 0.75rem;">+ Add Another Row</button>
+          </div>
+
+          <div class="table-container" style="border: 1px solid var(--border-color); border-radius: var(--border-radius-sm);">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr>
+                  <th style="padding: 10px; font-size: 0.8rem;">Emp ID</th>
+                  <th style="padding: 10px; font-size: 0.8rem;">Name</th>
+                  <th style="padding: 10px; font-size: 0.8rem;">Email</th>
+                  <th style="padding: 10px; font-size: 0.8rem;">Phone</th>
+                  <th style="padding: 10px; font-size: 0.8rem;">Password</th>
+                  <th style="padding: 10px; font-size: 0.8rem; width: 50px; text-align: center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="instructor-rows-tbody">
+                <!-- Row template injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="form-group">
+            <label style="margin-bottom: 8px; display: block;">Assign to School(s)</label>
+            <div id="instructor-schools-checklist" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; max-height: 200px; overflow-y: auto; padding: 12px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-primary);">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color);">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeAddInstructorModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Save Instructor(s)</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Assign Existing Instructor Modal Overlay -->
+  <div id="assign-instructor-modal-overlay" class="modal-overlay">
+    <div class="modal" style="max-width: 500px; width: 95%;">
+      <div class="modal-header">
+        <h3>Assign Existing Instructor</h3>
+        <button type="button" onclick="closeAssignExistingInstructorModal()"
+          style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="assign-existing-instructor-form" onsubmit="handleAssignExistingInstructorSubmit(event)">
+        <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <div class="form-group">
+            <label for="assign-instructor-select">Select Instructor</label>
+            <select id="assign-instructor-select" required>
+              <option value="" disabled selected>Select instructor...</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="assign-school-select">Select School</label>
+            <select id="assign-school-select" required>
+              <option value="" disabled selected>Select school...</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeAssignExistingInstructorModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Fill Details Modal Overlay -->
+  <div id="fill-details-modal-overlay" class="modal-overlay">
+    <div class="modal" style="max-width: 700px; width: 95%;">
+      <div class="modal-header">
+        <h3>Fill Onboarding & Compliance Details</h3>
+        <button type="button" onclick="closeFillDetailsModal()"
+          style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="fill-details-form" onsubmit="handleFillDetailsSubmit(event)">
+        <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+          
+          <div style="font-size: 0.85rem; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+            Please provide your complete bank and identity details below. This information is directly shared with HR.
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; font-size: 0.9rem;">
+            <div class="form-group">
+              <label for="fd-name">Full Name</label>
+              <input type="text" id="fd-name" required>
+            </div>
+            <div class="form-group">
+              <label for="fd-designation">Designation</label>
+              <input type="text" id="fd-designation" placeholder="e.g. Software Engineer" required>
+            </div>
+            <div class="form-group">
+              <label for="fd-bank-name">Bank Name</label>
+              <input type="text" id="fd-bank-name" placeholder="e.g. HDFC Bank" required>
+            </div>
+            <div class="form-group">
+              <label for="fd-branch">Branch</label>
+              <input type="text" id="fd-branch" placeholder="e.g. Kothrud Branch" required>
+            </div>
+            <div class="form-group">
+              <label for="fd-ifsc">IFSC Code</label>
+              <input type="text" id="fd-ifsc" placeholder="e.g. HDFC0000123" required>
+            </div>
+            <div class="form-group">
+              <label for="fd-account">Account Number</label>
+              <input type="text" id="fd-account" placeholder="e.g. 501002345678" required>
+            </div>
+            <div class="form-group">
+              <label for="fd-id-card">ID Card Number</label>
+              <input type="text" id="fd-id-card" placeholder="e.g. ID-12345" required>
+            </div>
+            <div class="form-group">
+              <label for="fd-dob">Birth Date</label>
+              <input type="date" id="fd-dob" required>
+            </div>
+            <div class="form-group">
+              <label for="fd-contact">Contact Number</label>
+              <input type="tel" id="fd-contact" placeholder="e.g. +91 98765 43210" required>
+            </div>
+            <div class="form-group">
+              <label for="fd-joining-date">Joining Date</label>
+              <input type="date" id="fd-joining-date" required>
+            </div>
+            <div class="form-group">
+              <label for="fd-aadhar">Aadhar Card Number</label>
+              <input type="text" id="fd-aadhar" placeholder="e.g. 1234 5678 9012" required>
+            </div>
+            <div class="form-group">
+              <label for="fd-pan">PAN Card Number</label>
+              <input type="text" id="fd-pan" placeholder="e.g. ABCDE1234F" required>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color);">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeFillDetailsModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Finish</button>
         </div>
       </form>
     </div>
