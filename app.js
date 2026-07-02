@@ -506,7 +506,7 @@ const DEFAULT_EMPLOYEES = [
     name: "Shravani Khanvilkar",
     dept: "AI, Electronics, Lab Setup, Instructor",
     email: "shravani@gurujiair.com",
-    role: "HR, Manager",
+    role: "HR",
     balance: 20,
     absent: 0,
     avatar: "SK",
@@ -1856,6 +1856,9 @@ async function init() {
   // Populate department options
   populateDepartmentDropdowns();
 
+  // Populate manager dropdowns
+  populateManagerDropdowns();
+
   // Bind employee/dept form submissions
   const deptForm = document.getElementById('dept-creation-form');
   if (deptForm) {
@@ -2162,8 +2165,8 @@ function setRole(role) {
     const roleStr = (user.role || '').toLowerCase();
     if (target === 'admin') return roleStr.includes('admin');
     if (target === 'hr') return roleStr.includes('hr');
-    if (target === 'techlead') return roleStr.includes('tech lead');
-    if (target === 'manager') return roleStr.includes('manager');
+    if (target === 'techlead') return roleStr.includes('tech lead') || roleStr.includes('manager');
+    if (target === 'manager') return roleStr.includes('manager') || roleStr.includes('tech lead');
     return true; // employee is allowed for everyone
   };
 
@@ -3006,7 +3009,11 @@ function renderEmployeeRoster() {
 
 
   let employeesToRender = state.employees.filter(emp => {
-    const isSystemAdmin = emp.role.toLowerCase() === 'admin' || emp.email.toLowerCase() === 'admin@company.com';
+    const normalizedRole = (emp.role || '').toLowerCase();
+    const isSystemAdmin = normalizedRole.includes('admin') || 
+                          emp.email.toLowerCase() === 'admin@company.com' ||
+                          emp.email.toLowerCase() === 'pratap@gurujiair.com' ||
+                          (emp.name || '').toLowerCase() === 'pratap pawar';
     return !isSystemAdmin;
   });
   if ((state.currentRole === 'techlead' || state.currentRole === 'manager') && state.currentUser) {
@@ -3129,35 +3136,13 @@ function renderEmployeeRoster() {
             <div style="flex: 1; min-width: 150px;">
               <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Role</span>
               ${(() => {
-                const normalizedRole = (emp.role || '').toLowerCase();
-                const hasHR = normalizedRole.includes('hr');
-                const hasTechLead = normalizedRole.includes('tech lead');
-                const hasManager = normalizedRole.includes('manager');
+          const normalizedRole = (emp.role || '').toLowerCase();
+          const hasHR = normalizedRole.includes('hr');
+          const hasTechLead = normalizedRole.includes('tech lead');
+          const hasManager = normalizedRole.includes('manager');
 
-                if (state.currentRole === 'admin' && !isSystemAdmin) {
-                  return `
-                    <div style="display: flex; flex-direction: column; gap: 8px; background-color: var(--bg-tertiary); padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; max-width: 250px;">
-                      <div style="display: flex; flex-direction: column; gap: 6px;">
-                        <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; color: var(--text-primary);">
-                          <input type="checkbox" id="role-checkbox-hr-${emp.id}" ${hasHR ? 'checked' : ''} style="width: 15px; height: 15px; cursor: pointer; accent-color: var(--primary);">
-                          <span>HR</span>
-                        </label>
-                        <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; color: var(--text-primary);">
-                          <input type="checkbox" id="role-checkbox-techlead-${emp.id}" ${hasTechLead ? 'checked' : ''} style="width: 15px; height: 15px; cursor: pointer; accent-color: var(--primary);">
-                          <span>Tech Lead</span>
-                        </label>
-                        <label style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; color: var(--text-primary);">
-                          <input type="checkbox" id="role-checkbox-manager-${emp.id}" ${hasManager ? 'checked' : ''} style="width: 15px; height: 15px; cursor: pointer; accent-color: var(--primary);">
-                          <span>Manager</span>
-                        </label>
-                      </div>
-                      <button class="btn btn-primary btn-sm" onclick="updateEmployeeRole('${emp.id}', event)" style="padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; width: 100%; margin-top: 4px;">Save Roles</button>
-                    </div>
-                  `;
-                } else {
-                  return `<strong style="color: var(--text-primary); font-size: 0.9rem;">${emp.role}</strong>`;
-                }
-              })()}
+          return `<strong style="color: var(--text-primary); font-size: 0.9rem;">${emp.role || 'Employee'}</strong>`;
+        })()}
             </div>
           </div>
           ${deleteBtnHTML}
@@ -3416,7 +3401,7 @@ function showProfileModal() {
         imgEl.src = '';
         imgEl.style.display = 'none';
         placeholderEl.style.display = 'flex';
-        
+
         // Update placeholder span text to "Not Uploaded"
         const span = placeholderEl.querySelector('span');
         if (span) {
@@ -3914,6 +3899,21 @@ function toggleTaskCompletion(taskId) {
 
   const task = state.tasks[taskIdx];
   const prevStatus = task.status;
+
+  if (task.status !== 'Completed') {
+    const detailsText = (task.details || '').trim();
+    const words = detailsText.split(/\s+/).filter(w => w.length > 0);
+    if (words.length < 10) {
+      showToast('Please type a minimum of 10 words in "edit description & photos" before completing this task.', 'error');
+      if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
+        renderHRTasksAndProjects();
+      } else {
+        renderEmployeeTasksAndProjects();
+      }
+      return;
+    }
+  }
+
   if (task.status === 'Completed') {
     task.status = 'Not Completed';
   } else {
@@ -3931,6 +3931,10 @@ function toggleTaskCompletion(taskId) {
     renderEmployeeTasksAndProjects();
   }
   showToast(`Task marked as ${task.status.toLowerCase()}`, 'success');
+
+  if (task.status === 'Completed') {
+    openDailyReportReminder();
+  }
 }
 
 // --- 2. HR View Logic ---
@@ -3964,7 +3968,7 @@ function createProjectCard(proj, isMyProject) {
 
   // Get all employees associated with the project
   const taskAssigneeIds = state.tasks.filter(t => t.projectId === proj.id).map(t => t.assigneeId);
-  
+
   const isDeptMember = (emp, deptName) => {
     if (!emp.dept || !deptName) return false;
     return emp.dept.split(',').map(d => d.trim().toLowerCase()).includes(deptName.toLowerCase());
@@ -6728,17 +6732,17 @@ function renderEmployeeReports() {
       imagesHtml = `
         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
           ${report.images.map((fileObj, idx) => {
-            const isString = typeof fileObj === 'string';
-            const fileData = isString ? fileObj : fileObj.data;
-            const fileName = isString ? 'Attachment' : fileObj.name;
-            const fileType = isString ? 'image/png' : (fileObj.type || '');
-            
-            const isPdf = fileType === 'application/pdf' || 
-                          fileName.toLowerCase().endsWith('.pdf') || 
-                          fileData.startsWith('data:application/pdf');
+        const isString = typeof fileObj === 'string';
+        const fileData = isString ? fileObj : fileObj.data;
+        const fileName = isString ? 'Attachment' : fileObj.name;
+        const fileType = isString ? 'image/png' : (fileObj.type || '');
 
-            if (isPdf) {
-              return `
+        const isPdf = fileType === 'application/pdf' ||
+          fileName.toLowerCase().endsWith('.pdf') ||
+          fileData.startsWith('data:application/pdf');
+
+        if (isPdf) {
+          return `
                 <div onclick="openPdfInNewWindow('${fileData}', event)" class="report-image-thumbnail" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; padding: 4px; box-sizing: border-box;" title="${fileName}">
                   <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--danger); margin-bottom: 2px;">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2v-9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -6746,12 +6750,12 @@ function renderEmployeeReports() {
                   <span style="font-size: 0.65rem; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--text-primary);">${fileName}</span>
                 </div>
               `;
-            } else {
-              return `
+        } else {
+          return `
                 <img src="${fileData}" onclick="openFullImageViewModal('${report.id}', ${idx}, event)" class="report-image-thumbnail" title="${fileName}">
               `;
-            }
-          }).join('')}
+        }
+      }).join('')}
         </div>
       `;
     }
@@ -7006,17 +7010,17 @@ function renderHRReports() {
         imagesHtml = `
           <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
             ${report.images.map((fileObj, idx) => {
-              const isString = typeof fileObj === 'string';
-              const fileData = isString ? fileObj : fileObj.data;
-              const fileName = isString ? 'Attachment' : fileObj.name;
-              const fileType = isString ? 'image/png' : (fileObj.type || '');
-              
-              const isPdf = fileType === 'application/pdf' || 
-                            fileName.toLowerCase().endsWith('.pdf') || 
-                            fileData.startsWith('data:application/pdf');
+          const isString = typeof fileObj === 'string';
+          const fileData = isString ? fileObj : fileObj.data;
+          const fileName = isString ? 'Attachment' : fileObj.name;
+          const fileType = isString ? 'image/png' : (fileObj.type || '');
 
-              if (isPdf) {
-                return `
+          const isPdf = fileType === 'application/pdf' ||
+            fileName.toLowerCase().endsWith('.pdf') ||
+            fileData.startsWith('data:application/pdf');
+
+          if (isPdf) {
+            return `
                   <div onclick="openPdfInNewWindow('${fileData}', event)" class="report-image-thumbnail" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; padding: 4px; box-sizing: border-box;" title="${fileName}">
                     <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--danger); margin-bottom: 2px;">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2v-9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -7024,12 +7028,12 @@ function renderHRReports() {
                     <span style="font-size: 0.65rem; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--text-primary);">${fileName}</span>
                   </div>
                 `;
-              } else {
-                return `
+          } else {
+            return `
                   <img src="${fileData}" onclick="openFullImageViewModal('${report.id}', ${idx}, event)" class="report-image-thumbnail" title="${fileName}">
                 `;
-              }
-            }).join('')}
+          }
+        }).join('')}
           </div>
         `;
       }
@@ -7362,9 +7366,9 @@ function getEmployeeSalaryForMonth(emp, month) {
     if (emp.salaries[month].totalEarning !== undefined) {
       totalEarningBase = Number(emp.salaries[month].totalEarning);
     } else {
-      totalEarningBase = Number(emp.salaries[month].basic || 0) + 
-                         Number(emp.salaries[month].hra || 0) + 
-                         Number(emp.salaries[month].other || 0);
+      totalEarningBase = Number(emp.salaries[month].basic || 0) +
+        Number(emp.salaries[month].hra || 0) +
+        Number(emp.salaries[month].other || 0);
       if (totalEarningBase === 0) totalEarningBase = 10000;
     }
   }
@@ -7456,12 +7460,12 @@ function renderPayslips() {
   }
 
   const totalEarnings = basic + hra + other + approvedReimbSum;
-  
+
   // Calculate LWP deduction rate: base total earning (basic + hra + other) divided by number of days in the month
   const [yearVal, monthVal] = selectedMonth.split('-').map(Number);
   const daysInMonth = new Date(yearVal, monthVal, 0).getDate();
   const lwpDeduction = Math.round(((basic + hra + other) / daysInMonth) * lwpDays);
-  
+
   const totalDeductions = profTax + lwpDeduction;
 
   // Compute paid leave days for this month (total approved - lwp)
@@ -8302,7 +8306,7 @@ function logout() {
   localStorage.removeItem('ems_logged_in_user');
   state.currentUser = null;
   state.currentRole = null;
-  
+
   const switcherContainer = document.querySelector('.role-switcher-container');
   if (switcherContainer) {
     switcherContainer.style.display = 'none';
@@ -9083,7 +9087,7 @@ const SCHOOLS_DATA = {
 };
 
 const MANAGER_THEMES = {
-  "Shravani": { bg: "linear-gradient(135deg, #ec4899, #f43f5e)", avatar: "SK", designation: "HR, Manager" },
+  "Shravani": { bg: "linear-gradient(135deg, #ec4899, #f43f5e)", avatar: "SK", designation: "HR" },
   "Prasad": { bg: "linear-gradient(135deg, #3b82f6, #06b6d4)", avatar: "PS", designation: "Tech Lead, Manager" },
   "Rajendra Sir": { bg: "linear-gradient(135deg, #10b981, #059669)", avatar: "RS", designation: "Manager" },
   "Suyash": { bg: "linear-gradient(135deg, #f59e0b, #d97706)", avatar: "SP", designation: "Tech Lead, Manager" }
@@ -9097,7 +9101,7 @@ function renderSchoolManagement() {
 
   const managers = Object.keys(SCHOOLS_DATA);
   managers.forEach(manager => {
-    const theme = MANAGER_THEMES[manager] || { bg: "var(--primary-gradient)", avatar: manager.substring(0,2).toUpperCase(), designation: "Manager" };
+    const theme = MANAGER_THEMES[manager] || { bg: "var(--primary-gradient)", avatar: manager.substring(0, 2).toUpperCase(), designation: "Manager" };
     const managerSchools = (state.schools || []).filter(sch => sch.managerName === manager);
 
     const card = document.createElement('div');
@@ -9118,7 +9122,7 @@ function renderSchoolManagement() {
         return emp ? emp.name : instId;
       });
 
-      const instructorsBadgeHtml = instructorsList.length > 0 
+      const instructorsBadgeHtml = instructorsList.length > 0
         ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
              ${instructorsList.map(name => `
                <span style="font-size: 0.7rem; background: var(--primary-bg); color: var(--primary); padding: 2px 6px; border-radius: 4px; font-weight: 600; display: inline-flex; align-items: center; border: 1px solid rgba(220, 38, 38, 0.1);">
@@ -9128,11 +9132,22 @@ function renderSchoolManagement() {
            </div>`
         : `<div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic; margin-top: 2px;">No instructors assigned</div>`;
 
+      const studentsCountHtml = sch.studentsCount
+        ? `<span style="font-size: 0.65rem; background: var(--bg-tertiary); color: var(--text-secondary); padding: 1px 5px; border-radius: 4px; font-weight: 600; border: 1px solid var(--border-color); display: inline-flex; align-items: center; gap: 3px;" title="Students">👥 ${sch.studentsCount}</span>`
+        : '';
+      const filesCountHtml = sch.files && sch.files.length > 0
+        ? `<span style="font-size: 0.65rem; background: var(--bg-tertiary); color: var(--text-secondary); padding: 1px 5px; border-radius: 4px; font-weight: 600; border: 1px solid var(--border-color); display: inline-flex; align-items: center; gap: 3px;" title="Attachments">📁 ${sch.files.length}</span>`
+        : '';
+
       return `
         <div style="display: flex; flex-direction: column; padding: 10px 0; border-bottom: 1px dashed var(--border-color);" class="school-list-item">
-          <div style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.85rem; color: var(--text-primary);">
-            <span style="font-weight: 700; color: var(--text-secondary); min-width: 18px;">${index + 1}.</span>
-            <span style="line-height: 1.4; font-weight: 600;">${sch.name}</span>
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; font-size: 0.85rem; color: var(--text-primary);">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <span style="font-weight: 700; color: var(--text-secondary); min-width: 18px;">${index + 1}.</span>
+              <span style="line-height: 1.4; font-weight: 600; cursor: pointer; color: var(--text-primary); transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-primary)'" onclick="openSchoolDetailsModal('${sch.id}')">${sch.name}</span>
+              ${studentsCountHtml}
+              ${filesCountHtml}
+            </div>
           </div>
           <div style="margin-left: 28px;">
             ${instructorsBadgeHtml}
@@ -9169,6 +9184,7 @@ function renderSchoolManagement() {
 }
 
 function openAddSchoolModal() {
+  populateManagerDropdowns();
   document.getElementById('add-school-form').reset();
   document.getElementById('add-school-modal-overlay').classList.add('active');
 }
@@ -9239,7 +9255,7 @@ function addInstructorRow() {
   const nextId = generateNextEmployeeId();
   const tbody = document.getElementById('instructor-rows-tbody');
   const rowCount = tbody.querySelectorAll('tr').length;
-  
+
   let prefilledId = nextId;
   const match = nextId.match(/^AIRG(\d+)$/i);
   if (match) {
@@ -9306,7 +9322,7 @@ function handleAddInstructorSubmit(e) {
     }
 
     const idExists = state.employees.some(emp => emp.id.toLowerCase() === id.toLowerCase()) ||
-                     newInstructors.some(inst => inst.id.toLowerCase() === id.toLowerCase());
+      newInstructors.some(inst => inst.id.toLowerCase() === id.toLowerCase());
     if (idExists) {
       showToast(`Employee ID "${id}" is already in use.`, 'error');
       validationError = true;
@@ -9314,7 +9330,7 @@ function handleAddInstructorSubmit(e) {
     }
 
     const emailExists = state.employees.some(emp => emp.email.toLowerCase() === email) ||
-                        newInstructors.some(inst => inst.email === email);
+      newInstructors.some(inst => inst.email === email);
     if (emailExists) {
       showToast(`Email "${email}" is already in use.`, 'error');
       validationError = true;
@@ -9383,8 +9399,8 @@ function openAssignExistingInstructorModal() {
 
   const instSelect = document.getElementById('assign-instructor-select');
   instSelect.innerHTML = '<option value="" disabled selected>Select instructor...</option>';
-  state.employees.filter(emp => 
-    (emp.dept || '').toLowerCase().includes('instructor') || 
+  state.employees.filter(emp =>
+    (emp.dept || '').toLowerCase().includes('instructor') ||
     (emp.role || '').toLowerCase().includes('instructor') ||
     (emp.designation || '').toLowerCase().includes('instructor')
   ).forEach(emp => {
@@ -9467,6 +9483,28 @@ function openFillDetailsModal() {
   document.getElementById('fd-aadhar').value = user.aadhar || '';
   document.getElementById('fd-pan').value = user.pan || '';
 
+  // Reset file inputs
+  const fileInputs = ['fd-bank-photo', 'fd-branch-photo', 'fd-ifsc-photo', 'fd-account-photo', 'fd-id-card-photo', 'fd-aadhar-photo', 'fd-pan-photo'];
+  fileInputs.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  // Toggle uploaded status indicators
+  const updateStatus = (photoData, statusId) => {
+    const el = document.getElementById(statusId);
+    if (el) {
+      el.style.display = photoData ? 'inline' : 'none';
+    }
+  };
+  updateStatus(user.bankPhoto, 'fd-bank-photo-status');
+  updateStatus(user.branchPhoto, 'fd-branch-photo-status');
+  updateStatus(user.ifscPhoto, 'fd-ifsc-photo-status');
+  updateStatus(user.accountPhoto, 'fd-account-photo-status');
+  updateStatus(user.idCardPhoto, 'fd-id-card-photo-status');
+  updateStatus(user.aadharPhoto, 'fd-aadhar-photo-status');
+  updateStatus(user.panPhoto, 'fd-pan-photo-status');
+
   hideProfileModal();
 
   document.getElementById('fill-details-modal-overlay').classList.add('active');
@@ -9478,88 +9516,281 @@ function closeFillDetailsModal() {
   if (overlay) overlay.classList.add('active');
 }
 
-function handleFillDetailsSubmit(e) {
+async function readFileAsBase64(fileInputId) {
+  const input = document.getElementById(fileInputId);
+  if (!input || !input.files || input.files.length === 0) return null;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+    reader.readAsDataURL(input.files[0]);
+  });
+}
+
+async function handleFillDetailsSubmit(e) {
   e.preventDefault();
   if (!state.currentUser) return;
 
-  const name = document.getElementById('fd-name').value.trim();
-  const designation = document.getElementById('fd-designation').value.trim();
-  const bankName = document.getElementById('fd-bank-name').value.trim();
-  const branch = document.getElementById('fd-branch').value.trim();
-  const bankIfsc = document.getElementById('fd-ifsc').value.trim();
-  const bankAcc = document.getElementById('fd-account').value.trim();
-  const idCardNumber = document.getElementById('fd-id-card').value.trim();
-  const birthDate = document.getElementById('fd-dob').value;
-  const phone = document.getElementById('fd-contact').value.trim();
-  const joiningDate = document.getElementById('fd-joining-date').value;
-  const aadhar = document.getElementById('fd-aadhar').value.trim();
-  const pan = document.getElementById('fd-pan').value.trim();
+  try {
+    const [
+      bankPhoto,
+      branchPhoto,
+      ifscPhoto,
+      accountPhoto,
+      idCardPhoto,
+      aadharPhoto,
+      panPhoto
+    ] = await Promise.all([
+      readFileAsBase64('fd-bank-photo'),
+      readFileAsBase64('fd-branch-photo'),
+      readFileAsBase64('fd-ifsc-photo'),
+      readFileAsBase64('fd-account-photo'),
+      readFileAsBase64('fd-id-card-photo'),
+      readFileAsBase64('fd-aadhar-photo'),
+      readFileAsBase64('fd-pan-photo')
+    ]);
 
-  state.currentUser.name = name;
-  state.currentUser.designation = designation;
-  state.currentUser.bankName = bankName;
-  state.currentUser.branch = branch;
-  state.currentUser.bankIfsc = bankIfsc;
-  state.currentUser.bankAcc = bankAcc;
-  state.currentUser.idCardNumber = idCardNumber;
-  state.currentUser.birthDate = birthDate;
-  state.currentUser.phone = phone;
-  state.currentUser.joiningDate = joiningDate;
-  state.currentUser.aadhar = aadhar;
-  state.currentUser.pan = pan;
+    const name = document.getElementById('fd-name').value.trim();
+    const designation = document.getElementById('fd-designation').value.trim();
+    const bankName = document.getElementById('fd-bank-name').value.trim();
+    const branch = document.getElementById('fd-branch').value.trim();
+    const bankIfsc = document.getElementById('fd-ifsc').value.trim();
+    const bankAcc = document.getElementById('fd-account').value.trim();
+    const idCardNumber = document.getElementById('fd-id-card').value.trim();
+    const birthDate = document.getElementById('fd-dob').value;
+    const phone = document.getElementById('fd-contact').value.trim();
+    const joiningDate = document.getElementById('fd-joining-date').value;
+    const aadhar = document.getElementById('fd-aadhar').value.trim();
+    const pan = document.getElementById('fd-pan').value.trim();
 
-  const empIndex = state.employees.findIndex(emp => emp.id === state.currentUser.id);
-  if (empIndex !== -1) {
-    state.employees[empIndex] = { ...state.employees[empIndex], ...state.currentUser };
+    state.currentUser.name = name;
+    state.currentUser.designation = designation;
+    state.currentUser.bankName = bankName;
+    state.currentUser.branch = branch;
+    state.currentUser.bankIfsc = bankIfsc;
+    state.currentUser.bankAcc = bankAcc;
+    state.currentUser.idCardNumber = idCardNumber;
+    state.currentUser.birthDate = birthDate;
+    state.currentUser.phone = phone;
+    state.currentUser.joiningDate = joiningDate;
+    state.currentUser.aadhar = aadhar;
+    state.currentUser.pan = pan;
+
+    // Save photos if a new one was uploaded, else preserve existing
+    if (bankPhoto) state.currentUser.bankPhoto = bankPhoto;
+    if (branchPhoto) state.currentUser.branchPhoto = branchPhoto;
+    if (ifscPhoto) state.currentUser.ifscPhoto = ifscPhoto;
+    if (accountPhoto) state.currentUser.accountPhoto = accountPhoto;
+    if (idCardPhoto) state.currentUser.idCardPhoto = idCardPhoto;
+    if (aadharPhoto) state.currentUser.aadharPhoto = aadharPhoto;
+    if (panPhoto) state.currentUser.panPhoto = panPhoto;
+
+    const empIndex = state.employees.findIndex(emp => emp.id === state.currentUser.id);
+    if (empIndex !== -1) {
+      state.employees[empIndex] = { ...state.employees[empIndex], ...state.currentUser };
+    }
+
+    localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+    localStorage.setItem('ems_logged_in_user', JSON.stringify(state.currentUser));
+
+    triggerBackendSync();
+
+    document.getElementById('fill-details-modal-overlay').classList.remove('active');
+
+    showToast('Profile and onboarding details submitted to HR successfully.', 'success');
+
+    const headerName = document.getElementById('header-name');
+    if (headerName) headerName.textContent = state.currentUser.name;
+    const headerRole = document.getElementById('header-role');
+    if (headerRole) headerRole.textContent = state.currentUser.role;
+    updateHeaderAvatar(state.currentUser);
+  } catch (err) {
+    console.error(err);
+    showToast('Error processing file uploads. Please check your image formats.', 'error');
   }
+}
 
-  localStorage.setItem('ems_employees', JSON.stringify(state.employees));
-  localStorage.setItem('ems_logged_in_user', JSON.stringify(state.currentUser));
-
-  triggerBackendSync();
-
-  document.getElementById('fill-details-modal-overlay').classList.remove('active');
-
-  showToast('Profile and onboarding details submitted to HR successfully.', 'success');
-
-  const headerName = document.getElementById('header-name');
-  if (headerName) headerName.textContent = state.currentUser.name;
-  const headerRole = document.getElementById('header-role');
-  if (headerRole) headerRole.textContent = state.currentUser.role;
-  updateHeaderAvatar(state.currentUser);
+function viewOnboardingDocument(src, event) {
+  if (event) event.stopPropagation();
+  const modal = document.getElementById('image-viewer-modal-overlay');
+  const img = document.getElementById('full-viewer-image');
+  if (modal && img) {
+    img.src = src;
+    modal.classList.add('active');
+  }
 }
 
 function renderEmployeeDetails() {
-  const tbody = document.getElementById('emp-details-tbody');
-  if (!tbody) return;
+  const container = document.getElementById('emp-details-cards-list');
+  if (!container) return;
 
-  tbody.innerHTML = '';
+  container.innerHTML = '';
 
   state.employees.forEach(emp => {
-    const tr = document.createElement('tr');
-    tr.style.borderBottom = '1px solid var(--border-color)';
-    tr.innerHTML = `
-      <td style="padding: 12px; font-weight: 700; color: var(--text-primary);">${emp.id}</td>
-      <td style="padding: 12px; font-weight: 600; color: var(--text-primary);">${emp.name}<br><span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${emp.email}</span></td>
-      <td style="padding: 12px;"><span class="badge" style="background-color: var(--bg-tertiary); color: var(--text-primary); font-size: 0.75rem; padding: 4px 8px; border-radius: 4px;">${emp.designation || emp.role || 'Employee'}</span></td>
-      <td style="padding: 12px; line-height: 1.5;">
-        <strong>Bank:</strong> ${emp.bankName || '—'}<br>
-        <strong>Branch:</strong> ${emp.branch || '—'}<br>
-        <strong>IFSC:</strong> ${emp.bankIfsc || '—'}<br>
-        <strong>A/C No:</strong> ${emp.bankAcc || '—'}
-      </td>
-      <td style="padding: 12px; line-height: 1.5;">
-        <strong>ID Card:</strong> ${emp.idCardNumber || '—'}<br>
-        <strong>Aadhar:</strong> ${emp.aadhar || '—'}<br>
-        <strong>PAN:</strong> ${emp.pan || '—'}
-      </td>
-      <td style="padding: 12px; line-height: 1.5;">
-        <strong>DOB:</strong> ${emp.birthDate || '—'}<br>
-        <strong>Contact:</strong> ${emp.phone || '—'}<br>
-        <strong>Joined:</strong> ${emp.joiningDate || '—'}
-      </td>
+    if (!state.expandedEmployeeDetails) {
+      state.expandedEmployeeDetails = new Set();
+    }
+    const isExpanded = state.expandedEmployeeDetails.has(emp.id);
+    const card = document.createElement('div');
+    card.className = 'project-card';
+    card.style.background = 'var(--bg-secondary)';
+    card.style.border = '1px solid var(--border-color)';
+    card.style.borderRadius = 'var(--border-radius)';
+    card.style.padding = '20px';
+    card.style.cursor = 'pointer';
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
+    card.style.gap = '12px';
+    card.style.boxSizing = 'border-box';
+    card.style.width = '100%';
+    card.style.transition = 'transform 0.2s ease, box-shadow 0.2s ease';
+
+    // Click handler to toggle expansion
+    card.onclick = () => {
+      if (state.expandedEmployeeDetails.has(emp.id)) {
+        state.expandedEmployeeDetails.delete(emp.id);
+      } else {
+        state.expandedEmployeeDetails.add(emp.id);
+      }
+      renderEmployeeDetails();
+    };
+
+    const getPhotoPreviewHtml = (photoData, title) => {
+      if (!photoData) {
+        return `
+          <div style="width: 100%; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.03); border: 1px dashed var(--border-color); border-radius: 6px; color: var(--text-muted); font-size: 0.7rem;">
+            <span>📷 No Proof</span>
+          </div>
+        `;
+      }
+      return `
+        <div style="position: relative; width: 100%; height: 80px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color); cursor: zoom-in;" onclick="viewOnboardingDocument('${photoData}', event)">
+          <img src="${photoData}" style="width: 100%; height: 80px; object-fit: cover;" alt="${title}">
+          <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: #fff; text-align: center; font-size: 0.6rem; padding: 2px 4px; font-weight: 600;">
+            🔍 View Proof
+          </div>
+        </div>
+      `;
+    };
+
+    const avatarInitials = emp.name ? emp.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'EMP';
+
+    card.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; width: 100%;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary-gradient); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; font-weight: 700; box-shadow: var(--shadow-sm); flex-shrink: 0;">
+            ${avatarInitials}
+          </div>
+          <div>
+            <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">${emp.name}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500; margin-top: 2px;">
+              ID: <span style="font-weight: 700; color: var(--text-primary);">${emp.id}</span> | Email: <span style="font-weight: 700; color: var(--text-primary);">${emp.email}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span class="badge" style="background-color: var(--bg-tertiary); color: var(--text-primary); font-size: 0.75rem; font-weight: 700; padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border-color);">
+            ${emp.designation || emp.role || 'Employee'}
+          </span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(${isExpanded ? '180deg' : '0deg'}); color: var(--text-secondary);">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+      </div>
     `;
-    tbody.appendChild(tr);
+
+    if (isExpanded) {
+      const detailsDiv = document.createElement('div');
+      detailsDiv.style.borderTop = '1px solid var(--border-color)';
+      detailsDiv.style.paddingTop = '16px';
+      detailsDiv.style.marginTop = '12px';
+      detailsDiv.style.display = 'grid';
+      detailsDiv.style.gridTemplateColumns = 'repeat(auto-fit, minmax(300px, 1fr))';
+      detailsDiv.style.gap = '24px';
+      detailsDiv.style.width = '100%';
+      detailsDiv.onclick = (e) => e.stopPropagation();
+
+      detailsDiv.innerHTML = `
+        <!-- Left Column: Bank Details -->
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin: 0 0 8px 0; display: flex; align-items: center; gap: 6px;">
+            🏦 Bank Information
+          </h4>
+          
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+            <div>
+              <label style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">Bank Name</label>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${emp.bankName || '—'}</div>
+              <div style="margin-top: 6px;">${getPhotoPreviewHtml(emp.bankPhoto, 'Bank Name Proof')}</div>
+            </div>
+            
+            <div>
+              <label style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">Branch</label>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${emp.branch || '—'}</div>
+              <div style="margin-top: 6px;">${getPhotoPreviewHtml(emp.branchPhoto, 'Branch Proof')}</div>
+            </div>
+            
+            <div>
+              <label style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">IFSC Code</label>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${emp.bankIfsc || '—'}</div>
+              <div style="margin-top: 6px;">${getPhotoPreviewHtml(emp.ifscPhoto, 'IFSC Proof')}</div>
+            </div>
+            
+            <div>
+              <label style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">Account Number</label>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${emp.bankAcc || '—'}</div>
+              <div style="margin-top: 6px;">${getPhotoPreviewHtml(emp.accountPhoto, 'Account Proof')}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Compliance & Identity Details -->
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin: 0 0 8px 0; display: flex; align-items: center; gap: 6px;">
+            🪪 Identity & Verification
+          </h4>
+          
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+            <div>
+              <label style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">ID Card Number</label>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${emp.idCardNumber || '—'}</div>
+              <div style="margin-top: 6px;">${getPhotoPreviewHtml(emp.idCardPhoto, 'ID Card Proof')}</div>
+            </div>
+            
+            <div>
+              <label style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">Aadhar Card Number</label>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${emp.aadhar || '—'}</div>
+              <div style="margin-top: 6px;">${getPhotoPreviewHtml(emp.aadharPhoto, 'Aadhar Card Proof')}</div>
+            </div>
+            
+            <div>
+              <label style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">PAN Card Number</label>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${emp.pan || '—'}</div>
+              <div style="margin-top: 6px;">${getPhotoPreviewHtml(emp.panPhoto, 'PAN Card Proof')}</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div>
+                <label style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">Birth Date</label>
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${emp.birthDate || '—'}</div>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">Contact Number</label>
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${emp.phone || '—'}</div>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 2px;">Joining Date</label>
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${emp.joiningDate || '—'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      card.appendChild(detailsDiv);
+    }
+
+    container.appendChild(card);
   });
 }
 
@@ -9567,6 +9798,446 @@ window.openFillDetailsModal = openFillDetailsModal;
 window.closeFillDetailsModal = closeFillDetailsModal;
 window.handleFillDetailsSubmit = handleFillDetailsSubmit;
 window.renderEmployeeDetails = renderEmployeeDetails;
+window.viewOnboardingDocument = viewOnboardingDocument;
+
+function openReassignSchoolModal(schoolId) {
+  populateManagerDropdowns();
+  document.getElementById('reassign-school-form').reset();
+
+  const schoolSelect = document.getElementById('reassign-school-select');
+  schoolSelect.innerHTML = '<option value="" disabled selected>Select school...</option>';
+  state.schools.forEach(sch => {
+    const opt = document.createElement('option');
+    opt.value = sch.id;
+    opt.textContent = `${sch.name} (${sch.managerName})`;
+    schoolSelect.appendChild(opt);
+  });
+
+  if (schoolId) {
+    schoolSelect.value = schoolId;
+    const sch = state.schools.find(s => s.id === schoolId);
+    if (sch) {
+      document.getElementById('reassign-manager-select').value = sch.managerName;
+    }
+  }
+
+  document.getElementById('reassign-school-modal-overlay').classList.add('active');
+}
+
+function closeReassignSchoolModal() {
+  document.getElementById('reassign-school-modal-overlay').classList.remove('active');
+}
+
+function handleReassignSchoolSubmit(e) {
+  e.preventDefault();
+  const schoolId = document.getElementById('reassign-school-select').value;
+  const managerName = document.getElementById('reassign-manager-select').value;
+
+  if (!schoolId || !managerName) {
+    showToast('Please select both school and manager.', 'error');
+    return;
+  }
+
+  const sch = state.schools.find(s => s.id === schoolId);
+  if (sch) {
+    sch.managerName = managerName;
+    localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+    triggerBackendSync();
+
+    renderSchoolManagement();
+    closeReassignSchoolModal();
+    showToast(`School "${sch.name}" successfully reassigned to ${managerName}.`, 'success');
+  }
+}
+
+window.openReassignSchoolModal = openReassignSchoolModal;
+window.closeReassignSchoolModal = closeReassignSchoolModal;
+window.handleReassignSchoolSubmit = handleReassignSchoolSubmit;
+
+function openDailyReportReminder() {
+  const overlay = document.getElementById('daily-report-reminder-modal-overlay');
+  if (overlay) overlay.classList.add('active');
+}
+
+function closeDailyReportReminder() {
+  const overlay = document.getElementById('daily-report-reminder-modal-overlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+window.openDailyReportReminder = openDailyReportReminder;
+window.closeDailyReportReminder = closeDailyReportReminder;
+
+function openAssignRoleModal() {
+  if (state.currentRole !== 'hr' && state.currentRole !== 'admin') {
+    showToast('Only HR and Administrators can assign roles!', 'error');
+    return;
+  }
+
+  document.getElementById('assign-role-form').reset();
+
+  const empSelect = document.getElementById('ar-employee-select');
+  empSelect.innerHTML = '<option value="" disabled selected>Select employee...</option>';
+  
+  state.employees.forEach(emp => {
+    if (state.currentUser && emp.id === state.currentUser.id) return;
+    const opt = document.createElement('option');
+    opt.value = emp.id;
+    opt.textContent = `${emp.name} (${emp.id} - ${emp.role || 'Employee'})`;
+    empSelect.appendChild(opt);
+  });
+
+  renderAssignRoleCheckboxes();
+
+  // Setup change listener to tick roles when employee is selected
+  empSelect.onchange = () => {
+    const empId = empSelect.value;
+    const emp = state.employees.find(e => e.id === empId);
+    if (!emp) return;
+
+    const currentRoles = (emp.role || 'Employee').split(',').map(r => r.trim().toLowerCase());
+    const checkboxes = document.querySelectorAll('input[name="ar-roles-checkbox"]');
+    checkboxes.forEach(cb => {
+      cb.checked = currentRoles.includes(cb.value.toLowerCase());
+    });
+  };
+
+  document.getElementById('assign-role-modal-overlay').classList.add('active');
+}
+
+function renderAssignRoleCheckboxes() {
+  const container = document.getElementById('ar-preexisting-roles-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const rolesSet = new Set(['Employee', 'Tech Lead', 'HR', 'Manager']);
+  state.employees.forEach(emp => {
+    if (emp.role) {
+      emp.role.split(',').map(r => r.trim()).forEach(r => {
+        if (r && r.toLowerCase() !== 'admin') {
+          rolesSet.add(r);
+        }
+      });
+    }
+  });
+
+  rolesSet.forEach(r => {
+    const label = document.createElement('label');
+    label.style.display = 'inline-flex';
+    label.style.alignItems = 'center';
+    label.style.gap = '8px';
+    label.style.cursor = 'pointer';
+    label.style.color = 'var(--text-primary)';
+    label.style.fontWeight = '600';
+    label.style.fontSize = '0.85rem';
+
+    label.innerHTML = `
+      <input type="checkbox" name="ar-roles-checkbox" value="${r}" style="width: 16px; height: 16px; accent-color: var(--primary);">
+      <span>${r}</span>
+    `;
+    container.appendChild(label);
+  });
+}
+
+function closeAssignRoleModal() {
+  document.getElementById('assign-role-modal-overlay').classList.remove('active');
+}
+
+function handleAssignRoleSubmit(e) {
+  e.preventDefault();
+  const empId = document.getElementById('ar-employee-select').value;
+  const customRole = document.getElementById('ar-custom-role').value.trim();
+
+  if (!empId) {
+    showToast('Please select an employee.', 'error');
+    return;
+  }
+
+  const emp = state.employees.find(emp => emp.id === empId);
+  if (!emp) {
+    showToast('Employee not found.', 'error');
+    return;
+  }
+
+  const checkedRoles = [];
+  const checkboxes = document.querySelectorAll('input[name="ar-roles-checkbox"]:checked');
+  checkboxes.forEach(cb => {
+    checkedRoles.push(cb.value);
+  });
+
+  if (customRole !== '') {
+    if (!checkedRoles.includes(customRole)) {
+      checkedRoles.push(customRole);
+    }
+  }
+
+  let targetRole = checkedRoles.join(', ');
+  if (!targetRole) {
+    targetRole = 'Employee';
+  }
+
+  emp.role = targetRole;
+  localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+  triggerBackendSync();
+
+  populateEmployeeDropdown();
+  populateTaskModalOptions();
+  renderEmployeeRoster();
+  
+  closeAssignRoleModal();
+  showToast(`Role of "${emp.name}" successfully updated to "${targetRole}".`, 'success');
+}
+
+window.openAssignRoleModal = openAssignRoleModal;
+window.closeAssignRoleModal = closeAssignRoleModal;
+window.handleAssignRoleSubmit = handleAssignRoleSubmit;
+
+function openSchoolDetailsModal(schoolId) {
+  state.editingSchoolId = schoolId;
+  state.editingSchoolFiles = [];
+
+  const sch = state.schools.find(s => s.id === schoolId);
+  if (!sch) return;
+
+  document.getElementById('edit-school-name').value = sch.name || '';
+  document.getElementById('edit-school-students').value = sch.studentsCount || '';
+  document.getElementById('edit-school-details').value = sch.details || '';
+
+  if (sch.files) {
+    state.editingSchoolFiles = [...sch.files];
+  }
+
+  renderSchoolFilesPreview();
+  setupSchoolFileListener();
+
+  document.getElementById('school-details-modal-overlay').classList.add('active');
+}
+
+function closeSchoolDetailsModal() {
+  document.getElementById('school-details-modal-overlay').classList.remove('active');
+  state.editingSchoolId = null;
+  state.editingSchoolFiles = [];
+}
+
+function renderSchoolFilesPreview() {
+  const container = document.getElementById('school-files-preview');
+  if (!container) return;
+  container.innerHTML = '';
+
+  (state.editingSchoolFiles || []).forEach((fileObj, idx) => {
+    const div = document.createElement('div');
+    div.style.position = 'relative';
+    div.style.width = '70px';
+    div.style.height = '70px';
+    div.style.borderRadius = '6px';
+    div.style.border = '1px solid var(--border-color)';
+    div.style.overflow = 'hidden';
+    div.style.backgroundColor = 'var(--bg-tertiary)';
+
+    const isPdf = fileObj.type === 'application/pdf' || fileObj.name.toLowerCase().endsWith('.pdf') || fileObj.data.startsWith('data:application/pdf');
+    
+    if (isPdf) {
+      div.innerHTML = `
+        <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;" onclick="openPdfInNewWindow('${fileObj.data}', event)" title="${fileObj.name}">
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--danger);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2v-9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+          <span style="font-size:0.5rem; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px;">PDF</span>
+        </div>
+      `;
+    } else {
+      div.innerHTML = `
+        <img src="${fileObj.data}" style="width:100%; height:100%; object-fit:cover; cursor:zoom-in;" onclick="viewOnboardingDocument('${fileObj.data}', event)" title="${fileObj.name}">
+      `;
+    }
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.innerHTML = '×';
+    deleteBtn.style.position = 'absolute';
+    deleteBtn.style.top = '2px';
+    deleteBtn.style.right = '2px';
+    deleteBtn.style.background = 'rgba(0,0,0,0.6)';
+    deleteBtn.style.color = 'white';
+    deleteBtn.style.border = 'none';
+    deleteBtn.style.borderRadius = '50%';
+    deleteBtn.style.width = '16px';
+    deleteBtn.style.height = '16px';
+    deleteBtn.style.fontSize = '12px';
+    deleteBtn.style.lineHeight = '12px';
+    deleteBtn.style.cursor = 'pointer';
+    deleteBtn.style.display = 'flex';
+    deleteBtn.style.alignItems = 'center';
+    deleteBtn.style.justifyContent = 'center';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      state.editingSchoolFiles.splice(idx, 1);
+      renderSchoolFilesPreview();
+    };
+    div.appendChild(deleteBtn);
+
+    container.appendChild(div);
+  });
+}
+
+function setupSchoolFileListener() {
+  const input = document.getElementById('edit-school-files-input');
+  if (!input) return;
+
+  input.onchange = async () => {
+    if (!input.files || input.files.length === 0) return;
+    for (let i = 0; i < input.files.length; i++) {
+      const file = input.files[i];
+      try {
+        const data = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result);
+          r.onerror = e => reject(e);
+          r.readAsDataURL(file);
+        });
+        state.editingSchoolFiles.push({
+          name: file.name,
+          type: file.type,
+          data: data
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    renderSchoolFilesPreview();
+    input.value = '';
+  };
+}
+
+function handleSchoolDetailsSubmit(e) {
+  e.preventDefault();
+  const schoolId = state.editingSchoolId;
+  const sch = state.schools.find(s => s.id === schoolId);
+  if (!sch) return;
+
+  const nameVal = document.getElementById('edit-school-name').value.trim();
+  const studentsVal = document.getElementById('edit-school-students').value;
+  const detailsVal = document.getElementById('edit-school-details').value.trim();
+
+  sch.name = nameVal;
+  sch.studentsCount = studentsVal !== '' ? Number(studentsVal) : 0;
+  sch.details = detailsVal;
+  sch.files = [...state.editingSchoolFiles];
+
+  localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+  triggerBackendSync();
+
+  renderSchoolManagement();
+  closeSchoolDetailsModal();
+  showToast(`School "${sch.name}" details updated successfully.`, 'success');
+}
+
+window.openSchoolDetailsModal = openSchoolDetailsModal;
+window.closeSchoolDetailsModal = closeSchoolDetailsModal;
+window.handleSchoolDetailsSubmit = handleSchoolDetailsSubmit;
+
+function openRemoveInstructorModal() {
+  document.getElementById('remove-instructor-form').reset();
+
+  const schoolSelect = document.getElementById('ri-school-select');
+  schoolSelect.innerHTML = '<option value="" disabled selected>Select school...</option>';
+  
+  const instructorSelect = document.getElementById('ri-instructor-select');
+  instructorSelect.innerHTML = '<option value="" disabled selected>Select instructor...</option>';
+
+  const schoolsWithInstructors = state.schools.filter(s => s.instructors && s.instructors.length > 0);
+  schoolsWithInstructors.forEach(sch => {
+    const opt = document.createElement('option');
+    opt.value = sch.id;
+    opt.textContent = sch.name;
+    schoolSelect.appendChild(opt);
+  });
+
+  schoolSelect.onchange = () => {
+    const schoolId = schoolSelect.value;
+    const sch = state.schools.find(s => s.id === schoolId);
+    instructorSelect.innerHTML = '<option value="" disabled selected>Select instructor...</option>';
+    if (!sch || !sch.instructors) return;
+
+    sch.instructors.forEach(instId => {
+      const emp = state.employees.find(e => e.id === instId);
+      const opt = document.createElement('option');
+      opt.value = instId;
+      opt.textContent = emp ? `${emp.name} (${instId})` : instId;
+      instructorSelect.appendChild(opt);
+    });
+  };
+
+  document.getElementById('remove-instructor-modal-overlay').classList.add('active');
+}
+
+function closeRemoveInstructorModal() {
+  document.getElementById('remove-instructor-modal-overlay').classList.remove('active');
+}
+
+function handleRemoveInstructorSubmit(e) {
+  e.preventDefault();
+  const schoolId = document.getElementById('ri-school-select').value;
+  const instId = document.getElementById('ri-instructor-select').value;
+
+  if (!schoolId || !instId) {
+    showToast('Please select both a school and an instructor.', 'error');
+    return;
+  }
+
+  const sch = state.schools.find(s => s.id === schoolId);
+  if (!sch) return;
+
+  sch.instructors = (sch.instructors || []).filter(id => id !== instId);
+
+  localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+  triggerBackendSync();
+
+  renderSchoolManagement();
+  closeRemoveInstructorModal();
+  showToast('Instructor successfully removed from school.', 'success');
+}
+
+window.openRemoveInstructorModal = openRemoveInstructorModal;
+window.closeRemoveInstructorModal = closeRemoveInstructorModal;
+window.handleRemoveInstructorSubmit = handleRemoveInstructorSubmit;
+
+function populateManagerDropdowns() {
+  const newSchoolManagerSelect = document.getElementById('new-school-manager');
+  const reassignManagerSelect = document.getElementById('reassign-manager-select');
+  
+  if (!newSchoolManagerSelect || !reassignManagerSelect) return;
+
+  const defaultHtml = '<option value="" disabled selected>Select manager...</option>';
+  newSchoolManagerSelect.innerHTML = defaultHtml;
+  reassignManagerSelect.innerHTML = defaultHtml;
+
+  const managers = state.employees.filter(emp => {
+    const roleStr = (emp.role || '').toLowerCase();
+    return roleStr.includes('manager') || roleStr.includes('hr');
+  });
+
+  const getManagerShortName = (fullName) => {
+    if (fullName.includes('Shravani')) return 'Shravani';
+    if (fullName.includes('Prasad')) return 'Prasad';
+    if (fullName.includes('Rajendra')) return 'Rajendra Sir';
+    if (fullName.includes('Suyash')) return 'Suyash';
+    return fullName;
+  };
+
+  managers.forEach(emp => {
+    const shortName = getManagerShortName(emp.name);
+    
+    const optNew = document.createElement('option');
+    optNew.value = shortName;
+    optNew.textContent = `${emp.name} (${emp.role || 'Manager'})`;
+    newSchoolManagerSelect.appendChild(optNew);
+
+    const optReassign = document.createElement('option');
+    optReassign.value = shortName;
+    optReassign.textContent = `${emp.name} (${emp.role || 'Manager'})`;
+    reassignManagerSelect.appendChild(optReassign);
+  });
+}
+
+window.populateManagerDropdowns = populateManagerDropdowns;
 
 // Run application on DOM loaded
 window.addEventListener('DOMContentLoaded', init);

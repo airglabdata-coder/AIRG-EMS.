@@ -685,6 +685,7 @@
             <div style="display: flex; gap: 12px;">
               <button class="btn btn-primary btn-sm" onclick="openCreateDeptModal()">+ Add Department</button>
               <button class="btn btn-primary btn-sm" onclick="openCreateEmployeeModal()">+ Add Employee</button>
+              <button class="btn btn-primary btn-sm" onclick="openAssignRoleModal()">Assign Role</button>
             </div>
           </div>
           <p class="text-muted" style="margin-top:-10px; font-size:0.85rem;">View absence metrics and track how many
@@ -1662,6 +1663,8 @@
           <button class="btn btn-primary btn-sm" onclick="openAddSchoolModal()">+ Add School</button>
           <button class="btn btn-primary btn-sm" onclick="openAddInstructorModal()">+ Add Instructor(s)</button>
           <button class="btn btn-secondary btn-sm" onclick="openAssignExistingInstructorModal()">+ Assign Existing Instructor</button>
+          <button class="btn btn-danger btn-sm" onclick="openRemoveInstructorModal()">- Remove Instructor</button>
+          <button class="btn btn-secondary btn-sm" onclick="openReassignSchoolModal()">+ Reassign School</button>
         </div>
       </div>
 
@@ -1678,22 +1681,8 @@
           <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">Employee Details & Onboarding</h2>
           <p class="text-muted" style="font-size: 0.85rem; margin-top: 4px;">Compliance, bank accounts, identity proofs, and personal information submitted by employees.</p>
         </div>
-        <div class="table-container" style="border: 1px solid var(--border-color); border-radius: var(--border-radius-sm);">
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="background-color: var(--bg-tertiary); text-align: left; border-bottom: 1px solid var(--border-color);">
-                <th style="padding: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); width: 80px;">Emp ID</th>
-                <th style="padding: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); width: 140px;">Name</th>
-                <th style="padding: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); width: 100px;">Designation</th>
-                <th style="padding: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">Bank Details</th>
-                <th style="padding: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">Account & Cards</th>
-                <th style="padding: 12px; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">Personal Info</th>
-              </tr>
-            </thead>
-            <tbody id="emp-details-tbody" style="font-size: 0.85rem;">
-              <!-- Injected dynamically via JS -->
-            </tbody>
-          </table>
+        <div id="emp-details-cards-list" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+          <!-- Populated dynamically via JS -->
         </div>
       </div>
     </div>
@@ -2239,7 +2228,7 @@
 
         </div>
         <div class="modal-footer" style="background-color: var(--bg-tertiary); display: flex; justify-content: flex-end; gap: 12px;">
-          <button type="button" class="btn btn-secondary btn-sm" onclick="openFillDetailsModal()" style="margin-right: auto; background-color: var(--primary-bg); color: var(--primary); border: 1px solid var(--primary-glow);">Fill Up Details</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="openFillDetailsModal()" style="margin-right: auto; background-color: var(--primary-bg); color: var(--primary); border: 1px solid var(--primary-glow);">Submit Documents</button>
           <button type="button" onclick="hideProfileModal()" class="btn btn-secondary btn-sm">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
         </div>
@@ -2265,10 +2254,7 @@
             <label for="new-school-manager">Assign Manager</label>
             <select id="new-school-manager" required>
               <option value="" disabled selected>Select manager...</option>
-              <option value="Shravani">Shravani (HR, Manager)</option>
-              <option value="Prasad">Prasad (Tech Lead, Manager)</option>
-              <option value="Rajendra Sir">Rajendra Sir (Manager)</option>
-              <option value="Suyash">Suyash (Tech Lead, Manager)</option>
+              <!-- Populated dynamically -->
             </select>
           </div>
         </div>
@@ -2363,6 +2349,158 @@
     </div>
   </div>
 
+  <!-- Reassign School Modal Overlay -->
+  <div id="reassign-school-modal-overlay" class="modal-overlay">
+    <div class="modal" style="max-width: 500px; width: 95%;">
+      <div class="modal-header">
+        <h3>Reassign School Manager</h3>
+        <button type="button" onclick="closeReassignSchoolModal()"
+          style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="reassign-school-form" onsubmit="handleReassignSchoolSubmit(event)">
+        <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <div class="form-group">
+            <label for="reassign-school-select">Select School</label>
+            <select id="reassign-school-select" required>
+              <option value="" disabled selected>Select school...</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="reassign-manager-select">Select New Manager</label>
+            <select id="reassign-manager-select" required>
+              <option value="" disabled selected>Select manager...</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeReassignSchoolModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Reassign</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Daily Report Reminder Modal Overlay -->
+  <div id="daily-report-reminder-modal-overlay" class="modal-overlay" style="z-index: 9999;">
+    <div class="modal" style="max-width: 500px; width: 95%; text-align: center; padding: 32px 24px;">
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); color: var(--success); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 2rem;">
+        📝
+      </div>
+      <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 12px;">Task Completed!</h3>
+      <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 24px;">
+        Awesome job! Please remember to add this completed task details into your <strong>Daily Report</strong> to keep your team updated.
+      </p>
+      <button class="btn btn-primary" onclick="closeDailyReportReminder()" style="padding: 10px 24px; font-size: 0.9rem; font-weight: 600; width: 100%; border-radius: 8px;">Got It, Will Do!</button>
+    </div>
+  </div>
+
+  <!-- Assign Role Modal Overlay -->
+  <div id="assign-role-modal-overlay" class="modal-overlay">
+    <div class="modal" style="max-width: 500px; width: 95%;">
+      <div class="modal-header">
+        <h3>Assign Employee Role</h3>
+        <button type="button" onclick="closeAssignRoleModal()"
+          style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="assign-role-form" onsubmit="handleAssignRoleSubmit(event)">
+        <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <div class="form-group">
+            <label for="ar-employee-select">Select Employee</label>
+            <select id="ar-employee-select" required>
+              <option value="" disabled selected>Select employee...</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label style="font-weight: 600; display: block; margin-bottom: 8px;">Select Pre-existing Role(s)</label>
+            <div id="ar-preexisting-roles-container" style="display: flex; flex-direction: column; gap: 8px; background: var(--bg-tertiary); padding: 12px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); max-height: 180px; overflow-y: auto;">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="ar-custom-role">Or Create New Role</label>
+            <input type="text" id="ar-custom-role" placeholder="e.g. Intern, Senior Engineer (overrides dropdown)">
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeAssignRoleModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Assign Role</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- School Details & Settings Modal Overlay -->
+  <div id="school-details-modal-overlay" class="modal-overlay">
+    <div class="modal" style="max-width: 600px; width: 95%;">
+      <div class="modal-header">
+        <h3>School Details & Settings</h3>
+        <button type="button" onclick="closeSchoolDetailsModal()"
+          style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="school-details-form" onsubmit="handleSchoolDetailsSubmit(event)">
+        <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <div class="form-group">
+            <label for="edit-school-name">School Name</label>
+            <input type="text" id="edit-school-name" required style="width: 100%;">
+          </div>
+          <div class="form-group">
+            <label for="edit-school-students">Number of Students</label>
+            <input type="number" id="edit-school-students" placeholder="e.g. 500" min="0" style="width: 100%;">
+          </div>
+          <div class="form-group">
+            <label for="edit-school-details">School Details & Notes</label>
+            <textarea id="edit-school-details" placeholder="Enter school details, schedules, contact details, curriculum notes..." style="min-height: 100px; width: 100%; box-sizing: border-box; resize: vertical;"></textarea>
+          </div>
+          <div class="form-group">
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Attach School Documents/Images</label>
+            <input type="file" id="edit-school-files-input" accept="image/*,application/pdf" multiple style="font-size: 0.8rem; color: var(--text-primary);">
+            <div id="school-files-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;"></div>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color);">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeSchoolDetailsModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Remove Instructor Modal Overlay -->
+  <div id="remove-instructor-modal-overlay" class="modal-overlay">
+    <div class="modal" style="max-width: 500px; width: 95%;">
+      <div class="modal-header">
+        <h3>Remove Instructor from School</h3>
+        <button type="button" onclick="closeRemoveInstructorModal()"
+          style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="remove-instructor-form" onsubmit="handleRemoveInstructorSubmit(event)">
+        <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <div class="form-group">
+            <label for="ri-school-select">Select School</label>
+            <select id="ri-school-select" required>
+              <option value="" disabled selected>Select school...</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="ri-instructor-select">Select Instructor to Remove</label>
+            <select id="ri-instructor-select" required>
+              <option value="" disabled selected>Select instructor...</option>
+              <!-- Populated dynamically based on school -->
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color);">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeRemoveInstructorModal()">Cancel</button>
+          <button type="submit" class="btn btn-danger btn-sm">Remove Instructor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Fill Details Modal Overlay -->
   <div id="fill-details-modal-overlay" class="modal-overlay">
     <div class="modal" style="max-width: 700px; width: 95%;">
@@ -2390,22 +2528,42 @@
             <div class="form-group">
               <label for="fd-bank-name">Bank Name</label>
               <input type="text" id="fd-bank-name" placeholder="e.g. HDFC Bank" required>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                <input type="file" id="fd-bank-photo" accept="image/*" style="font-size:0.75rem; flex: 1;">
+                <span id="fd-bank-photo-status" style="font-size:0.7rem; color:var(--success); display:none; font-weight: 600;">✓ Uploaded</span>
+              </div>
             </div>
             <div class="form-group">
               <label for="fd-branch">Branch</label>
               <input type="text" id="fd-branch" placeholder="e.g. Kothrud Branch" required>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                <input type="file" id="fd-branch-photo" accept="image/*" style="font-size:0.75rem; flex: 1;">
+                <span id="fd-branch-photo-status" style="font-size:0.7rem; color:var(--success); display:none; font-weight: 600;">✓ Uploaded</span>
+              </div>
             </div>
             <div class="form-group">
               <label for="fd-ifsc">IFSC Code</label>
               <input type="text" id="fd-ifsc" placeholder="e.g. HDFC0000123" required>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                <input type="file" id="fd-ifsc-photo" accept="image/*" style="font-size:0.75rem; flex: 1;">
+                <span id="fd-ifsc-photo-status" style="font-size:0.7rem; color:var(--success); display:none; font-weight: 600;">✓ Uploaded</span>
+              </div>
             </div>
             <div class="form-group">
               <label for="fd-account">Account Number</label>
               <input type="text" id="fd-account" placeholder="e.g. 501002345678" required>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                <input type="file" id="fd-account-photo" accept="image/*" style="font-size:0.75rem; flex: 1;">
+                <span id="fd-account-photo-status" style="font-size:0.7rem; color:var(--success); display:none; font-weight: 600;">✓ Uploaded</span>
+              </div>
             </div>
             <div class="form-group">
               <label for="fd-id-card">ID Card Number</label>
               <input type="text" id="fd-id-card" placeholder="e.g. ID-12345" required>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                <input type="file" id="fd-id-card-photo" accept="image/*" style="font-size:0.75rem; flex: 1;">
+                <span id="fd-id-card-photo-status" style="font-size:0.7rem; color:var(--success); display:none; font-weight: 600;">✓ Uploaded</span>
+              </div>
             </div>
             <div class="form-group">
               <label for="fd-dob">Birth Date</label>
@@ -2422,10 +2580,18 @@
             <div class="form-group">
               <label for="fd-aadhar">Aadhar Card Number</label>
               <input type="text" id="fd-aadhar" placeholder="e.g. 1234 5678 9012" required>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                <input type="file" id="fd-aadhar-photo" accept="image/*" style="font-size:0.75rem; flex: 1;">
+                <span id="fd-aadhar-photo-status" style="font-size:0.7rem; color:var(--success); display:none; font-weight: 600;">✓ Uploaded</span>
+              </div>
             </div>
             <div class="form-group">
               <label for="fd-pan">PAN Card Number</label>
               <input type="text" id="fd-pan" placeholder="e.g. ABCDE1234F" required>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                <input type="file" id="fd-pan-photo" accept="image/*" style="font-size:0.75rem; flex: 1;">
+                <span id="fd-pan-photo-status" style="font-size:0.7rem; color:var(--success); display:none; font-weight: 600;">✓ Uploaded</span>
+              </div>
             </div>
           </div>
 
