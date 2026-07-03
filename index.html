@@ -527,7 +527,7 @@
       <div id="hr-view-container" style="display: none; flex-direction: column; gap: 32px; width: 100%;">
 
         <!-- HR Dashboard Stats -->
-        <div class="stats-grid">
+        <div id="hr-stats-grid" class="stats-grid">
           <div class="stats-card stats-info-card">
             <div class="stats-info">
               <span class="stats-label">Total Roster size</span>
@@ -537,32 +537,6 @@
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </div>
-
-          <div class="stats-card stats-warning">
-            <div class="stats-info">
-              <span class="stats-label">Pending Requests Queue</span>
-              <span id="hr-pending-requests" class="stats-value">0</span>
-            </div>
-            <div class="stats-icon-container">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-          </div>
-
-          <div class="stats-card stats-danger">
-            <div class="stats-info">
-              <span class="stats-label">Total Days Absent</span>
-              <span id="hr-absent-days" class="stats-value">0</span>
-            </div>
-            <div class="stats-icon-container">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
               </svg>
             </div>
           </div>
@@ -680,7 +654,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
               </svg>
-              Employee Absence & Leave Utilization Tracker
+              Employees
             </h2>
             <div style="display: flex; gap: 12px;">
               <button class="btn btn-primary btn-sm" onclick="openCreateDeptModal()">+ Add Department</button>
@@ -688,9 +662,6 @@
               <button class="btn btn-primary btn-sm" onclick="openAssignRoleModal()">Assign Role</button>
             </div>
           </div>
-          <p class="text-muted" style="margin-top:-10px; font-size:0.85rem;">View absence metrics and track how many
-            days employees have spent on approved leave relative to their 18-day annual maximum allowance limit (1.5
-            days accrued per month, excess treated as Leave Without Pay).</p>
           <div id="hr-roster-list" class="roster-list">
             <!-- Injected via app.js -->
           </div>
@@ -823,7 +794,6 @@
                   id="comm-tab-announcements-badge" style="display: none;"></span></button>
               <button class="comm-tab-btn" id="comm-tab-notices" onclick="switchCommTab('notices')">HR Notices <span
                   class="tab-badge" id="comm-tab-notices-badge" style="display: none;"></span></button>
-              <button class="comm-tab-btn" id="comm-tab-sms" onclick="switchCommTab('sms')">SMS Logs</button>
             </div>
 
             <div class="card" style="padding: 18px; flex: 1;">
@@ -915,26 +885,6 @@
               </div>
             </div>
 
-            <!-- 4. Outgoing SMS Log Pane -->
-            <div id="comm-sms-pane" class="feed-pane" style="display: none;">
-              <div class="comm-header"
-                style="border-bottom: none; padding: 0 0 16px 0; display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                  <button class="btn btn-secondary btn-sm comm-back-btn" style="display: none; padding: 6px 12px;">
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 14px; height: 14px;">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Back
-                  </button>
-                  <div class="comm-header-title" style="font-size: 1.2rem;">Outgoing SMS Notifications Log</div>
-                </div>
-                <button class="btn btn-secondary btn-sm" onclick="clearSMSLogs()"
-                  style="border-color: rgba(239, 68, 68, 0.2); color: var(--danger); background-color: rgba(239, 68, 68, 0.05); padding: 6px 12px; font-weight: 600;">Clear
-                  Logs</button>
-              </div>
-              <div id="sms-logs-list" style="display:flex; flex-direction:column; gap:16px;">
-                <!-- Dynamically populated outgoing SMS logs -->
-              </div>
             </div>
           </div>
         </div>

@@ -590,6 +590,14 @@ let tempBankIfscFile = null;
 
 const DEFAULT_REPORTS = [];
 
+const isPratap = (emp) => {
+  if (!emp) return false;
+  const name = (emp.name || '').toLowerCase();
+  const email = (emp.email || '').toLowerCase();
+  const id = (emp.id || '').toLowerCase();
+  return name.includes('pratap') || name.includes('pawar') || email.includes('pratap') || id === 'airg00001';
+};
+
 // --- State Management ---
 let state = {
   currentRole: 'employee', // 'employee' or 'hr'
@@ -2333,7 +2341,7 @@ function populateEmployeeDropdown() {
   const empSelect = document.getElementById('active-employee-select');
   if (!empSelect) return;
   empSelect.innerHTML = '';
-  state.employees.filter(emp => emp.role === 'Employee' || emp.role === 'Tech Lead').forEach(emp => {
+  state.employees.filter(emp => (emp.role === 'Employee' || emp.role === 'Tech Lead') && !isPratap(emp)).forEach(emp => {
     const option = document.createElement('option');
     option.value = emp.id;
     option.textContent = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
@@ -2352,7 +2360,7 @@ function updateSidebarMenu() {
   const schoolMenu = document.getElementById('menu-item-school');
   if (schoolMenu) {
     const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
-    const isHROrManager = userRole.includes('hr') || userRole.includes('manager');
+    const isHROrManager = userRole.includes('hr') || userRole.includes('manager') || userRole.includes('admin');
     if (isHROrManager) {
       schoolMenu.style.display = 'flex';
     } else {
@@ -2558,7 +2566,7 @@ function switchView(viewName) {
     renderTickets();
   } else if (viewName === 'school-management') {
     const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
-    const isHROrManager = userRole.includes('hr') || userRole.includes('manager');
+    const isHROrManager = userRole.includes('hr') || userRole.includes('manager') || userRole.includes('admin');
     if (!isHROrManager) {
       switchView('tasks');
       return;
@@ -2843,9 +2851,21 @@ function renderHRDashboard(viewName = 'dashboard') {
     return false;
   }).length;
 
-  document.getElementById('hr-total-employees').textContent = totalEmployeesCount;
-  document.getElementById('hr-pending-requests').textContent = pendingApprovalsCount;
-  document.getElementById('hr-absent-days').textContent = totalAbsentDays;
+  const totalEmpEl = document.getElementById('hr-total-employees');
+  if (totalEmpEl) totalEmpEl.textContent = totalEmployeesCount;
+  const pendingReqEl = document.getElementById('hr-pending-requests');
+  if (pendingReqEl) pendingReqEl.textContent = pendingApprovalsCount;
+  const absentDaysEl = document.getElementById('hr-absent-days');
+  if (absentDaysEl) absentDaysEl.textContent = totalAbsentDays;
+
+  const hrStatsGrid = document.getElementById('hr-stats-grid');
+  if (hrStatsGrid) {
+    if (viewName === 'tasks') {
+      hrStatsGrid.style.display = 'none';
+    } else {
+      hrStatsGrid.style.display = 'grid';
+    }
+  }
 
   // Toggle views
   const dashboardCardRow = document.getElementById('hr-dashboard-row');
@@ -2857,7 +2877,7 @@ function renderHRDashboard(viewName = 'dashboard') {
   if (titleLabel) {
     if (viewName === 'dashboard') titleLabel.textContent = 'HR Overview Dashboard';
     else if (viewName === 'requests') titleLabel.textContent = 'Applied Leaves Archive';
-    else if (viewName === 'roster') titleLabel.textContent = 'Employee Absence Roster';
+    else if (viewName === 'roster') titleLabel.textContent = 'Employees';
     else if (viewName === 'tasks') titleLabel.textContent = 'Tasks & Projects Admin';
   }
 
@@ -3012,8 +3032,7 @@ function renderEmployeeRoster() {
     const normalizedRole = (emp.role || '').toLowerCase();
     const isSystemAdmin = normalizedRole.includes('admin') || 
                           emp.email.toLowerCase() === 'admin@company.com' ||
-                          emp.email.toLowerCase() === 'pratap@gurujiair.com' ||
-                          (emp.name || '').toLowerCase() === 'pratap pawar';
+                          isPratap(emp);
     return !isSystemAdmin;
   });
   if ((state.currentRole === 'techlead' || state.currentRole === 'manager') && state.currentUser) {
@@ -3974,8 +3993,8 @@ function createProjectCard(proj, isMyProject) {
     return emp.dept.split(',').map(d => d.trim().toLowerCase()).includes(deptName.toLowerCase());
   };
 
-  const deptEmployees = state.employees.filter(e => isDeptMember(e, proj.dept));
-  const externalEmployees = state.employees.filter(e => !isDeptMember(e, proj.dept) && (e.id === proj.techLeadId || (proj.employeeIds && proj.employeeIds.includes(e.id)) || taskAssigneeIds.includes(e.id)));
+  const deptEmployees = state.employees.filter(e => isDeptMember(e, proj.dept) && !isPratap(e));
+  const externalEmployees = state.employees.filter(e => !isDeptMember(e, proj.dept) && (e.id === proj.techLeadId || (proj.employeeIds && proj.employeeIds.includes(e.id)) || taskAssigneeIds.includes(e.id)) && !isPratap(e));
   const allProjectEmployees = [...deptEmployees, ...externalEmployees];
 
   const uniqueEmployees = [];
@@ -4023,14 +4042,14 @@ function createProjectCard(proj, isMyProject) {
   }).join('');
 
   // Dropdown for non-member employees
-  const nonMemberEmployees = state.employees.filter(e => !seenIds.has(e.id));
+  const nonMemberEmployees = state.employees.filter(e => !seenIds.has(e.id) && !isPratap(e));
   const existingEmployeesToAssignOptions = nonMemberEmployees.map(emp => {
     const label = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
     return `<option value="${emp.id}">${label}</option>`;
   }).join('');
 
   // Dropdown options for all employees to appoint as Tech Lead
-  const allEmployeesOptions = state.employees.map(emp => {
+  const allEmployeesOptions = state.employees.filter(e => !isPratap(e)).map(emp => {
     const isCurrent = emp.id === proj.techLeadId;
     const label = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
     return `<option value="${emp.id}" ${isCurrent ? 'selected' : ''}>${label}</option>`;
@@ -4806,6 +4825,7 @@ function populateTechLeadOptions() {
   if (!select) return;
   select.innerHTML = '<option value="" disabled selected>Select tech lead...</option>';
   state.employees.forEach(emp => {
+    if (isPratap(emp)) return; // Hide Pratap
     const opt = document.createElement('option');
     opt.value = emp.id;
     opt.textContent = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
@@ -5352,6 +5372,7 @@ function handleAssignTaskProjectChange(e) {
     // Show ALL employees from every branch/department, grouped by department
     const grouped = {};
     state.employees.forEach(emp => {
+      if (isPratap(emp)) return; // Hide Pratap
       if (!grouped[emp.dept]) grouped[emp.dept] = [];
       grouped[emp.dept].push(emp);
     });
@@ -5706,8 +5727,12 @@ function renderCommunicationsHub() {
     }
   }
 
+  if (state.activeCommTab === 'sms') {
+    state.activeCommTab = 'chats';
+  }
+
   // Sync tab active classes
-  const tabs = ['chats', 'announcements', 'notices', 'sms'];
+  const tabs = ['chats', 'announcements', 'notices'];
   tabs.forEach(tab => {
     const btn = document.getElementById(`comm-tab-${tab}`);
     if (btn) {
@@ -5763,7 +5788,7 @@ function renderCommSidebar() {
     itemsBox.appendChild(groupLink);
 
     // 2. Add Direct Messages for all other employees
-    const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id);
+    const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id && (isPratap(state.currentUser) || !isPratap(emp)));
     otherEmployees.forEach(emp => {
       const isDirectActive = state.activeChatType === 'direct' && state.activeChatTargetId === emp.id;
       const empLink = document.createElement('div');
@@ -5805,15 +5830,6 @@ function renderCommSidebar() {
       <div style="font-weight:600;">HR Notices</div>
     `;
     itemsBox.appendChild(link);
-  } else if (state.activeCommTab === 'sms') {
-    titleEl.textContent = 'Logs';
-    const link = document.createElement('div');
-    link.className = 'comm-item-link active';
-    link.innerHTML = `
-      <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; background: var(--primary);">📱</div>
-      <div style="font-weight:600;">SMS Log History</div>
-    `;
-    itemsBox.appendChild(link);
   }
 }
 
@@ -5839,9 +5855,6 @@ function renderCommMainContent() {
   } else if (state.activeCommTab === 'notices') {
     noticePane.style.display = 'flex';
     renderNotices();
-  } else if (state.activeCommTab === 'sms') {
-    if (smsPane) smsPane.style.display = 'flex';
-    renderSMSLogs();
   }
 }
 
@@ -6269,6 +6282,7 @@ function populateNoticeEmployeeCheckboxes() {
   container.innerHTML = '';
 
   state.employees.forEach(emp => {
+    if (isPratap(emp)) return; // Hide Pratap
     const item = document.createElement('label');
     item.className = 'employee-checkbox-item';
     item.dataset.name = emp.name.toLowerCase();
@@ -7707,7 +7721,7 @@ function populateSalaryEmployeeSelect() {
   if (!select) return;
   const currentVal = select.value;
   select.innerHTML = '';
-  const eligibleEmployees = state.employees.filter(emp => emp.role.toLowerCase() !== 'admin');
+  const eligibleEmployees = state.employees.filter(emp => emp.role.toLowerCase() !== 'admin' && !isPratap(emp));
   eligibleEmployees.forEach(emp => {
     const opt = document.createElement('option');
     opt.value = emp.id;
@@ -9400,9 +9414,11 @@ function openAssignExistingInstructorModal() {
   const instSelect = document.getElementById('assign-instructor-select');
   instSelect.innerHTML = '<option value="" disabled selected>Select instructor...</option>';
   state.employees.filter(emp =>
+    (!isPratap(emp)) && (
     (emp.dept || '').toLowerCase().includes('instructor') ||
     (emp.role || '').toLowerCase().includes('instructor') ||
     (emp.designation || '').toLowerCase().includes('instructor')
+    )
   ).forEach(emp => {
     const opt = document.createElement('option');
     opt.value = emp.id;
@@ -9627,6 +9643,7 @@ function renderEmployeeDetails() {
   container.innerHTML = '';
 
   state.employees.forEach(emp => {
+    if (isPratap(emp)) return; // Hide Pratap
     if (!state.expandedEmployeeDetails) {
       state.expandedEmployeeDetails = new Set();
     }
@@ -9879,6 +9896,7 @@ function openAssignRoleModal() {
   empSelect.innerHTML = '<option value="" disabled selected>Select employee...</option>';
   
   state.employees.forEach(emp => {
+    if (isPratap(emp)) return; // Hide Pratap
     if (state.currentUser && emp.id === state.currentUser.id) return;
     const opt = document.createElement('option');
     opt.value = emp.id;
@@ -10210,6 +10228,7 @@ function populateManagerDropdowns() {
   reassignManagerSelect.innerHTML = defaultHtml;
 
   const managers = state.employees.filter(emp => {
+    if (isPratap(emp)) return false; // Hide Pratap
     const roleStr = (emp.role || '').toLowerCase();
     return roleStr.includes('manager') || roleStr.includes('hr');
   });
