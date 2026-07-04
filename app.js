@@ -3145,7 +3145,8 @@ function renderEmployeeRoster() {
 
   employeesToRender.forEach(emp => {
     // Use dynamic accrual-based balance (1.5/month, max 18/year)
-    const empAccrual = getEmployeeLeaveAccumulation(emp.id, '2026-06');
+    const currentYM = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`; })();
+    const empAccrual = getEmployeeLeaveAccumulation(emp.id, currentYM);
     const rosterBalance = empAccrual.balance;
     const rosterApproved = empAccrual.totalApproved;
     const rosterTotalAccrued = empAccrual.totalAccrued;
@@ -3375,7 +3376,7 @@ function handleLeaveFormSubmit(e) {
   }
 
   // Soft accrual balance check — excess days become LWP on payslip (not blocked)
-  const accrual = getEmployeeLeaveAccumulation(state.currentUser.id, '2026-06');
+  const accrual = getEmployeeLeaveAccumulation(state.currentUser.id, (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`; })());
   if (duration > accrual.balance) {
     const lwp = Math.round((duration - accrual.balance) * 10) / 10;
     showToast(`Note: ${lwp} day(s) exceed your accrued balance and will be marked as Leave Without Pay on your payslip.`, 'warning');
@@ -4081,8 +4082,12 @@ function createProjectCard(proj, isMyProject) {
     `;
   }
 
-  // Determine if editable by the project lead (the assigned Tech Lead), Admin, or HR
-  const isEditable = (state.currentUser.id === proj.techLeadId || state.currentUser.role === 'Admin' || state.currentUser.role === 'HR');
+  // HR and Admin can edit all projects; Tech Lead can edit their own project
+  const isEditable = (
+    state.currentRole === 'hr' ||
+    state.currentRole === 'admin' ||
+    state.currentUser.id === proj.techLeadId
+  );
 
   // Get all employees associated with the project
   const taskAssigneeIds = state.tasks.filter(t => t.projectId === proj.id).map(t => t.assigneeId);
@@ -4213,7 +4218,7 @@ function createProjectCard(proj, isMyProject) {
             <span style="color: var(--text-muted);">Progress</span>
             <span class="prog-info" style="color: var(--text-primary);"><span class="prog-val">${progressPercent}%</span></span>
           </div>
-          ${(isMyProject === true || (isMyProject === null && state.currentUser.id === proj.techLeadId)) ? `
+          ${(isMyProject === true || state.currentRole === 'hr' || state.currentRole === 'admin' || (isMyProject === null && state.currentUser.id === proj.techLeadId)) ? `
             <div style="position: relative; width: 100%; height: 8px; margin: 10px 0;">
               <!-- Underlay: The actual progress bar visual -->
               <div class="progress-bar-bg" style="width: 100%; height: 8px; background-color: var(--bg-tertiary); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color); position: absolute; top: 0; left: 0; pointer-events: none;">
@@ -4491,11 +4496,12 @@ function openCreateEmployeeForProject(projId, dept) {
   autoAssignToProjectAfterCreate = { projId, dept };
   openCreateEmployeeModal();
 
-  // Pre-fill and lock department selection
+  // Pre-fill department — HR/Admin can change it freely; others are locked to the project dept
   const deptSelect = document.getElementById('new-emp-dept');
   if (deptSelect) {
     deptSelect.value = dept;
-    deptSelect.disabled = true;
+    // Lock dept only for tech leads / managers; HR and Admin can register to any dept
+    deptSelect.disabled = !(state.currentRole === 'hr' || state.currentRole === 'admin');
   }
 }
 window.openCreateEmployeeForProject = openCreateEmployeeForProject;
