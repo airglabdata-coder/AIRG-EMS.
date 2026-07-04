@@ -2975,7 +2975,7 @@ function renderHRDashboard(viewName = 'dashboard') {
   const titleLabel = document.getElementById('page-title-label');
   if (titleLabel) {
     if (viewName === 'dashboard') titleLabel.textContent = 'HR Overview Dashboard';
-    else if (viewName === 'requests') titleLabel.textContent = 'Applied Leaves Archive';
+    else if (viewName === 'requests') titleLabel.textContent = 'All Applied Leaves';
     else if (viewName === 'roster') titleLabel.textContent = 'Employees';
     else if (viewName === 'tasks') titleLabel.textContent = 'Tasks & Projects Admin';
   }
@@ -7733,6 +7733,12 @@ function renderPayslips() {
   // Calculate LWP deduction rate: base total earning (basic + hra + other) divided by number of days in the month
   const [yearVal, monthVal] = selectedMonth.split('-').map(Number);
   const daysInMonth = new Date(yearVal, monthVal, 0).getDate();
+  let workingDays = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    if (new Date(yearVal, monthVal - 1, d).getDay() !== 0) {
+      workingDays++;
+    }
+  }
   const lwpDeduction = Math.round(((basic + hra + other) / daysInMonth) * lwpDays);
 
   const totalDeductions = profTax + lwpDeduction;
@@ -7778,15 +7784,15 @@ function renderPayslips() {
         </tr>
         <tr style="border: none !important;">
           <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Total Working Days</td>
-          <td style="padding: 4px 0; border: none !important; color: #000;">: 26</td>
+          <td style="padding: 4px 0; border: none !important; color: #000;">: ${workingDays}</td>
           <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Department</td>
           <td style="padding: 4px 0; border: none !important; color: #000;">: ${targetEmp.dept ? targetEmp.dept.split(',')[0].trim() : 'AI'}</td>
         </tr>
         <tr style="border: none !important;">
           <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Worked Days</td>
-          <td style="padding: 4px 0; border: none !important; color: #000;">: ${Math.max(0, 26 - lwpDays)}</td>
+          <td style="padding: 4px 0; border: none !important; color: #000;">: ${Math.max(0, workingDays - lwpDays)}</td>
           <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Absent Days</td>
-          <td style="padding: 4px 0; border: none !important; color: #000;">: ${leavesThisMonth}</td>
+          <td style="padding: 4px 0; border: none !important; color: #000;">: ${lwpDays}</td>
         </tr>
       </table>
 
