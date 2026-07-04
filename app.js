@@ -1076,8 +1076,103 @@ function renderEditPreviews(taskId) {
   });
 }
 
+// ─── Personal Task (HR / Tech Lead) expand & edit helpers ─────────────────
+// These use a 'pt-' DOM prefix so they don't clash with the HR tasks board
+// which reuses the same task IDs in a different table section.
 
-// --- Storage & Image Compression Utilities ---
+function togglePersonalTaskExpand(taskId, event) {
+  if (event) event.stopPropagation();
+  const pane    = document.getElementById(`pt-details-pane-${taskId}`);
+  const chevron = document.getElementById(`pt-chevron-${taskId}`);
+  if (!pane) return;
+  state.expandedPersonalTaskIds = state.expandedPersonalTaskIds || new Set();
+  if (pane.style.display === 'none') {
+    pane.style.display = 'block';
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+    state.expandedPersonalTaskIds.add(taskId);
+  } else {
+    pane.style.display = 'none';
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+    state.expandedPersonalTaskIds.delete(taskId);
+  }
+}
+window.togglePersonalTaskExpand = togglePersonalTaskExpand;
+
+function startPersonalTaskEdit(taskId, event) {
+  if (event) event.stopPropagation();
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  // Ensure the pane stays open when we re-render into edit mode
+  state.expandedPersonalTaskIds = state.expandedPersonalTaskIds || new Set();
+  state.expandedPersonalTaskIds.add(taskId);
+  state.editingPersonalTaskId = taskId;
+  state.editingPersonalTaskImages = [...(task.images || [])];
+  renderHRTasksAndProjects();
+}
+window.startPersonalTaskEdit = startPersonalTaskEdit;
+
+function cancelPersonalTaskEdit(event) {
+  if (event) event.stopPropagation();
+  state.editingPersonalTaskId = null;
+  state.editingPersonalTaskImages = [];
+  renderHRTasksAndProjects();
+}
+window.cancelPersonalTaskEdit = cancelPersonalTaskEdit;
+
+function savePersonalTaskEdit(taskId, event) {
+  if (event) event.stopPropagation();
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  const textarea = document.getElementById(`pt-edit-textarea-${taskId}`);
+  if (textarea) task.details = textarea.value.trim();
+
+  const dueDateInput = document.getElementById(`pt-edit-due-date-${taskId}`);
+  if (dueDateInput) {
+    const newDue = dueDateInput.value;
+    if (task.startDate && task.startDate > newDue) {
+      showToast('Start Date cannot be after Due Date.', 'error');
+      return;
+    }
+    task.dueDate = newDue;
+  }
+
+  task.images = [...(state.editingPersonalTaskImages || [])];
+
+  if (!safeSaveTasks()) return;
+
+  state.editingPersonalTaskId = null;
+  state.editingPersonalTaskImages = [];
+  renderHRTasksAndProjects();
+  showToast('Task details updated successfully.', 'success');
+}
+window.savePersonalTaskEdit = savePersonalTaskEdit;
+
+function renderPersonalTaskEditPreview(taskId) {
+  const previewContainer = document.getElementById(`pt-edit-images-preview-${taskId}`);
+  if (!previewContainer) return;
+  previewContainer.innerHTML = '';
+  (state.editingPersonalTaskImages || []).forEach((imgBase64, idx) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:relative;width:60px;height:60px;border-radius:6px;overflow:hidden;border:1px solid var(--border-color);';
+    const img = document.createElement('img');
+    img.src = imgBase64;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.innerHTML = '&times;';
+    btn.style.cssText = 'position:absolute;top:2px;right:2px;background:rgba(239,68,68,0.9);color:#fff;border:none;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;';
+    btn.onclick = (e) => { e.stopPropagation(); state.editingPersonalTaskImages.splice(idx, 1); renderPersonalTaskEditPreview(taskId); };
+    div.appendChild(img);
+    div.appendChild(btn);
+    previewContainer.appendChild(div);
+  });
+}
+window.renderPersonalTaskEditPreview = renderPersonalTaskEditPreview;
+// ──────────────────────────────────────────────────────────────────────────
+
+
+
 function cleanBloatedEmployees(employees) {
   if (!Array.isArray(employees)) return { employees: [], changed: false };
   // No longer stripping photo/aadhar/pan — document images are expected
@@ -2752,7 +2847,7 @@ function renderEmployeeDashboard(viewName = 'tasks') {
   if (userRequests.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6">
+        <td colspan="7">
           <div class="empty-state">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -2775,6 +2870,7 @@ function renderEmployeeDashboard(viewName = 'tasks') {
 
   sortedRequests.forEach(req => {
     const tr = document.createElement('tr');
+    const canDeleteReq = req.status === 'pending';
     tr.innerHTML = `
       <td><strong>${req.type}</strong></td>
       <td>${formatDate(req.startDate)} - ${formatDate(req.endDate)}</td>
@@ -2782,6 +2878,9 @@ function renderEmployeeDashboard(viewName = 'tasks') {
       <td><span class="badge badge-${req.status}">${req.status}</span></td>
       <td><span class="text-muted">${renderClickableText(req.reason, 35)}</span></td>
       <td><span class="text-muted">${renderClickableText(req.comment, 35)}</span></td>
+      <td>
+        ${canDeleteReq ? `<button class="btn btn-secondary btn-xs" onclick="deleteLeaveRequest('${req.id}')" style="color:var(--danger); border-color:rgba(239,68,68,0.3);" title="Withdraw request">Delete</button>` : ''}
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -4707,43 +4806,44 @@ function renderHRTasksAndProjects() {
         grouped[monthKey].forEach(task => {
           const tr = document.createElement('tr');
           const isCompleted = task.status === 'Completed';
-          const isExpanded = state.expandedTaskIds && state.expandedTaskIds.has(task.id);
-          const isEditing = state.editingTaskId === task.id;
+          // Use 'pt-' prefix to avoid ID collisions with the HR tasks board above
+          const ptPaneId = `pt-details-pane-${task.id}`;
+          const ptChevronId = `pt-chevron-${task.id}`;
+          const isExpanded = state.expandedPersonalTaskIds && state.expandedPersonalTaskIds.has(task.id);
+          const isEditing = state.editingPersonalTaskId === task.id;
 
           tr.innerHTML = `
             <td>
               <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;">
                   <div style="display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" ${isCompleted ? 'checked' : ''} 
+                    <input type="checkbox" ${isCompleted ? 'checked' : ''}
                            onchange="toggleTaskCompletion('${task.id}')"
                            style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--success); flex-shrink: 0;">
-                    <span onclick="toggleTaskDetailsExpand('${task.id}', event)" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; ${isCompleted ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
+                    <span onclick="togglePersonalTaskExpand('${task.id}', event)" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; ${isCompleted ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
                       <strong>${task.desc}</strong>
-                      <svg class="chevron-icon" id="chevron-${task.id}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(${isExpanded ? '180deg' : '0deg'}); opacity: 0.7; flex-shrink: 0;">
+                      <svg id="${ptChevronId}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s; transform: rotate(${isExpanded ? '180deg' : '0deg'}); opacity: 0.7; flex-shrink: 0;">
                         <polyline points="6 9 12 15 18 9"></polyline>
                       </svg>
                     </span>
                   </div>
                 </div>
-                <div id="details-pane-${task.id}" class="task-details-pane" style="display: ${isExpanded ? 'block' : 'none'}; padding: 12px; margin-top: 8px; border-radius: 8px; background-color: var(--bg-tertiary); border: 1px solid var(--border-color); font-size: 0.85rem; width: 100%;">
+                <div id="${ptPaneId}" class="task-details-pane" style="display: ${isExpanded ? 'block' : 'none'}; padding: 12px; margin-top: 8px; border-radius: 8px; background-color: var(--bg-tertiary); border: 1px solid var(--border-color); font-size: 0.85rem; width: 100%;">
                   ${isEditing ? `
                     <div style="display: flex; flex-direction: column; gap: 8px;" onclick="event.stopPropagation()">
-                      <textarea id="edit-details-textarea-${task.id}" placeholder="Enter task detailed description..." style="min-height: 80px; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; resize: vertical;">${task.details || ''}</textarea>
+                      <textarea id="pt-edit-textarea-${task.id}" placeholder="Enter task detailed description..." style="min-height: 80px; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; resize: vertical;">${task.details || ''}</textarea>
                       <div>
                         <label style="font-weight: 600; display: block; margin-bottom: 4px;">Attach Photos/Screenshots</label>
-                        <input type="file" id="edit-images-input-${task.id}" accept="image/*" multiple style="font-size: 0.8rem; color: var(--text-primary);">
+                        <input type="file" id="pt-edit-images-input-${task.id}" accept="image/*" multiple style="font-size: 0.8rem; color: var(--text-primary);">
                       </div>
-                      <div id="edit-images-preview-${task.id}" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;"></div>
-                      ${task.createdByEmployee ? `
-                        <div style="margin-top: 4px;">
-                          <label style="font-weight: 600; display: block; margin-bottom: 4px;">Due Date</label>
-                          <input type="date" id="edit-due-date-${task.id}" value="${task.dueDate}" style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; box-sizing: border-box;">
-                        </div>
-                      ` : ''}
+                      <div id="pt-edit-images-preview-${task.id}" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;"></div>
+                      <div style="margin-top: 4px;">
+                        <label style="font-weight: 600; display: block; margin-bottom: 4px;">Due Date</label>
+                        <input type="date" id="pt-edit-due-date-${task.id}" value="${task.dueDate}" style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; box-sizing: border-box;">
+                      </div>
                       <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
-                        <button class="btn btn-secondary btn-sm" onclick="cancelEditTask(event)">Cancel</button>
-                        <button class="btn btn-primary btn-sm" onclick="saveEditTask('${task.id}', event)">Save Changes</button>
+                        <button class="btn btn-secondary btn-sm" onclick="cancelPersonalTaskEdit(event)">Cancel</button>
+                        <button class="btn btn-primary btn-sm" onclick="savePersonalTaskEdit('${task.id}', event)">Save Changes</button>
                       </div>
                     </div>
                   ` : `
@@ -4756,7 +4856,7 @@ function renderHRTasksAndProjects() {
                       </div>
                     ` : ''}
                     <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
-                      <button class="btn btn-secondary btn-sm" onclick="startEditTask('${task.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px;">Edit Description & Photos</button>
+                      <button class="btn btn-secondary btn-sm" onclick="startPersonalTaskEdit('${task.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px;">Edit Description &amp; Photos</button>
                     </div>
                   `}
                 </div>
@@ -4771,6 +4871,25 @@ function renderHRTasksAndProjects() {
           `;
           tr.className = isCompleted ? 'completed-task-row' : '';
           personalTbody.appendChild(tr);
+
+          // Setup file input listener for personal task editing
+          if (isEditing) {
+            const fileInput = document.getElementById(`pt-edit-images-input-${task.id}`);
+            const previewDiv = document.getElementById(`pt-edit-images-preview-${task.id}`);
+            if (fileInput && previewDiv) {
+              fileInput.addEventListener('change', (e) => {
+                Array.from(e.target.files).forEach(file => {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    state.editingPersonalTaskImages.push(ev.target.result);
+                    renderPersonalTaskEditPreview(task.id);
+                  };
+                  reader.readAsDataURL(file);
+                });
+              });
+              renderPersonalTaskEditPreview(task.id);
+            }
+          }
         });
       });
     }
@@ -5192,8 +5311,8 @@ let autoAssignToProjectAfterCreate = null;
 
 // Employee creation modal triggers
 function openCreateEmployeeModal() {
-  if (!document.body.classList.contains('auth-view') && state.currentRole !== 'admin' && state.currentRole !== 'techlead' && state.currentRole !== 'manager') {
-    showToast('Access denied: Only Administrators, Tech Leads, and Managers can add employees inside the portal.', 'error');
+  if (!document.body.classList.contains('auth-view') && state.currentRole !== 'admin' && state.currentRole !== 'techlead' && state.currentRole !== 'manager' && state.currentRole !== 'hr') {
+    showToast('Access denied: Only HR, Administrators, Tech Leads, and Managers can add employees inside the portal.', 'error');
     return;
   }
 
@@ -5928,13 +6047,19 @@ function renderChatRoom() {
         }
       }
 
+      const deleteMsgBtn = isSent ? `
+        <button onclick="deleteChatMessage('${msg.id}')" title="Delete message" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:0 4px; font-size:0.85rem; line-height:1; opacity:0.6;" onmouseover="this.style.opacity='1'; this.style.color='var(--danger)'" onmouseout="this.style.opacity='0.6'; this.style.color='var(--text-muted)'">🗑</button>
+      ` : '';
       row.innerHTML = `
         ${(!isSent && state.activeChatType === 'group') ? `<div class="message-sender-name">${msg.senderName}</div>` : ''}
         <div class="message-bubble">
           <div>${msg.content}</div>
           ${fileHtml}
         </div>
-        <div class="message-time">${timeStr}</div>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <div class="message-time">${timeStr}</div>
+          ${deleteMsgBtn}
+        </div>
       `;
       messagesContainer.appendChild(row);
     });
@@ -6001,6 +6126,110 @@ function handleChatFileSelected(input) {
 }
 window.handleChatFileSelected = handleChatFileSelected;
 
+// ─── Delete Handlers ─────────────────────────────────────────────────────
+function deleteChatMessage(msgId) {
+  if (!confirm('Delete this message? This cannot be undone.')) return;
+  const idx = state.chats.findIndex(m => m.id === msgId);
+  if (idx === -1) return;
+  // Only the sender can delete
+  if (state.chats[idx].senderId !== state.currentUser.id) {
+    showToast('You can only delete your own messages.', 'error');
+    return;
+  }
+  state.chats.splice(idx, 1);
+  localStorage.setItem('ems_chats', JSON.stringify(state.chats));
+  renderChatRoom();
+  showToast('Message deleted.', 'success');
+}
+window.deleteChatMessage = deleteChatMessage;
+
+function deleteAnnouncement(annId) {
+  if (!confirm('Delete this announcement permanently?')) return;
+  const idx = state.announcements.findIndex(a => a.id === annId);
+  if (idx === -1) return;
+  if (state.announcements[idx].senderName !== state.currentUser.name) {
+    showToast('You can only delete your own announcements.', 'error');
+    return;
+  }
+  state.announcements.splice(idx, 1);
+  localStorage.setItem('ems_announcements', JSON.stringify(state.announcements));
+  renderAnnouncements();
+  showToast('Announcement deleted.', 'success');
+}
+window.deleteAnnouncement = deleteAnnouncement;
+
+function deleteNotice(noticeId) {
+  if (!confirm('Delete this notice permanently?')) return;
+  const idx = state.notices.findIndex(n => n.id === noticeId);
+  if (idx === -1) return;
+  if (state.notices[idx].senderName !== state.currentUser.name) {
+    showToast('You can only delete your own notices.', 'error');
+    return;
+  }
+  state.notices.splice(idx, 1);
+  localStorage.setItem('ems_notices', JSON.stringify(state.notices));
+  renderNotices();
+  showToast('Notice deleted.', 'success');
+}
+window.deleteNotice = deleteNotice;
+
+function deleteLeaveRequest(reqId) {
+  if (!confirm('Withdraw and delete this leave request?')) return;
+  const idx = state.requests.findIndex(r => r.id === reqId);
+  if (idx === -1) return;
+  if (state.requests[idx].status !== 'pending') {
+    showToast('Only pending requests can be deleted.', 'error');
+    return;
+  }
+  state.requests.splice(idx, 1);
+  localStorage.setItem('ems_requests', JSON.stringify(state.requests));
+  renderEmployeeDashboard();
+  showToast('Leave request deleted.', 'success');
+}
+window.deleteLeaveRequest = deleteLeaveRequest;
+
+function deleteDailyReport(reportId) {
+  if (!confirm('Delete this daily report permanently?')) return;
+  const idx = state.dailyReports.findIndex(r => r.id === reportId);
+  if (idx === -1) return;
+  state.dailyReports.splice(idx, 1);
+  localStorage.setItem('ems_daily_reports', JSON.stringify(state.dailyReports));
+  renderDailyReports();
+  showToast('Report deleted.', 'success');
+}
+window.deleteDailyReport = deleteDailyReport;
+
+function deleteReimbursement(claimId) {
+  if (!confirm('Withdraw and delete this reimbursement claim?')) return;
+  const idx = state.reimbursements.findIndex(c => c.id === claimId);
+  if (idx === -1) return;
+  if (state.reimbursements[idx].status !== 'pending') {
+    showToast('Only pending claims can be deleted.', 'error');
+    return;
+  }
+  state.reimbursements.splice(idx, 1);
+  localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
+  renderReimbursements();
+  showToast('Reimbursement claim deleted.', 'success');
+}
+window.deleteReimbursement = deleteReimbursement;
+
+function deleteTicket(ticketId) {
+  if (!confirm('Delete this support ticket?')) return;
+  const idx = state.tickets.findIndex(t => t.id === ticketId);
+  if (idx === -1) return;
+  if (state.tickets[idx].status !== 'Open') {
+    showToast('Only open tickets can be deleted.', 'error');
+    return;
+  }
+  state.tickets.splice(idx, 1);
+  localStorage.setItem('ems_tickets', JSON.stringify(state.tickets));
+  renderTickets();
+  showToast('Ticket deleted.', 'success');
+}
+window.deleteTicket = deleteTicket;
+// ─────────────────────────────────────────────────────────────────────────
+
 function renderAnnouncements() {
   const feedList = document.getElementById('announcements-feed-list');
   const btnPost = document.getElementById('btn-post-announcement');
@@ -6033,14 +6262,24 @@ function renderAnnouncements() {
     const dateStr = formatDate(ann.timestamp);
 
     const attachmentsHtml = renderAttachmentsHTML(ann.images || [], ann.id);
+    const canDeleteAnn = (state.currentRole === 'hr' || state.currentRole === 'admin') &&
+      state.currentUser && ann.senderName === state.currentUser.name;
+    const deleteAnnBtn = canDeleteAnn ? `
+      <button onclick="deleteAnnouncement('${ann.id}')" title="Delete announcement"
+        style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:4px 6px; font-size:0.85rem; border-radius:4px;"
+        onmouseover="this.style.backgroundColor='rgba(239,68,68,0.1)'; this.style.color='var(--danger)'"
+        onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--text-muted)'">🗑 Delete</button>` : '';
 
     card.innerHTML = `
-      <div class="feed-card-header">
-        <div class="feed-card-title">${ann.title}</div>
-        <div class="feed-card-meta">
-          <span>By <strong>${ann.senderName}</strong></span>
-          <span>${dateStr}</span>
+      <div class="feed-card-header" style="align-items:flex-start;">
+        <div style="flex:1;">
+          <div class="feed-card-title">${ann.title}</div>
+          <div class="feed-card-meta">
+            <span>By <strong>${ann.senderName}</strong></span>
+            <span>${dateStr}</span>
+          </div>
         </div>
+        ${deleteAnnBtn}
       </div>
       <div class="feed-card-content">${ann.content}</div>
       ${attachmentsHtml}
@@ -6160,14 +6399,23 @@ function renderNoticeCards(noticesList) {
     }
 
     const attachmentsHtml = renderAttachmentsHTML(notice.images || [], notice.id);
+    const canDeleteNotice = state.currentRole === 'hr' && state.currentUser && notice.senderName === state.currentUser.name;
+    const deleteNoticeBtn = canDeleteNotice ? `
+      <button onclick="deleteNotice('${notice.id}')" title="Delete notice"
+        style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:4px 6px; font-size:0.85rem; border-radius:4px; flex-shrink:0;"
+        onmouseover="this.style.backgroundColor='rgba(239,68,68,0.1)'; this.style.color='var(--danger)'"
+        onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--text-muted)'">🗑 Delete</button>` : '';
 
     card.innerHTML = `
-      <div class="feed-card-header">
-        <div class="feed-card-title">${notice.title}</div>
-        <div class="feed-card-meta">
-          <span>By <strong>${notice.senderName}</strong></span>
-          <span>${dateStr}</span>
+      <div class="feed-card-header" style="align-items:flex-start;">
+        <div style="flex:1;">
+          <div class="feed-card-title">${notice.title}</div>
+          <div class="feed-card-meta">
+            <span>By <strong>${notice.senderName}</strong></span>
+            <span>${dateStr}</span>
+          </div>
         </div>
+        ${deleteNoticeBtn}
       </div>
       <div class="feed-card-content">${notice.content}</div>
       ${attachmentsHtml}
@@ -6732,6 +6980,7 @@ function renderEmployeeReports() {
         <div style="display: flex; align-items: center; gap: 8px;">
           ${hasRemarks ? `<span class="badge badge-completed">Reviewed</span>` : `<span class="badge badge-pending">Pending Review</span>`}
           ${report.starRating > 0 ? `<span style="display: inline-flex; align-items: center; gap: 3px; font-weight: 700; color: #f59e0b;" title="Awarded ${report.starRating} performance stars!"><span style="font-size: 1rem;">⭐</span> ${report.starRating}/10</span>` : ''}
+          <button class="btn btn-secondary btn-xs" onclick="event.stopPropagation(); deleteDailyReport('${report.id}')" style="margin-left:auto; color:var(--danger); border-color:rgba(239,68,68,0.3);" title="Delete report">Delete</button>
         </div>
       </td>
     `;
@@ -7843,6 +8092,7 @@ function renderReimbursements() {
             `).join('');
           }
 
+          const canDeleteClaim = claim.status === 'pending';
           tr.innerHTML = `
             <td>${formatDate(claim.date)}</td>
             <td><strong>${claim.type}</strong></td>
@@ -7852,6 +8102,7 @@ function renderReimbursements() {
             <td>${attachmentsHTML}</td>
             <td><span class="badge badge-${claim.status.toLowerCase()}">${claim.status}</span></td>
             <td>${claim.comment || '<span class="text-muted">-</span>'}</td>
+            <td>${canDeleteClaim ? `<button class="btn btn-secondary btn-xs" onclick="deleteReimbursement('${claim.id}')" style="color:var(--danger); border-color:rgba(239,68,68,0.3);" title="Withdraw claim">Delete</button>` : ''}</td>
           `;
           tbody.appendChild(tr);
         });
@@ -8412,6 +8663,7 @@ function renderEmployeeTickets() {
     const statusClass = `badge badge-${t.status.toLowerCase().replace(' ', '')}`;
     const formattedDate = new Date(t.updatedAt).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
     const assigneeName = t.assignedToName || '<span style="color: var(--text-muted); font-style: italic;">Unassigned</span>';
+    const canDeleteTicket = t.status === 'Open';
 
     return `
       <tr>
@@ -8422,8 +8674,9 @@ function renderEmployeeTickets() {
         <td><span class="${statusClass}">${t.status}</span></td>
         <td>${assigneeName}</td>
         <td>${formattedDate}</td>
-        <td>
+        <td style="display:flex; gap:6px; align-items:center;">
           <button class="btn btn-secondary btn-xs" onclick="openTicketDetails('${t.id}')">View Details</button>
+          ${canDeleteTicket ? `<button class="btn btn-secondary btn-xs" onclick="deleteTicket('${t.id}')" style="color:var(--danger); border-color:rgba(239,68,68,0.3);">Delete</button>` : ''}
         </td>
       </tr>
     `;
