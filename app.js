@@ -67,7 +67,8 @@ function triggerBackendSync() {
       schools: state.schools || []
     };
 
-    fetch('/api/sync', {
+    const url = state.currentUser ? `/api/sync?employeeId=${state.currentUser.id}` : '/api/sync';
+    fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cleanState)
@@ -82,6 +83,9 @@ function triggerBackendSync() {
       .then(data => {
         if (data && data.success) {
           state.lastSyncedTimestamp = data.timestamp;
+          if (data.activeUsers) {
+            state.activeUsers = data.activeUsers;
+          }
         }
       })
       .catch(err => {
@@ -92,7 +96,8 @@ function triggerBackendSync() {
 
 async function fetchCentralizedState() {
   try {
-    const res = await fetch('/api/sync');
+    const url = state.currentUser ? `/api/sync?employeeId=${state.currentUser.id}` : '/api/sync';
+    const res = await fetch(url);
 
     // If server returned an error, do NOT overwrite local state with stale/empty data
     if (!res.ok) {
@@ -173,6 +178,7 @@ async function fetchCentralizedState() {
         safeOriginalSetItem('ems_notifications', JSON.stringify(s.smsNotifications));
       }
 
+      state.activeUsers = data.activeUsers || [];
       state.lastSyncedTimestamp = data.timestamp;
       isSyncingToServer = false;
       wasStateFetchedFromServer = true;
@@ -195,7 +201,8 @@ function initSyncPolling() {
     }
 
     try {
-      const res = await fetch('/api/sync');
+      const url = state.currentUser ? `/api/sync?employeeId=${state.currentUser.id}` : '/api/sync';
+      const res = await fetch(url);
 
       // If server returned an error, skip this poll cycle — keep existing state intact
       if (!res.ok) {
@@ -205,8 +212,26 @@ function initSyncPolling() {
 
       const data = await res.json();
 
+      if (data && data.activeUsers) {
+        const prevActive = JSON.stringify(state.activeUsers || []);
+        const nextActive = JSON.stringify(data.activeUsers || []);
+        if (prevActive !== nextActive) {
+          state.activeUsers = data.activeUsers;
+          const activeMenuItem = document.querySelector('.menu-item.active');
+          const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
+          if (currentView === 'communications') {
+            renderCommunicationsHub();
+          } else if (currentView === 'roster') {
+            renderEmployeeRoster();
+          } else if (currentView === 'emp-details') {
+            renderEmployeeDetails();
+          }
+        }
+      }
+
       if (data && data.state && !data.empty && !data.error && data.timestamp !== state.lastSyncedTimestamp) {
         isSyncingToServer = true;
+        state.activeUsers = data.activeUsers || state.activeUsers;
         const s = data.state;
         state.employees = s.employees || state.employees;
         state.requests = s.requests || state.requests;
@@ -620,6 +645,7 @@ let state = {
   activeCommTab: 'chats', // 'chats', 'announcements', 'notices'
   activeChatType: 'group', // 'group' or 'direct'
   activeChatTargetId: null, // employeeId for direct messages
+  activeUsers: [], // IDs of currently active employees
 
   // Calendar State
   nationalHolidays: [],
@@ -1932,7 +1958,7 @@ async function init() {
         // Update Profile Widget
         updateHeaderAvatar(selectedEmp);
         document.getElementById('header-name').textContent = selectedEmp.name;
-        document.getElementById('header-role').textContent = selectedEmp.role;
+        document.getElementById('header-role').textContent = selectedEmp.role === 'Admin, HR, Tech Lead, Manager' ? 'CEO' : selectedEmp.role;
         const activeMenuItem = document.querySelector('.menu-item.active');
         const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
         if (currentView === 'communications') {
@@ -2416,7 +2442,7 @@ function setRole(role) {
   // Update Profile Widget
   updateHeaderAvatar(state.currentUser);
   document.getElementById('header-name').textContent = state.currentUser.name;
-  document.getElementById('header-role').textContent = state.currentUser.role;
+  document.getElementById('header-role').textContent = state.currentUser.role === 'Admin, HR, Tech Lead, Manager' ? 'CEO' : state.currentUser.role;
 
   // Sync dropdown selection if in employee mode
   if (role === 'employee' && empSelect) {
@@ -3199,6 +3225,12 @@ function renderEmployeeRoster() {
         <div class="roster-info">
           <div class="roster-name" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <span>${emp.name}</span>
+            ${(state.activeUsers && state.activeUsers.includes(emp.id)) ? `
+              <span class="active-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; background-color: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; font-size: 0.7rem; font-weight: 700;">
+                <span style="width: 6px; height: 6px; background-color: #22c55e; border-radius: 50%;"></span>
+                Active
+              </span>
+            ` : ''}
             <span style="display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; background-color: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; font-size: 0.7rem; font-weight: 700;">
               ★ ${points} Star${points !== 1 ? 's' : ''}
             </span>
@@ -3571,7 +3603,7 @@ function handleProfileSave(e) {
   if (nameHeader) nameHeader.textContent = emp.name;
   const roleHeader = document.getElementById('header-role');
   if (roleHeader) {
-    roleHeader.textContent = emp.role;
+    roleHeader.textContent = emp.role === 'Admin, HR, Tech Lead, Manager' ? 'CEO' : emp.role;
   }
 
   // Refresh current view to reflect changes (e.g. employee roster)
@@ -5925,8 +5957,19 @@ function renderCommSidebar() {
       };
       const unreadDM = getUnreadChatCount(emp.id);
       const dmBadgeHtml = unreadDM > 0 ? `<span class="menu-badge" style="display: inline-flex; margin-left: auto; background-color: var(--danger); font-size: 0.7rem; padding: 2px 6px;">${unreadDM}</span>` : '';
+      const avatarHTML = emp.photo
+        ? `<img src="${emp.photo}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`
+        : emp.avatar;
+      const avatarStyle = emp.photo ? 'border-radius: 50%; overflow: hidden; background: none; padding: 0;' : '';
+      const isActive = state.activeUsers && state.activeUsers.includes(emp.id);
+
       empLink.innerHTML = `
-        <div class="avatar" style="width:30px; height:30px; font-size:0.75rem;">${emp.avatar}</div>
+        <div style="position: relative; display: inline-block; flex-shrink: 0;">
+          <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; ${avatarStyle}">${avatarHTML}</div>
+          ${isActive ? `
+            <span class="active-dot" style="position: absolute; bottom: 0; right: 0; width: 8px; height: 8px; background-color: #22c55e; border: 1.5px solid var(--bg-secondary, #18181b); border-radius: 50%; z-index: 1;"></span>
+          ` : ''}
+        </div>
         <div style="flex: 1;">
           <div style="font-weight:600; font-size:0.85rem;">${emp.name}</div>
           <div style="font-size:0.7rem; color:var(--text-muted);">${emp.dept}</div>
@@ -6005,7 +6048,22 @@ function renderChatRoom() {
     filteredMessages = state.chats.filter(m => m.receiverId === 'group');
   } else {
     const targetEmp = state.employees.find(e => e.id === state.activeChatTargetId);
-    headerTitle.textContent = targetEmp ? `Chat with ${targetEmp.name}` : 'Direct Message';
+    if (targetEmp) {
+      const isActive = state.activeUsers && state.activeUsers.includes(targetEmp.id);
+      headerTitle.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span>Chat with ${targetEmp.name}</span>
+          ${isActive ? `
+            <span class="active-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; background-color: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; font-size: 0.7rem; font-weight: 700; line-height: 1;">
+              <span style="width: 6px; height: 6px; background-color: #22c55e; border-radius: 50%;"></span>
+              Active
+            </span>
+          ` : ''}
+        </div>
+      `;
+    } else {
+      headerTitle.textContent = 'Direct Message';
+    }
     filteredMessages = state.chats.filter(m =>
       (m.senderId === state.currentUser.id && m.receiverId === state.activeChatTargetId) ||
       (m.senderId === state.activeChatTargetId && m.receiverId === state.currentUser.id)
@@ -6397,6 +6455,11 @@ function renderNoticeCards(noticesList) {
     card.className = 'feed-card';
     const dateStr = formatDate(notice.timestamp);
 
+    // Check if notice sender is active
+    const senderEmp = state.employees.find(e => e.name === notice.senderName || e.id === notice.senderId);
+    const isSenderActive = senderEmp && state.activeUsers && state.activeUsers.includes(senderEmp.id);
+    const senderActiveDot = isSenderActive ? ` <span style="display:inline-block; width:6px; height:6px; background-color:#22c55e; border-radius:50%; margin-left:4px;" title="Active now"></span>` : '';
+
     // For HR, show who the notice was sent to
     let targetsStr = '';
     if (state.currentRole === 'hr') {
@@ -6417,7 +6480,7 @@ function renderNoticeCards(noticesList) {
         <div style="flex:1;">
           <div class="feed-card-title">${notice.title}</div>
           <div class="feed-card-meta">
-            <span>By <strong>${notice.senderName}</strong></span>
+            <span>By <strong>${notice.senderName}</strong>${senderActiveDot}</span>
             <span>${dateStr}</span>
           </div>
         </div>
@@ -6461,6 +6524,7 @@ function handleNoticeSubmit(e) {
     images: [...currentAttachedImagesNotice],
     targetEmployeeIds: targetEmployeeIds,
     senderName: state.currentUser.name,
+    senderId: state.currentUser.id,
     timestamp: new Date().toISOString()
   };
 
@@ -6542,9 +6606,18 @@ function populateNoticeEmployeeCheckboxes() {
     item.dataset.name = emp.name.toLowerCase();
     item.dataset.dept = (emp.dept || 'AI').toLowerCase();
     const label = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept || 'AI'} - ${emp.role})`;
+    const isActive = state.activeUsers && state.activeUsers.includes(emp.id);
     item.innerHTML = `
       <input type="checkbox" value="${emp.id}">
-      <span>${label}</span>
+      <span style="display: inline-flex; align-items: center; gap: 6px;">
+        <span>${label}</span>
+        ${isActive ? `
+          <span class="active-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; background-color: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; font-size: 0.65rem; font-weight: 700; line-height: 1;">
+            <span style="width: 5px; height: 5px; background-color: #22c55e; border-radius: 50%;"></span>
+            Active
+          </span>
+        ` : ''}
+      </span>
     `;
     container.appendChild(item);
   });
@@ -7755,6 +7828,15 @@ function renderPayslips() {
   const dateObj = new Date(year, month - 1);
   const monthName = dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
+  // Format joining date to DD-MM-YYYY if needed
+  let displayJoiningDate = targetEmp.joiningDate || targetEmp.dateOfJoining || '25-07-2025';
+  if (displayJoiningDate.includes('-')) {
+    const parts = displayJoiningDate.split('-');
+    if (parts[0].length === 4) {
+      displayJoiningDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+  }
+
   card.innerHTML = `
     <div style="background-color: #fff; color: #000; padding: 40px; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; box-sizing: border-box; width: 100%; max-width: 800px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); position: relative;">
       <!-- Header -->
@@ -7772,7 +7854,7 @@ function renderPayslips() {
       <table class="meta-table" style="width: 100%; border: none !important; margin-bottom: 30px; font-size: 0.9rem; border-collapse: collapse; line-height: 1.6; color: #000;">
         <tr style="border: none !important;">
           <td style="width: 18%; padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Date of Joining</td>
-          <td style="width: 32%; padding: 4px 0; border: none !important; color: #000;">: ${targetEmp.joiningDate || targetEmp.dateOfJoining || '25-07-2025'}</td>
+          <td style="width: 32%; padding: 4px 0; border: none !important; color: #000;">: ${displayJoiningDate}</td>
           <td style="width: 18%; padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Employee Name</td>
           <td style="width: 32%; padding: 4px 0; border: none !important; color: #000;">: ${targetEmp.name}</td>
         </tr>
@@ -8467,7 +8549,7 @@ function sanitizeEmployeeRoles() {
       const headerName = document.getElementById('header-name');
       if (headerName) headerName.textContent = state.currentUser.name;
       const headerRole = document.getElementById('header-role');
-      if (headerRole) headerRole.textContent = state.currentUser.role;
+      if (headerRole) headerRole.textContent = state.currentUser.role === 'Admin, HR, Tech Lead, Manager' ? 'CEO' : state.currentUser.role;
       setRole(state.currentRole);
 
       const activeMenuItem = document.querySelector('.menu-item.active');
@@ -8548,7 +8630,7 @@ function loginAsUser(user) {
   if (headerName) headerName.textContent = user.name;
   const headerRole = document.getElementById('header-role');
   if (headerRole) {
-    headerRole.textContent = user.role;
+    headerRole.textContent = user.role === 'Admin, HR, Tech Lead, Manager' ? 'CEO' : user.role;
   }
 
   // Show / hide role switcher buttons based on assigned roles list
@@ -8580,6 +8662,10 @@ function loginAsUser(user) {
 }
 
 function logout() {
+  if (state.currentUser) {
+    const logoutId = state.currentUser.id;
+    fetch(`/api/sync?employeeId=${logoutId}&active=false`).catch(() => {});
+  }
   localStorage.removeItem('ems_logged_in_user');
   state.currentUser = null;
   state.currentRole = null;
@@ -9883,7 +9969,7 @@ async function handleFillDetailsSubmit(e) {
     const headerName = document.getElementById('header-name');
     if (headerName) headerName.textContent = state.currentUser.name;
     const headerRole = document.getElementById('header-role');
-    if (headerRole) headerRole.textContent = state.currentUser.role;
+    if (headerRole) headerRole.textContent = state.currentUser.role === 'Admin, HR, Tech Lead, Manager' ? 'CEO' : state.currentUser.role;
     updateHeaderAvatar(state.currentUser);
   } catch (err) {
     console.error(err);
@@ -9964,7 +10050,15 @@ function renderEmployeeDetails() {
             ${avatarInitials}
           </div>
           <div>
-            <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">${emp.name}</div>
+            <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+              <span>${emp.name}</span>
+              ${(state.activeUsers && state.activeUsers.includes(emp.id)) ? `
+                <span class="active-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; background-color: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; font-size: 0.7rem; font-weight: 700;">
+                  <span style="width: 6px; height: 6px; background-color: #22c55e; border-radius: 50%;"></span>
+                  Active
+                </span>
+              ` : ''}
+            </div>
             <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500; margin-top: 2px;">
               ID: <span style="font-weight: 700; color: var(--text-primary);">${emp.id}</span> | Email: <span style="font-weight: 700; color: var(--text-primary);">${emp.email}</span>
             </div>
@@ -10525,3 +10619,10 @@ window.populateManagerDropdowns = populateManagerDropdowns;
 
 // Run application on DOM loaded
 window.addEventListener('DOMContentLoaded', init);
+
+// Clean up active status on window close or tab navigation
+window.addEventListener('beforeunload', () => {
+  if (state.currentUser) {
+    fetch(`/api/sync?employeeId=${state.currentUser.id}&active=false`, { keepalive: true }).catch(() => {});
+  }
+});

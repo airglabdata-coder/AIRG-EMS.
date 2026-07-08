@@ -9,6 +9,10 @@ const webpush = require('web-push');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Ephemeral active users tracking
+const activeUsers = {};
+
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Support base64 image uploads
 app.use(express.static(__dirname)); // Serve static files (index.html, app.js, styles.css)
@@ -234,10 +238,32 @@ async function clearAndSeedMongoDB() {
   }
 }
 
+// Helper to track and clean active users
+function trackAndGetActiveUsers(employeeId, isActiveParam) {
+  if (employeeId) {
+    if (isActiveParam === 'false') {
+      delete activeUsers[employeeId];
+    } else {
+      activeUsers[employeeId] = Date.now();
+    }
+  }
+
+  // Clean up inactive users (older than 15 seconds)
+  const now = Date.now();
+  for (const [id, lastSeen] of Object.entries(activeUsers)) {
+    if (now - lastSeen >= 15000) {
+      delete activeUsers[id];
+    }
+  }
+
+  return Object.keys(activeUsers);
+}
+
 // Endpoint to fetch centralized state
 app.get('/api/sync', async (req, res) => {
   try {
     const data = await getMongoDBState();
+    data.activeUsers = trackAndGetActiveUsers(req.query.employeeId, req.query.active);
     return res.json(data);
   } catch (err) {
     console.error('❌ Failed to read from MongoDB Atlas:', err.message);
@@ -254,7 +280,8 @@ app.post('/api/sync', async (req, res) => {
 
   try {
     const updatedTimestamp = await saveMongoDBState(newState);
-    return res.json({ success: true, timestamp: updatedTimestamp });
+    const activeList = trackAndGetActiveUsers(req.query.employeeId, req.query.active);
+    return res.json({ success: true, timestamp: updatedTimestamp, activeUsers: activeList });
   } catch (err) {
     console.error('❌ Failed to write to MongoDB Atlas:', err.message);
     return res.status(500).json({ error: 'Database write failed. Please try again.' });
