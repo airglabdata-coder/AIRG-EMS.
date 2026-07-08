@@ -8512,7 +8512,7 @@ function renderPayslips() {
             <p class="payslip-sig-label" style="margin: 0 0 10px 0; font-weight: 500; color: #000;">Employer Signature</p>
             <div style="height: 50px; display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">
               ${isHRorAdmin ? `
-                <img src="/hr_signature.png" alt="Employer Signature" style="max-height: 50px; width: auto; mix-blend-mode: multiply; object-fit: contain;">
+                <img src="/sign.jpeg" alt="Employer Signature" style="max-height: 50px; width: auto; mix-blend-mode: multiply; object-fit: contain;">
               ` : ''}
             </div>
             <div style="border-bottom: 1.5px solid #000; width: 100%;"></div>
@@ -10718,7 +10718,7 @@ function renderEmployeeDetails() {
             <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
               <span>${emp.name}</span>
               ${emp.isDeleted ? `
-                <span class="badge badge-rejected" style="font-size: 0.65rem; padding: 2px 8px; border-radius: 12px;">Deleted</span>
+                <span class="badge badge-rejected" style="font-size: 0.65rem; padding: 2px 8px; border-radius: 12px;">Former Employee</span>
               ` : (state.activeUsers && state.activeUsers.includes(emp.id)) ? `
                 <span class="active-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; background-color: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; font-size: 0.7rem; font-weight: 700;">
                   <span style="width: 6px; height: 6px; background-color: #22c55e; border-radius: 50%;"></span>
