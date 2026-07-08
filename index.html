@@ -546,6 +546,59 @@
         <!-- HR Dashboard Sections -->
         <div id="hr-dashboard-row" style="display: flex; flex-direction: column; gap: 32px;">
 
+          <!-- Record Leave/Absence directly (HR / Admin only) -->
+          <div class="card" id="hr-record-leave-card" style="display: none; padding: 24px;">
+            <div class="card-header" style="padding: 0 0 20px 0; margin-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+              <h2 class="card-title" style="margin: 0;">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                  style="stroke: var(--success);">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Directly Record Leave / Absence
+              </h2>
+            </div>
+            <form id="hr-direct-leave-form">
+              <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label for="hr-leave-emp-select" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 8px;">Employee</label>
+                  <select id="hr-leave-emp-select" required
+                    style="width: 100%; padding: 10px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 0.9rem;">
+                    <option value="" disabled selected>Select employee...</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label for="hr-leave-type" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 8px;">Leave Type</label>
+                  <select id="hr-leave-type" required
+                    style="width: 100%; padding: 10px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 0.9rem;">
+                    <option value="" disabled selected>Select type...</option>
+                    <option value="Absent">Absent (Unpaid)</option>
+                    <option value="Leave Without Pay (LWP) / Loss of Pay">Leave Without Pay (LWP)</option>
+                    <option value="Leave With Pay">Leave With Pay (Paid)</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label for="hr-leave-start" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 8px;">Start Date</label>
+                  <input type="date" id="hr-leave-start" required
+                    style="width: 100%; padding: 8px 10px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-size: 0.9rem; height: 41px; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label for="hr-leave-end" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 8px;">End Date</label>
+                  <input type="date" id="hr-leave-end" required
+                    style="width: 100%; padding: 8px 10px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-size: 0.9rem; height: 41px; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1; margin-bottom: 0;">
+                  <label for="hr-leave-reason" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 8px;">Reason / Remarks</label>
+                  <textarea id="hr-leave-reason" placeholder="Add details or remarks..." required
+                    style="width: 100%; padding: 10px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; resize: vertical; min-height: 70px; font-size: 0.85rem; box-sizing: border-box;"></textarea>
+                </div>
+              </div>
+              <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 600;">Record Entry</button>
+              </div>
+            </form>
+          </div>
+
           <!-- Leave Requests Pending Approval Queue -->
           <div class="card">
             <div class="card-header">

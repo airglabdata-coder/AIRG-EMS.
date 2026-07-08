@@ -1904,6 +1904,11 @@ async function init() {
     document.getElementById('end-date').addEventListener('change', updateFormDaysCount);
   }
 
+  const hrDirectLeaveForm = document.getElementById('hr-direct-leave-form');
+  if (hrDirectLeaveForm) {
+    hrDirectLeaveForm.addEventListener('submit', handleHRDirectLeaveSubmit);
+  }
+
   // HR Table Filters
   const searchInput = document.getElementById('hr-search');
   if (searchInput) {
@@ -2178,20 +2183,54 @@ function calculateDays(startDateStr, endDateStr) {
 }
 
 // --- Leave Accrual System (18 days/year, 1.5 days/month) ---
-// Returns a map of { 'YYYY-MM': daysUsed } for all approved leaves of an employee
-function getEmployeeLeavesPerMonth(employeeId) {
+// Returns counts per month for different leave categories
+function getEmployeeLeaveBreakdown(employeeId) {
   const approvedRequests = (state.requests || []).filter(
     r => r.employeeId === employeeId && r.status === 'approved'
   );
-  const perMonth = {};
+
+  const regularPerMonth = {};
+  const unpaidPerMonth = {};
+  const directPaidPerMonth = {};
+
   approvedRequests.forEach(req => {
-    // Split multi-month spans day by day
     const start = new Date(req.startDate + 'T00:00:00');
     const end = new Date(req.endDate + 'T00:00:00');
+    
+    const typeLower = (req.type || '').toLowerCase();
+    const isUnpaid = typeLower === 'absent' || 
+                     typeLower.includes('leave without pay') || 
+                     typeLower.includes('loss of pay');
+    const isDirectPaid = typeLower === 'leave with pay';
+
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      perMonth[ym] = (perMonth[ym] || 0) + 1;
+      if (isUnpaid) {
+        unpaidPerMonth[ym] = (unpaidPerMonth[ym] || 0) + 1;
+      } else if (isDirectPaid) {
+        directPaidPerMonth[ym] = (directPaidPerMonth[ym] || 0) + 1;
+      } else {
+        regularPerMonth[ym] = (regularPerMonth[ym] || 0) + 1;
+      }
     }
+  });
+
+  return { regularPerMonth, unpaidPerMonth, directPaidPerMonth };
+}
+
+// Returns a map of { 'YYYY-MM': daysUsed } for all approved leaves of an employee (total regular + unpaid + direct paid)
+function getEmployeeLeavesPerMonth(employeeId) {
+  const breakdown = getEmployeeLeaveBreakdown(employeeId);
+  const perMonth = {};
+  const allYms = new Set([
+    ...Object.keys(breakdown.regularPerMonth),
+    ...Object.keys(breakdown.unpaidPerMonth),
+    ...Object.keys(breakdown.directPaidPerMonth)
+  ]);
+  allYms.forEach(ym => {
+    perMonth[ym] = (breakdown.regularPerMonth[ym] || 0) + 
+                   (breakdown.unpaidPerMonth[ym] || 0) + 
+                   (breakdown.directPaidPerMonth[ym] || 0);
   });
   return perMonth;
 }
@@ -2216,7 +2255,7 @@ function getEmployeeLeaveAccumulation(employeeId, targetYearMonth) {
   const MAX_YEARLY = 18;
   const [targetYear, targetMonth] = targetYearMonth.split('-').map(Number);
 
-  const leavesPerMonth = getEmployeeLeavesPerMonth(employeeId);
+  const { regularPerMonth, unpaidPerMonth, directPaidPerMonth } = getEmployeeLeaveBreakdown(employeeId);
 
   let accruedBalance = 0;
   let totalAccrued = 0;
@@ -2229,17 +2268,25 @@ function getEmployeeLeaveAccumulation(employeeId, targetYearMonth) {
     totalAccrued = Math.min(totalAccrued + ACCRUAL_PER_MONTH, MAX_YEARLY);
 
     const ym = `${targetYear}-${String(m).padStart(2, '0')}`;
-    const leaveDays = leavesPerMonth[ym] || 0;
-    totalApprovedDays += leaveDays;
+    const regularDays = regularPerMonth[ym] || 0;
+    const unpaidDays = unpaidPerMonth[ym] || 0;
+    const directPaidDays = directPaidPerMonth[ym] || 0;
+
+    totalApprovedDays += (regularDays + unpaidDays + directPaidDays);
 
     // Paid leave can use any accrued balance from carry forwards
-    const paidLeave = Math.min(leaveDays, accruedBalance);
-    const unpaidLeave = leaveDays - paidLeave;
+    const paidRegular = Math.min(regularDays, accruedBalance);
+    const unpaidRegular = regularDays - paidRegular;
 
-    accruedBalance = Math.max(0, accruedBalance - paidLeave);
+    accruedBalance = Math.max(0, accruedBalance - paidRegular);
+
+    // Deduct direct paid leaves from balance if available
+    const paidDirect = Math.min(directPaidDays, accruedBalance);
+    accruedBalance = Math.max(0, accruedBalance - paidDirect);
 
     if (m === targetMonth) {
-      lwpInTarget = unpaidLeave;
+      // Unpaid days (Absent / LWP) + regular leaves that exceeded balance
+      lwpInTarget = unpaidDays + unpaidRegular;
     }
   }
 
@@ -2979,7 +3026,13 @@ function renderHRDashboard(viewName = 'dashboard') {
     : state.employees;
 
   const totalEmployeesCount = deptEmployees.length;
-  const totalAbsentDays = deptEmployees.reduce((sum, emp) => sum + emp.absent, 0);
+  const totalAbsentDays = deptEmployees.reduce((sum, emp) => {
+    const approvedAbsentCount = state.requests.filter(
+      r => r.employeeId === emp.id && r.status === 'approved' && 
+      (r.type === 'Absent' || r.type === 'Leave Without Pay' || r.type === 'Leave Without Pay (LWP) / Loss of Pay')
+    ).reduce((s, r) => s + r.duration, 0);
+    return sum + approvedAbsentCount;
+  }, 0);
 
   const pendingApprovalsCount = state.requests.filter(req => {
     if (req.status !== 'pending') return false;
@@ -3006,6 +3059,29 @@ function renderHRDashboard(viewName = 'dashboard') {
   if (pendingReqEl) pendingReqEl.textContent = pendingApprovalsCount;
   const absentDaysEl = document.getElementById('hr-absent-days');
   if (absentDaysEl) absentDaysEl.textContent = totalAbsentDays;
+
+  // Show/Hide & populate record leaves directly card
+  const isHRorAdmin = state.currentRole === 'hr' || state.currentRole === 'admin';
+  const recordLeaveCard = document.getElementById('hr-record-leave-card');
+  if (recordLeaveCard) {
+    if (isHRorAdmin && viewName === 'dashboard') {
+      recordLeaveCard.style.display = 'block';
+      const empSelect = document.getElementById('hr-leave-emp-select');
+      if (empSelect) {
+        const currentVal = empSelect.value;
+        empSelect.innerHTML = '<option value="" disabled selected>Select employee...</option>';
+        state.employees.forEach(emp => {
+          const opt = document.createElement('option');
+          opt.value = emp.id;
+          opt.textContent = `${emp.name} (${emp.id}) - ${emp.role}`;
+          empSelect.appendChild(opt);
+        });
+        if (currentVal) empSelect.value = currentVal;
+      }
+    } else {
+      recordLeaveCard.style.display = 'none';
+    }
+  }
 
   const hrStatsGrid = document.getElementById('hr-stats-grid');
   if (hrStatsGrid) {
@@ -3478,6 +3554,76 @@ function handleLeaveFormSubmit(e) {
   // Notification and Refresh
   showToast('Leave request submitted successfully!', 'success');
   renderEmployeeDashboard('requests');
+}
+
+function handleHRDirectLeaveSubmit(e) {
+  if (e) e.preventDefault();
+
+  const empSelect = document.getElementById('hr-leave-emp-select');
+  const typeSelect = document.getElementById('hr-leave-type');
+  const startInput = document.getElementById('hr-leave-start');
+  const endInput = document.getElementById('hr-leave-end');
+  const reasonInput = document.getElementById('hr-leave-reason');
+
+  if (!empSelect || !typeSelect || !startInput || !endInput || !reasonInput) return;
+
+  const empId = empSelect.value;
+  const type = typeSelect.value;
+  const startDate = startInput.value;
+  const endDate = endInput.value;
+  const reason = reasonInput.value.trim();
+
+  if (!empId || !type || !startDate || !endDate || !reason) {
+    showToast('Please fill out all required fields.', 'error');
+    return;
+  }
+
+  const duration = calculateDays(startDate, endDate);
+  if (duration <= 0) {
+    showToast('End date must be on or after start date.', 'error');
+    return;
+  }
+
+  const targetEmp = state.employees.find(emp => emp.id === empId);
+  if (!targetEmp) return;
+
+  const newRequest = {
+    id: `REQ${500 + state.requests.length + 1}`,
+    employeeId: targetEmp.id,
+    employeeName: targetEmp.name,
+    dept: targetEmp.dept || '',
+    type: type,
+    startDate: startDate,
+    endDate: endDate,
+    duration: duration,
+    reason: reason,
+    status: 'approved',
+    comment: `Recorded directly by HR (${state.currentUser.name})`,
+    submittedAt: new Date().toISOString().split('T')[0]
+  };
+
+  state.requests.unshift(newRequest);
+
+  // Save requests and update local storage
+  localStorage.setItem('ems_requests', JSON.stringify(state.requests));
+
+  // Trigger SMS notification
+  if (targetEmp.phone) {
+    triggerSMSNotification(
+      targetEmp.phone,
+      `Leave/Absence Recorded: HR has recorded a ${duration} day ${type} leave for you from ${startDate} to ${endDate}. Reason: ${reason}`,
+      targetEmp.name
+    );
+  }
+
+  showToast('Leave entry recorded successfully!', 'success');
+  
+  // Reset form and re-render
+  const hrDirectLeaveForm = document.getElementById('hr-direct-leave-form');
+  if (hrDirectLeaveForm) {
+    hrDirectLeaveForm.reset();
+  }
+  renderHRDashboard();
 }
 
 // --- Approve/Reject Modal Actions ---
