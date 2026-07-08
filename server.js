@@ -259,6 +259,30 @@ function trackAndGetActiveUsers(employeeId, isActiveParam) {
   return Object.keys(activeUsers);
 }
 
+const fs = require('fs');
+
+// Serve HR Signature image
+app.get('/hr_signature.png', (req, res) => {
+  const brainPath = 'C:/Users/Soham/.gemini/antigravity-ide/brain/5660dae9-088e-4071-b1be-c66391bd05c9/media__1783513449631.png';
+  const localPath = path.join(__dirname, 'hr_signature.png');
+  
+  if (fs.existsSync(brainPath) && !fs.existsSync(localPath)) {
+    try {
+      fs.copyFileSync(brainPath, localPath);
+    } catch (e) {
+      console.error('Failed to copy signature image:', e);
+    }
+  }
+  
+  if (fs.existsSync(localPath)) {
+    res.sendFile(localPath);
+  } else if (fs.existsSync(brainPath)) {
+    res.sendFile(brainPath);
+  } else {
+    res.status(404).send('Signature not found');
+  }
+});
+
 // Endpoint to fetch centralized state
 app.get('/api/sync', async (req, res) => {
   try {

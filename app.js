@@ -1909,6 +1909,35 @@ async function init() {
     hrDirectLeaveForm.addEventListener('submit', handleHRDirectLeaveSubmit);
   }
 
+  const hrLeaveHalfDay = document.getElementById('hr-leave-half-day');
+  if (hrLeaveHalfDay) {
+    hrLeaveHalfDay.addEventListener('change', () => {
+      const startEl = document.getElementById('hr-leave-start');
+      const endEl = document.getElementById('hr-leave-end');
+      if (hrLeaveHalfDay.checked) {
+        if (startEl && startEl.value) {
+          endEl.value = startEl.value;
+        }
+        endEl.disabled = true;
+        endEl.required = false;
+      } else {
+        endEl.disabled = false;
+        endEl.required = true;
+      }
+    });
+  }
+
+  const hrLeaveStart = document.getElementById('hr-leave-start');
+  if (hrLeaveStart) {
+    hrLeaveStart.addEventListener('change', () => {
+      const halfDayEl = document.getElementById('hr-leave-half-day');
+      const endEl = document.getElementById('hr-leave-end');
+      if (halfDayEl && halfDayEl.checked && endEl) {
+        endEl.value = hrLeaveStart.value;
+      }
+    });
+  }
+
   // HR Table Filters
   const searchInput = document.getElementById('hr-search');
   if (searchInput) {
@@ -2203,14 +2232,15 @@ function getEmployeeLeaveBreakdown(employeeId) {
                      typeLower.includes('loss of pay');
     const isDirectPaid = typeLower === 'leave with pay';
 
+    const increment = (req.duration === 0.5) ? 0.5 : 1;
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       if (isUnpaid) {
-        unpaidPerMonth[ym] = (unpaidPerMonth[ym] || 0) + 1;
+        unpaidPerMonth[ym] = (unpaidPerMonth[ym] || 0) + increment;
       } else if (isDirectPaid) {
-        directPaidPerMonth[ym] = (directPaidPerMonth[ym] || 0) + 1;
+        directPaidPerMonth[ym] = (directPaidPerMonth[ym] || 0) + increment;
       } else {
-        regularPerMonth[ym] = (regularPerMonth[ym] || 0) + 1;
+        regularPerMonth[ym] = (regularPerMonth[ym] || 0) + increment;
       }
     }
   });
@@ -2293,7 +2323,7 @@ function getEmployeeLeaveAccumulation(employeeId, targetYearMonth) {
   return {
     balance: Math.round(accruedBalance * 10) / 10,       // remaining paid leave balance
     totalAccrued: Math.round(totalAccrued * 10) / 10,    // total accrued so far this year
-    totalApproved: totalApprovedDays,
+    totalApproved: Math.round(totalApprovedDays * 10) / 10,
     lwpDays: Math.round(lwpInTarget * 10) / 10
   };
 }
@@ -2533,7 +2563,7 @@ function populateEmployeeDropdown() {
   const empSelect = document.getElementById('active-employee-select');
   if (!empSelect) return;
   empSelect.innerHTML = '';
-  state.employees.filter(emp => (emp.role === 'Employee' || emp.role === 'Tech Lead') && !isPratap(emp)).forEach(emp => {
+  state.employees.filter(emp => (emp.role === 'Employee' || emp.role === 'Tech Lead') && !isPratap(emp) && !emp.isDeleted).forEach(emp => {
     const option = document.createElement('option');
     option.value = emp.id;
     option.textContent = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
@@ -3016,14 +3046,15 @@ function renderHRDashboard(viewName = 'dashboard') {
   });
 
   // Calculate HR stats cards (clamped by department for Tech Leads & Managers)
+  const activeEmployees = state.employees.filter(emp => !emp.isDeleted);
   const deptEmployees = (state.currentRole === 'techlead' || state.currentRole === 'manager')
-    ? state.employees.filter(emp => {
+    ? activeEmployees.filter(emp => {
       if (!emp.dept) return false;
       const leadDepts = (state.currentUser.dept || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
       const empDepts = emp.dept.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
       return empDepts.some(d => leadDepts.includes(d));
     })
-    : state.employees;
+    : activeEmployees;
 
   const totalEmployeesCount = deptEmployees.length;
   const totalAbsentDays = deptEmployees.reduce((sum, emp) => {
@@ -3254,6 +3285,7 @@ function renderEmployeeRoster() {
 
 
   let employeesToRender = state.employees.filter(emp => {
+    if (emp.isDeleted) return false;
     const normalizedRole = (emp.role || '').toLowerCase();
     const isSystemAdmin = normalizedRole.includes('admin') || 
                           emp.email.toLowerCase() === 'admin@company.com' ||
@@ -3490,13 +3522,16 @@ function deleteEmployee(empId, event) {
   const emp = state.employees.find(e => e.id === empId);
   if (!emp) return;
 
-  if (confirm(`Are you sure you want to delete employee "${emp.name}"? This action is permanent.`)) {
-    state.employees = state.employees.filter(e => e.id !== empId);
+  if (confirm(`Are you sure you want to delete employee "${emp.name}"?`)) {
+    emp.isDeleted = true;
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
 
     populateEmployeeDropdown();
     populateTaskModalOptions();
     renderEmployeeRoster();
+    if (typeof renderEmployeeDetails === 'function') {
+      renderEmployeeDetails();
+    }
 
     showToast(`Employee "${emp.name}" deleted successfully.`, 'success');
   }
@@ -3628,21 +3663,28 @@ function handleHRDirectLeaveSubmit(e) {
   const startInput = document.getElementById('hr-leave-start');
   const endInput = document.getElementById('hr-leave-end');
   const reasonInput = document.getElementById('hr-leave-reason');
+  const halfDayCheckbox = document.getElementById('hr-leave-half-day');
 
   if (!empSelect || !typeSelect || !startInput || !endInput || !reasonInput) return;
 
   const empId = empSelect.value;
   const type = typeSelect.value;
   const startDate = startInput.value;
-  const endDate = endInput.value;
+  const isHalfDay = halfDayCheckbox ? halfDayCheckbox.checked : false;
+
+  let endDate = endInput.value;
+  if (isHalfDay) {
+    endDate = startDate;
+  }
+
   const reason = reasonInput.value.trim();
 
-  if (!empId || !type || !startDate || !endDate || !reason) {
+  if (!empId || !type || !startDate || (!isHalfDay && !endDate) || !reason) {
     showToast('Please fill out all required fields.', 'error');
     return;
   }
 
-  const duration = calculateDays(startDate, endDate);
+  const duration = isHalfDay ? 0.5 : calculateDays(startDate, endDate);
   if (duration <= 0) {
     showToast('End date must be on or after start date.', 'error');
     return;
@@ -3687,6 +3729,11 @@ function handleHRDirectLeaveSubmit(e) {
   if (hrDirectLeaveForm) {
     hrDirectLeaveForm.reset();
   }
+  
+  // Re-enable and reset requirements for end input
+  endInput.disabled = false;
+  endInput.required = true;
+
   renderHRDashboard();
 }
 
@@ -4250,6 +4297,75 @@ function renderEmployeeTasksAndProjects() {
   }
   if (state.editingTaskId) {
     setupEditTaskListeners(state.editingTaskId);
+  }
+
+  // --- Render Employee's own Session Activity Logs ---
+  const sessionLogsContainer = document.getElementById('emp-session-activity-logs');
+  if (sessionLogsContainer) {
+    const emp = state.employees.find(e => e.id === user.id) || user;
+    const logs = emp.activityLogs || [];
+
+    if (logs.length === 0) {
+      sessionLogsContainer.innerHTML = `
+        <div style="color: var(--text-muted); font-size: 0.85rem; font-style: italic; padding: 16px 0;">
+          No login/logout sessions recorded yet.
+        </div>
+      `;
+    } else {
+      const sortedLogs = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      const formatDuration = (minutes) => {
+        if (!minutes || minutes <= 0) return '—';
+        const h = Math.floor(minutes / 60);
+        const m = minutes % 60;
+        if (h === 0) return `${m}m`;
+        return m === 0 ? `${h}h` : `${h}h ${m}m`;
+      };
+
+      const dayBlocks = sortedLogs.map(log => {
+        const sessions = log.sessions || (log.login || log.logout ? [{ login: log.login || '', logout: log.logout || '', loginMs: null, logoutMs: null }] : []);
+        const totalMins = log.totalMinutesWorked || sessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+
+        const sessionRows = sessions.map((s, idx) => `
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+            <td style="padding: 8px 12px; color: var(--text-muted); font-size: 0.8rem;">Session ${idx + 1}</td>
+            <td style="padding: 8px 12px; color: #22c55e; font-weight: 600; font-size: 0.82rem;">${s.login || '—'}</td>
+            <td style="padding: 8px 12px; color: ${s.logout ? '#ef4444' : 'var(--text-muted)'}; font-weight: 600; font-size: 0.82rem;">${s.logout || (s.login ? '(active)' : '—')}</td>
+            <td style="padding: 8px 12px; color: #f59e0b; font-weight: 500; font-size: 0.82rem;">${formatDuration(s.durationMinutes)}</td>
+          </tr>
+        `).join('');
+
+        return `
+          <div style="margin-bottom: 16px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(0,0,0,0.1);">
+              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary);">${log.date}</span>
+              <span style="font-size: 0.78rem; background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); border-radius: 10px; padding: 2px 10px; font-weight: 600;">
+                ⏱ Total: ${formatDuration(totalMins)}
+              </span>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+              <thead>
+                <tr style="background: rgba(255,255,255,0.03); color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase;">
+                  <th style="padding: 6px 12px; font-weight: 600; text-align: left;">Session</th>
+                  <th style="padding: 6px 12px; font-weight: 600; text-align: left;">Login</th>
+                  <th style="padding: 6px 12px; font-weight: 600; text-align: left;">Logout</th>
+                  <th style="padding: 6px 12px; font-weight: 600; text-align: left;">Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${sessionRows}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }).join('');
+
+      sessionLogsContainer.innerHTML = `
+        <div style="max-height: 400px; overflow-y: auto; padding-right: 4px;">
+          ${dayBlocks}
+        </div>
+      `;
+    }
   }
 }
 
@@ -5242,7 +5358,7 @@ function populateTechLeadOptions() {
   if (!select) return;
   select.innerHTML = '<option value="" disabled selected>Select tech lead...</option>';
   state.employees.forEach(emp => {
-    if (isPratap(emp)) return; // Hide Pratap
+    if (isPratap(emp) || emp.isDeleted) return; // Hide Pratap & Deleted
     const opt = document.createElement('option');
     opt.value = emp.id;
     opt.textContent = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
@@ -5784,12 +5900,11 @@ function handleAssignTaskProjectChange(e) {
   if (!assigneeSelect) return;
 
   assigneeSelect.innerHTML = '<option value="" disabled selected>Select employee...</option>';
-
   if (project) {
     // Show ALL employees from every branch/department, grouped by department
     const grouped = {};
     state.employees.forEach(emp => {
-      if (isPratap(emp)) return; // Hide Pratap
+      if (isPratap(emp) || emp.isDeleted) return; // Hide Pratap & Deleted
       if (!grouped[emp.dept]) grouped[emp.dept] = [];
       grouped[emp.dept].push(emp);
     });
@@ -5953,7 +6068,7 @@ function getUnreadChatsCount() {
 
   // 2. Direct chats count
   let unreadDirect = 0;
-  const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id);
+  const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id && !emp.isDeleted);
   otherEmployees.forEach(emp => {
     unreadDirect += getUnreadChatCount(emp.id);
   });
@@ -5967,11 +6082,15 @@ function getUnreadChatsCount() {
 
 function getUnreadReportsCount() {
   if (!state.currentUser) return 0;
-  const isHRorAdmin = state.currentRole === 'hr' || state.currentRole === 'admin';
+  const isReportReviewer = (state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
 
-  if (isHRorAdmin) {
-    // Pending reviews count (reports with empty remarks)
-    return (state.dailyReports || []).filter(r => !r.remarks || r.remarks.trim() === '').length;
+  if (isReportReviewer) {
+    // Count unreviewed reports where the current user is the recipient/reviewer
+    return (state.dailyReports || []).filter(r => {
+      const isPending = !r.remarks || r.remarks.trim() === '';
+      if (!isPending) return false;
+      return isReportReviewerFor(state.currentUser.id, state.currentRole, r);
+    }).length;
   } else {
     // Count of reviewed reports not yet read by employee
     const readReports = JSON.parse(localStorage.getItem(`ems_read_reports_${state.currentUser.id}`) || '[]');
@@ -6205,7 +6324,7 @@ function renderCommSidebar() {
     itemsBox.appendChild(groupLink);
 
     // 2. Add Direct Messages for all other employees
-    const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id && (isPratap(state.currentUser) || !isPratap(emp)));
+    const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id && (isPratap(state.currentUser) || !isPratap(emp)) && !emp.isDeleted);
     otherEmployees.forEach(emp => {
       const isDirectActive = state.activeChatType === 'direct' && state.activeChatTargetId === emp.id;
       const empLink = document.createElement('div');
@@ -6860,7 +6979,7 @@ function populateNoticeEmployeeCheckboxes() {
   container.innerHTML = '';
 
   state.employees.forEach(emp => {
-    if (isPratap(emp)) return; // Hide Pratap
+    if (isPratap(emp) || emp.isDeleted) return; // Hide Pratap & Deleted
     const item = document.createElement('label');
     item.className = 'employee-checkbox-item';
     item.dataset.name = emp.name.toLowerCase();
@@ -7200,6 +7319,24 @@ function canUserSeeReport(currentUserRole, reporterRole) {
   return false;
 }
 
+function isReportReviewerFor(reviewerId, reviewerRole, report) {
+  if (!reviewerId || !reviewerRole || !report) return false;
+
+  const proj = state.projects.find(p => p.id === report.projectId);
+  if (!proj || !proj.techLeadId) {
+    return canUserSeeReport(reviewerRole, getReportReporterRole(report));
+  }
+
+  const reporterId = report.employeeId;
+  const techLeadId = proj.techLeadId;
+
+  if (reporterId === techLeadId) {
+    return reviewerRole === 'admin';
+  } else {
+    return reviewerId === techLeadId && (reviewerRole === 'techlead' || reviewerRole === 'manager');
+  }
+}
+
 function canUserReviewReport(currentUserRole, reporterRole) {
   return canUserSeeReport(currentUserRole, reporterRole);
 }
@@ -7500,7 +7637,7 @@ function populateDailyReportDropdowns() {
     reviewProjectSelect.innerHTML = '<option value="all">All Projects</option>';
     const uniqueProjects = new Set();
     state.dailyReports.forEach(r => {
-      if (canUserSeeReport(state.currentRole, getReportReporterRole(r)) && r.projectName) {
+      if (isReportReviewerFor(state.currentUser.id, state.currentRole, r) && r.projectName) {
         uniqueProjects.add(JSON.stringify({ id: r.projectId, name: r.projectName }));
       }
     });
@@ -7522,7 +7659,7 @@ function populateDailyReportDropdowns() {
     monthSelect.innerHTML = '<option value="all">All Months</option>';
     const uniqueMonths = new Set();
     state.dailyReports.forEach(r => {
-      if (r.date && canUserSeeReport(state.currentRole, getReportReporterRole(r))) {
+      if (r.date && isReportReviewerFor(state.currentUser.id, state.currentRole, r)) {
         uniqueMonths.add(getMonthYearStr(r.date));
       }
     });
@@ -7544,7 +7681,7 @@ function populateDailyReportDropdowns() {
     empSelect.innerHTML = '<option value="all">All Employees</option>';
     const empMap = new Map();
     state.dailyReports.forEach(r => {
-      if (canUserSeeReport(state.currentRole, getReportReporterRole(r))) {
+      if (isReportReviewerFor(state.currentUser.id, state.currentRole, r)) {
         empMap.set(r.employeeId, r.employeeName);
       }
     });
@@ -7576,9 +7713,8 @@ function renderHRReports() {
 
   // Filter daily reports
   const filteredReports = state.dailyReports.filter(report => {
-    // Role-based visibility check
-    const reporterRole = getReportReporterRole(report);
-    if (!canUserSeeReport(state.currentRole, reporterRole)) {
+    // Project-level and role-based routing check
+    if (!isReportReviewerFor(state.currentUser.id, state.currentRole, report)) {
       return false;
     }
 
@@ -7855,13 +7991,40 @@ function handleDailyReportSubmit(e) {
     return;
   }
 
-  // Trigger SMS notifications for HR and Admin users
+  // Find project recipient for daily report routing
+  const proj = state.projects.find(p => p.id === projectIdVal);
+  let recipientIds = [];
+
+  if (proj && proj.techLeadId) {
+    if (state.currentUser.id === proj.techLeadId) {
+      // Current user is the Tech Lead -> send to Admin
+      state.employees.forEach(emp => {
+        const roleLower = (emp.role || '').toLowerCase();
+        if (roleLower.includes('admin') && emp.id !== state.currentUser.id) {
+          recipientIds.push(emp.id);
+        }
+      });
+    } else {
+      // Send ONLY to the Tech Lead of this project
+      recipientIds.push(proj.techLeadId);
+    }
+  } else {
+    // Fallback: send to Admin
+    state.employees.forEach(emp => {
+      const roleLower = (emp.role || '').toLowerCase();
+      if (roleLower.includes('admin') && emp.id !== state.currentUser.id) {
+        recipientIds.push(emp.id);
+      }
+    });
+  }
+
+  // Trigger SMS notifications for only the recipients
   state.employees.forEach(emp => {
-    if ((emp.role === 'HR' || emp.role === 'Admin') && emp.id !== state.currentUser.id) {
+    if (recipientIds.includes(emp.id)) {
       if (emp.phone) {
         triggerSMSNotification(
           emp.phone,
-          `New Daily Report Submitted: ${state.currentUser.name} (${state.currentUser.dept}) sent a report for ${dateVal}. Details: ${detailsVal.substring(0, 100)}${detailsVal.length > 100 ? '...' : ''}`,
+          `New Daily Report Submitted: ${state.currentUser.name} for project "${projectNameVal}" on ${dateVal}. Details: ${detailsVal.substring(0, 100)}${detailsVal.length > 100 ? '...' : ''}`,
           emp.name
         );
       }
@@ -8345,8 +8508,13 @@ function renderPayslips() {
       <!-- Signatures Block -->
       <div class="payslip-signatures" style="display: flex; justify-content: space-between; margin-top: 60px; margin-bottom: 40px; padding: 0 20px; font-size: 0.9rem; color: #000; width: 100%; box-sizing: border-box;">
         <div style="width: 45%; display: flex; flex-direction: column; text-align: left;">
-          <div style="text-align: center;">
-            <p class="payslip-sig-label" style="margin: 0 0 50px 0; font-weight: 500; color: #000;">Employer Signature</p>
+          <div style="text-align: center; position: relative;">
+            <p class="payslip-sig-label" style="margin: 0 0 10px 0; font-weight: 500; color: #000;">Employer Signature</p>
+            <div style="height: 50px; display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">
+              ${isHRorAdmin ? `
+                <img src="/hr_signature.png" alt="Employer Signature" style="max-height: 50px; width: auto; mix-blend-mode: multiply; object-fit: contain;">
+              ` : ''}
+            </div>
             <div style="border-bottom: 1.5px solid #000; width: 100%;"></div>
           </div>
           <!-- Notes section below the employer signature -->
@@ -8360,7 +8528,7 @@ function renderPayslips() {
           </div>
         </div>
         <div style="text-align: center; width: 35%;">
-          <p class="payslip-sig-label" style="margin: 0 0 50px 0; font-weight: 500; color: #000;">Employee Signature</p>
+          <p class="payslip-sig-label" style="margin: 0 0 65px 0; font-weight: 500; color: #000;">Employee Signature</p>
           <div style="border-bottom: 1.5px solid #000; width: 100%;"></div>
         </div>
       </div>
@@ -8446,9 +8614,6 @@ function printPayslip() {
             margin-top: 30px !important;
             margin-bottom: 20px !important;
           }
-          .payslip-sig-label {
-            margin-bottom: 30px !important;
-          }
           .payslip-footnote {
             margin-top: 15px !important;
           }
@@ -8488,7 +8653,7 @@ function populateSalaryEmployeeSelect() {
   if (!select) return;
   const currentVal = select.value;
   select.innerHTML = '';
-  const eligibleEmployees = state.employees.filter(emp => emp.role.toLowerCase() !== 'admin' && !isPratap(emp));
+  const eligibleEmployees = state.employees.filter(emp => emp.role.toLowerCase() !== 'admin' && !isPratap(emp) && !emp.isDeleted);
   eligibleEmployees.forEach(emp => {
     const opt = document.createElement('option');
     opt.value = emp.id;
@@ -10552,7 +10717,9 @@ function renderEmployeeDetails() {
           <div>
             <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
               <span>${emp.name}</span>
-              ${(state.activeUsers && state.activeUsers.includes(emp.id)) ? `
+              ${emp.isDeleted ? `
+                <span class="badge badge-rejected" style="font-size: 0.65rem; padding: 2px 8px; border-radius: 12px;">Deleted</span>
+              ` : (state.activeUsers && state.activeUsers.includes(emp.id)) ? `
                 <span class="active-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; background-color: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; font-size: 0.7rem; font-weight: 700;">
                   <span style="width: 6px; height: 6px; background-color: #22c55e; border-radius: 50%;"></span>
                   Active
@@ -11087,7 +11254,7 @@ function populateManagerDropdowns() {
   reassignManagerSelect.innerHTML = defaultHtml;
 
   const managers = state.employees.filter(emp => {
-    if (isPratap(emp)) return false; // Hide Pratap
+    if (isPratap(emp) || emp.isDeleted) return false; // Hide Pratap & Deleted
     const roleStr = (emp.role || '').toLowerCase();
     return roleStr.includes('manager') || roleStr.includes('hr');
   });

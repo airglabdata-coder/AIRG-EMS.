@@ -32,7 +32,7 @@
       }
     </style>
     <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
-      <img src="air g logo black.png" alt="AIR G International" class="loading-logo" style="max-width: 220px; max-height: 80px; object-fit: contain;">
+      <img src="air g logo black.png" alt="AIR G International" class="loading-logo" style="max-width: 880px; max-height: 320px; object-fit: contain;">
       <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted, #71717a); letter-spacing: 0.5px; display: flex; align-items: center; gap: 2px;">
         <span>Loading EMS Portal</span><span class="loading-dots"></span>
       </div>
@@ -519,6 +519,24 @@
                 </table>
               </div>
             </div>
+
+            <!-- Employee Session Activity Logs Section -->
+            <div>
+              <div class="card-header"
+                style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
+                <h2 class="card-title">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    style="stroke: var(--warning);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Session Activity Logs
+                </h2>
+              </div>
+              <div id="emp-session-activity-logs">
+                <!-- Dynamically populated session activity logs -->
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -586,6 +604,10 @@
                   <label for="hr-leave-end" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 8px;">End Date</label>
                   <input type="date" id="hr-leave-end" required
                     style="width: 100%; padding: 8px 10px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-size: 0.9rem; height: 41px; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px; height: 41px; padding-top: 28px; box-sizing: border-box;">
+                  <input type="checkbox" id="hr-leave-half-day" style="width: 18px; height: 18px; cursor: pointer; margin: 0;">
+                  <label for="hr-leave-half-day" style="font-weight: 600; font-size: 0.85rem; cursor: pointer; margin: 0; user-select: none;">Half Day</label>
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1; margin-bottom: 0;">
                   <label for="hr-leave-reason" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 8px;">Reason / Remarks</label>
