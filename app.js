@@ -2632,9 +2632,9 @@ function switchView(viewName) {
     const titleLabel = document.getElementById('page-title-label');
     if (titleLabel) titleLabel.textContent = 'Daily Reports';
 
-    const isLeadOrHR = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
+    const isReportReviewer = (state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
     const leaveSubTabs = document.getElementById('leave-sub-tabs');
-    if (isLeadOrHR) {
+    if (isReportReviewer) {
       if (leaveSubTabs) leaveSubTabs.style.display = 'flex';
       if (!state.activeLeaveSubTab) {
         state.activeLeaveSubTab = 'approve';
@@ -4167,8 +4167,7 @@ function createProjectCard(proj, isMyProject) {
 
   const memberChipsHtml = uniqueEmployees.map(emp => {
     const isLead = emp.id === proj.techLeadId;
-    const isExternal = !isDeptMember(emp, proj.dept);
-    const canRemove = isEditable && !isLead && isExternal;
+    const canRemove = isEditable && !isLead;
 
     let chipRole = emp.designation || emp.role || (isLead ? 'Tech Lead' : 'Employee');
     if (chipRole.toLowerCase() === 'tech lead' && !isLead) {
@@ -4183,7 +4182,7 @@ function createProjectCard(proj, isMyProject) {
         <span>${emp.name}</span>
         <span style="font-size: 0.65rem; color: var(--text-muted);">(${chipRole})</span>
         ${canRemove ? `
-          <button onclick="removeEmployeeFromProject('${proj.id}', '${emp.id}')" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.85rem; font-weight: bold; margin-left: 4px; padding: 0; line-height: 1;" title="Remove from project">&times;</button>
+          <button onclick="removeEmployeeFromProject('${proj.id}', '${emp.id}')" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.85rem; font-weight: bold; margin-left: 6px; padding: 0; line-height: 1; display: inline-flex; align-items: center; justify-content: center;" title="Remove from project">&times;</button>
         ` : ''}
       </div>
     `;
@@ -4523,10 +4522,37 @@ window.assignEmployeeToProject = assignEmployeeToProject;
 function removeEmployeeFromProject(projId, empId) {
   const proj = state.projects.find(p => p.id === projId);
   if (!proj) return;
+
+  // 1. Remove from explicit project employee list
   if (proj.employeeIds) {
     proj.employeeIds = proj.employeeIds.filter(id => id !== empId);
   }
+
+  // 2. Remove project's department from the employee's departments list
+  const employee = state.employees.find(e => e.id === empId);
+  if (employee && proj.dept) {
+    const currentDepts = employee.dept ? employee.dept.split(',').map(d => d.trim()) : [];
+    const updatedDepts = currentDepts.filter(d => d.toLowerCase() !== proj.dept.toLowerCase());
+    employee.dept = updatedDepts.join(', ');
+    localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+  }
+
+  // 3. Unassign the employee from any tasks inside this project
+  let tasksModified = false;
+  state.tasks.forEach(t => {
+    if (t.projectId === projId && t.assigneeId === empId) {
+      t.assigneeId = '';
+      t.assigneeName = 'Unassigned';
+      tasksModified = true;
+    }
+  });
+
+  if (tasksModified) {
+    localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
+  }
+
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+  triggerBackendSync();
 
   // Refresh views
   const activeMenuItem = document.querySelector('.menu-item.active');
@@ -6941,10 +6967,10 @@ function getReportReporterRole(report) {
 
 function canUserSeeReport(currentUserRole, reporterRole) {
   if (reporterRole === 'employee') {
-    return ['techlead', 'manager', 'hr', 'admin'].includes(currentUserRole);
+    return ['techlead', 'manager'].includes(currentUserRole);
   }
   if (reporterRole === 'techlead' || reporterRole === 'manager') {
-    return ['hr', 'admin'].includes(currentUserRole);
+    return ['admin'].includes(currentUserRole);
   }
   if (reporterRole === 'hr') {
     return ['admin'].includes(currentUserRole);
@@ -6957,13 +6983,9 @@ function canUserReviewReport(currentUserRole, reporterRole) {
 }
 
 function canUserStarReport(currentUserRole, reporterRole) {
-  // Admin can star everyone below them
+  // Admin can star anyone whose reports they can see
   if (currentUserRole === 'admin') {
-    return ['employee', 'techlead', 'manager', 'hr'].includes(reporterRole);
-  }
-  // HR can star employees, tech leads and managers
-  if (currentUserRole === 'hr') {
-    return ['employee', 'techlead', 'manager'].includes(reporterRole);
+    return ['techlead', 'manager', 'hr'].includes(reporterRole);
   }
   // Tech lead and Manager can star employees
   if (currentUserRole === 'techlead' || currentUserRole === 'manager') {
@@ -6993,9 +7015,9 @@ function renderDailyReports() {
   const hrSection = document.getElementById('reports-hr-section');
   if (!empSection || !hrSection) return;
 
-  const isLeadOrHR = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
+  const isReportReviewer = (state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
 
-  if (isLeadOrHR) {
+  if (isReportReviewer) {
     if (state.activeLeaveSubTab === 'apply') {
       empSection.style.display = 'flex';
       empSection.style.marginBottom = '0';
