@@ -307,24 +307,54 @@ app.post('/api/activity-log', async (req, res) => {
 
     const formattedDate = dateObj.toLocaleDateString('en-US', dateOptions);
     const formattedTime = dateObj.toLocaleTimeString('en-US', timeOptions);
+    const nowMs = dateObj.getTime();
 
     let logs = emp.get('activityLogs') || [];
-    let existingIndex = logs.findIndex(log => log.date === formattedDate);
+    let dayEntry = logs.find(log => log.date === formattedDate);
 
-    if (existingIndex > -1) {
-      if (type === 'login') {
-        logs[existingIndex].login = formattedTime;
-      } else if (type === 'logout') {
-        logs[existingIndex].logout = formattedTime;
-      }
-    } else {
-      const newLog = {
-        date: formattedDate,
-        login: type === 'login' ? formattedTime : '',
-        logout: type === 'logout' ? formattedTime : ''
-      };
-      logs.push(newLog);
+    if (!dayEntry) {
+      dayEntry = { date: formattedDate, sessions: [] };
+      logs.push(dayEntry);
     }
+
+    // Ensure sessions array exists (migrating old {login, logout} records)
+    if (!dayEntry.sessions) {
+      // Migrate legacy format
+      const legacySessions = [];
+      if (dayEntry.login || dayEntry.logout) {
+        legacySessions.push({ login: dayEntry.login || '', logout: dayEntry.logout || '', loginMs: null, logoutMs: null });
+      }
+      dayEntry.sessions = legacySessions;
+      delete dayEntry.login;
+      delete dayEntry.logout;
+    }
+
+    if (type === 'login') {
+      // Start a new session
+      dayEntry.sessions.push({ login: formattedTime, logout: '', loginMs: nowMs, logoutMs: null });
+    } else if (type === 'logout') {
+      // Close the most recent open session (no logout yet)
+      const openSession = [...dayEntry.sessions].reverse().find(s => s.login && !s.logout);
+      if (openSession) {
+        openSession.logout = formattedTime;
+        openSession.logoutMs = nowMs;
+        // Compute duration for this session in minutes
+        if (openSession.loginMs) {
+          openSession.durationMinutes = Math.round((nowMs - openSession.loginMs) / 60000);
+        }
+      } else {
+        // No open session found — add a standalone logout entry
+        dayEntry.sessions.push({ login: '', logout: formattedTime, loginMs: null, logoutMs: nowMs, durationMinutes: 0 });
+      }
+    }
+
+    // Recalculate total worked minutes for this day
+    dayEntry.totalMinutesWorked = dayEntry.sessions.reduce((sum, s) => {
+      if (s.loginMs && s.logoutMs) {
+        return sum + Math.round((s.logoutMs - s.loginMs) / 60000);
+      }
+      return sum + (s.durationMinutes || 0);
+    }, 0);
 
     emp.set('activityLogs', logs);
     emp.markModified('activityLogs');

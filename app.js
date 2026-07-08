@@ -3382,7 +3382,7 @@ function renderEmployeeRoster() {
       }
 
       detailsHTML = `
-        <div class="roster-details" style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; width: 100%;">
+        <div class="roster-details" style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 16px; font-size: 0.85rem; width: 100%;">
           <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center;">
             <div style="flex: 1; min-width: 150px;">
               <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Role</span>
@@ -3396,6 +3396,70 @@ function renderEmployeeRoster() {
               })()}
             </div>
           </div>
+
+          <!-- Session Activity Logs -->
+          <div style="border-top: 1px solid var(--border-color); padding-top: 12px;">
+            <h4 style="font-size: 0.82rem; font-weight: 700; color: var(--text-primary); margin: 0 0 10px 0; display: flex; align-items: center; gap: 6px;">
+              🕒 Session Activity Logs
+            </h4>
+            ${(() => {
+              const logs = emp.activityLogs || [];
+              if (logs.length === 0) {
+                return `<div style="color: var(--text-muted); font-size: 0.78rem; font-style: italic; padding: 8px 0;">No login/logout logs recorded yet.</div>`;
+              }
+              const sortedLogs = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+              const formatDuration = (minutes) => {
+                if (!minutes || minutes <= 0) return '—';
+                const h = Math.floor(minutes / 60);
+                const m = minutes % 60;
+                if (h === 0) return `${m}m`;
+                return m === 0 ? `${h}h` : `${h}h ${m}m`;
+              };
+
+              const dayBlocks = sortedLogs.map(log => {
+                // Support both new multi-session format and legacy {login, logout} format
+                const sessions = log.sessions || (log.login || log.logout ? [{ login: log.login || '', logout: log.logout || '', loginMs: null, logoutMs: null }] : []);
+                const totalMins = log.totalMinutesWorked || sessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+
+                const sessionRows = sessions.map((s, idx) => `
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                    <td style="padding: 6px 8px; color: var(--text-muted); font-size: 0.75rem;">Session ${idx + 1}</td>
+                    <td style="padding: 6px 8px; color: #22c55e; font-weight: 600; font-size: 0.78rem;">${s.login || '—'}</td>
+                    <td style="padding: 6px 8px; color: ${s.logout ? '#ef4444' : 'var(--text-muted)'}; font-weight: 600; font-size: 0.78rem;">${s.logout || (s.login ? '(active)' : '—')}</td>
+                    <td style="padding: 6px 8px; color: #f59e0b; font-weight: 500; font-size: 0.78rem;">${formatDuration(s.durationMinutes)}</td>
+                  </tr>
+                `).join('');
+
+                return `
+                  <div style="margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                      <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary);">${log.date}</span>
+                      <span style="font-size: 0.75rem; background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); border-radius: 10px; padding: 1px 8px; font-weight: 600;">
+                        ⏱ Total: ${formatDuration(totalMins)}
+                      </span>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; background: rgba(0,0,0,0.15); border-radius: 4px; overflow: hidden;">
+                      <thead>
+                        <tr style="background: rgba(255,255,255,0.03); color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase;">
+                          <th style="padding: 5px 8px; font-weight: 600; text-align: left;">Session</th>
+                          <th style="padding: 5px 8px; font-weight: 600; text-align: left;">Login</th>
+                          <th style="padding: 5px 8px; font-weight: 600; text-align: left;">Logout</th>
+                          <th style="padding: 5px 8px; font-weight: 600; text-align: left;">Duration</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${sessionRows}
+                      </tbody>
+                    </table>
+                  </div>
+                `;
+              }).join('');
+
+              return `<div style="max-height: 280px; overflow-y: auto; padding-right: 2px;">${dayBlocks}</div>`;
+            })()}
+          </div>
+
           ${deleteBtnHTML}
         </div>
       `;
@@ -10576,43 +10640,6 @@ function renderEmployeeDetails() {
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- Bottom Row: Session Activity Logs -->
-        <div style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 12px; margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-          <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); margin: 0 0 8px 0; display: flex; align-items: center; gap: 6px;">
-            🕒 Session Activity Logs (By Date)
-          </h4>
-          ${(() => {
-            const logs = emp.activityLogs || [];
-            if (logs.length === 0) {
-              return `<div style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">No login/logout logs recorded yet.</div>`;
-            }
-            const sortedLogs = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
-            const rows = sortedLogs.map(log => `
-              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); text-align: left;">
-                <td style="padding: 8px 0; color: var(--text-primary); font-weight: 500;">${log.date}</td>
-                <td style="padding: 8px 0; color: #22c55e; font-weight: 600;">${log.login || '-'}</td>
-                <td style="padding: 8px 0; color: #ef4444; font-weight: 600;">${log.logout || '-'}</td>
-              </tr>
-            `).join('');
-            return `
-              <div style="max-height: 200px; overflow-y: auto; padding-right: 4px; border: 1px solid var(--border-color); border-radius: 4px; padding: 8px 12px;">
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem;">
-                  <thead>
-                    <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
-                      <th style="padding-bottom: 8px; font-weight: 600;">Date</th>
-                      <th style="padding-bottom: 8px; font-weight: 600;">Login Time</th>
-                      <th style="padding-bottom: 8px; font-weight: 600;">Logout Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${rows}
-                  </tbody>
-                </table>
-              </div>
-            `;
-          })()}
         </div>
       `;
       card.appendChild(detailsDiv);
