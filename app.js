@@ -1793,6 +1793,18 @@ async function init() {
   if (reportEmpFilter) {
     reportEmpFilter.addEventListener('change', renderDailyReports);
   }
+  const reportProjFilter = document.getElementById('filter-report-project');
+  if (reportProjFilter) {
+    reportProjFilter.addEventListener('change', renderDailyReports);
+  }
+  const empReportProjFilter = document.getElementById('emp-filter-report-project');
+  if (empReportProjFilter) {
+    empReportProjFilter.addEventListener('change', renderDailyReports);
+  }
+  const empReportMonthFilter = document.getElementById('emp-filter-report-month');
+  if (empReportMonthFilter) {
+    empReportMonthFilter.addEventListener('change', renderDailyReports);
+  }
 
   // Set up announcements and notices image upload & paste listeners
   setupPasteListener('announcement-content', 'announcement-images-preview', currentAttachedImagesAnnouncement);
@@ -7015,6 +7027,8 @@ function renderDailyReports() {
   const hrSection = document.getElementById('reports-hr-section');
   if (!empSection || !hrSection) return;
 
+  populateDailyReportDropdowns();
+
   const isReportReviewer = (state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
 
   if (isReportReviewer) {
@@ -7047,15 +7061,34 @@ function renderEmployeeReports() {
     reportsHeader.textContent = state.currentRole === 'hr' ? 'Admin Remarks' : 'HR / Admin Remarks';
   }
 
-  const userReports = state.dailyReports.filter(r => r.employeeId === state.currentUser.id);
+  const projectSelect = document.getElementById('emp-filter-report-project');
+  const monthSelect = document.getElementById('emp-filter-report-month');
+  const selectedProject = projectSelect ? projectSelect.value : 'all';
+  const selectedMonth = monthSelect ? monthSelect.value : 'all';
+
+  const userReports = state.dailyReports.filter(r => {
+    if (r.employeeId !== state.currentUser.id) return false;
+
+    let matchesProj = true;
+    if (selectedProject !== 'all') {
+      matchesProj = (r.projectId === selectedProject);
+    }
+
+    let matchesMonth = true;
+    if (selectedMonth !== 'all') {
+      matchesMonth = (getMonthYearStr(r.date) === selectedMonth);
+    }
+
+    return matchesProj && matchesMonth;
+  });
 
   if (userReports.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="3">
+        <td colspan="4">
           <div class="empty-state">
-            <div class="empty-state-title">No daily reports submitted yet</div>
-            <p>Fill in the form to submit your report for today.</p>
+            <div class="empty-state-title">No matching daily reports found</div>
+            <p>Fill in the form to submit your report or try adjusting your filters.</p>
           </div>
         </td>
       </tr>
@@ -7081,6 +7114,7 @@ function renderEmployeeReports() {
 
     tr.innerHTML = `
       <td><strong>${formatDate(report.date)}</strong></td>
+      <td><span style="font-weight: 600; color: var(--primary);">${report.projectName || '—'}</span></td>
       <td>
         <div style="display: flex; align-items: center; gap: 8px;">
           <span>${truncateText(report.details, 40)}</span>
@@ -7162,7 +7196,7 @@ function renderEmployeeReports() {
     }
 
     detailsTr.innerHTML = `
-      <td colspan="3" style="padding: 0;">
+      <td colspan="4" style="padding: 0;">
         <div class="report-details-pane" style="margin: 8px 12px 16px 12px;" onclick="event.stopPropagation()">
           <div style="font-weight: 500; color: var(--text-secondary); white-space: pre-wrap; word-break: break-word;">${report.details}</div>
           ${imagesHtml}
@@ -7190,59 +7224,129 @@ function getMonthYearStr(dateStr) {
   return 'Unknown Month';
 }
 
-function populateHRReportFilters() {
+function populateDailyReportDropdowns() {
+  // 1. Submit Form Project Select
+  const submitProjectSelect = document.getElementById('report-project');
+  if (submitProjectSelect) {
+    const currentVal = submitProjectSelect.value;
+    submitProjectSelect.innerHTML = '<option value="" disabled selected>Select project...</option>';
+    state.projects.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      submitProjectSelect.appendChild(opt);
+    });
+    if (currentVal) submitProjectSelect.value = currentVal;
+  }
+
+  // 2. Employee Past Reports Project Filter
+  const empProjectSelect = document.getElementById('emp-filter-report-project');
+  if (empProjectSelect) {
+    const currentVal = empProjectSelect.value || 'all';
+    empProjectSelect.innerHTML = '<option value="all">All Projects</option>';
+    const uniqueProjects = new Set();
+    state.dailyReports.forEach(r => {
+      if (r.employeeId === state.currentUser.id && r.projectName) {
+        uniqueProjects.add(JSON.stringify({ id: r.projectId, name: r.projectName }));
+      }
+    });
+    uniqueProjects.forEach(projStr => {
+      const proj = JSON.parse(projStr);
+      const opt = document.createElement('option');
+      opt.value = proj.id;
+      opt.textContent = proj.name;
+      empProjectSelect.appendChild(opt);
+    });
+    empProjectSelect.value = currentVal;
+    if (empProjectSelect.value !== currentVal) empProjectSelect.value = 'all';
+  }
+
+  // 3. Employee Past Reports Month Filter
+  const empMonthSelect = document.getElementById('emp-filter-report-month');
+  if (empMonthSelect) {
+    const currentVal = empMonthSelect.value || 'all';
+    empMonthSelect.innerHTML = '<option value="all">All Months</option>';
+    const uniqueMonths = new Set();
+    state.dailyReports.forEach(r => {
+      if (r.employeeId === state.currentUser.id && r.date) {
+        uniqueMonths.add(getMonthYearStr(r.date));
+      }
+    });
+    const sortedMonths = Array.from(uniqueMonths).sort((a, b) => new Date(b) - new Date(a));
+    sortedMonths.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      empMonthSelect.appendChild(opt);
+    });
+    empMonthSelect.value = currentVal;
+    if (empMonthSelect.value !== currentVal) empMonthSelect.value = 'all';
+  }
+
+  // 4. Reviewer Project Filter
+  const reviewProjectSelect = document.getElementById('filter-report-project');
+  if (reviewProjectSelect) {
+    const currentVal = reviewProjectSelect.value || 'all';
+    reviewProjectSelect.innerHTML = '<option value="all">All Projects</option>';
+    const uniqueProjects = new Set();
+    state.dailyReports.forEach(r => {
+      if (canUserSeeReport(state.currentRole, getReportReporterRole(r)) && r.projectName) {
+        uniqueProjects.add(JSON.stringify({ id: r.projectId, name: r.projectName }));
+      }
+    });
+    uniqueProjects.forEach(projStr => {
+      const proj = JSON.parse(projStr);
+      const opt = document.createElement('option');
+      opt.value = proj.id;
+      opt.textContent = proj.name;
+      reviewProjectSelect.appendChild(opt);
+    });
+    reviewProjectSelect.value = currentVal;
+    if (reviewProjectSelect.value !== currentVal) reviewProjectSelect.value = 'all';
+  }
+
+  // 5. Reviewer Month Filter
   const monthSelect = document.getElementById('filter-report-month');
+  if (monthSelect) {
+    const currentVal = monthSelect.value || 'all';
+    monthSelect.innerHTML = '<option value="all">All Months</option>';
+    const uniqueMonths = new Set();
+    state.dailyReports.forEach(r => {
+      if (r.date && canUserSeeReport(state.currentRole, getReportReporterRole(r))) {
+        uniqueMonths.add(getMonthYearStr(r.date));
+      }
+    });
+    const sortedMonths = Array.from(uniqueMonths).sort((a, b) => new Date(b) - new Date(a));
+    sortedMonths.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      monthSelect.appendChild(opt);
+    });
+    monthSelect.value = currentVal;
+    if (monthSelect.value !== currentVal) monthSelect.value = 'all';
+  }
+
+  // 6. Reviewer Employee Filter
   const empSelect = document.getElementById('filter-report-employee');
-  if (!monthSelect || !empSelect) return;
-
-  const currentMonthVal = monthSelect.value || 'all';
-  const currentEmpVal = empSelect.value || 'all';
-
-  // Get unique months from reports
-  const months = new Set();
-  state.dailyReports.forEach(report => {
-    if (report.date && canUserSeeReport(state.currentRole, getReportReporterRole(report))) {
-      months.add(getMonthYearStr(report.date));
-    }
-  });
-
-  // Sort months chronologically descending
-  const sortedMonths = Array.from(months).sort((a, b) => {
-    if (a === 'Unknown Month') return 1;
-    if (b === 'Unknown Month') return -1;
-    return new Date(b) - new Date(a);
-  });
-
-  monthSelect.innerHTML = '<option value="all">All Months</option>';
-  sortedMonths.forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = m;
-    monthSelect.appendChild(opt);
-  });
-
-  // Get unique employees who submitted reports
-  const empMap = new Map();
-  state.dailyReports.forEach(report => {
-    if (canUserSeeReport(state.currentRole, getReportReporterRole(report))) {
-      empMap.set(report.employeeId, report.employeeName);
-    }
-  });
-
-  empSelect.innerHTML = '<option value="all">All Employees</option>';
-  empMap.forEach((name, id) => {
-    const opt = document.createElement('option');
-    opt.value = id;
-    opt.textContent = name;
-    empSelect.appendChild(opt);
-  });
-
-  // Restore values
-  monthSelect.value = currentMonthVal;
-  if (monthSelect.value !== currentMonthVal) monthSelect.value = 'all';
-
-  empSelect.value = currentEmpVal;
-  if (empSelect.value !== currentEmpVal) empSelect.value = 'all';
+  if (empSelect) {
+    const currentVal = empSelect.value || 'all';
+    empSelect.innerHTML = '<option value="all">All Employees</option>';
+    const empMap = new Map();
+    state.dailyReports.forEach(r => {
+      if (canUserSeeReport(state.currentRole, getReportReporterRole(r))) {
+        empMap.set(r.employeeId, r.employeeName);
+      }
+    });
+    empMap.forEach((name, id) => {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = name;
+      empSelect.appendChild(opt);
+    });
+    empSelect.value = currentVal;
+    if (empSelect.value !== currentVal) empSelect.value = 'all';
+  }
 }
 
 function renderHRReports() {
@@ -7251,12 +7355,14 @@ function renderHRReports() {
   tbody.innerHTML = '';
 
   // Populate dynamic dropdown options
-  populateHRReportFilters();
+  populateDailyReportDropdowns();
 
   const monthSelect = document.getElementById('filter-report-month');
   const empSelect = document.getElementById('filter-report-employee');
+  const projectSelect = document.getElementById('filter-report-project');
   const selectedMonth = monthSelect ? monthSelect.value : 'all';
   const selectedEmp = empSelect ? empSelect.value : 'all';
+  const selectedProject = projectSelect ? projectSelect.value : 'all';
 
   // Filter daily reports
   const filteredReports = state.dailyReports.filter(report => {
@@ -7276,13 +7382,18 @@ function renderHRReports() {
       matchesEmp = (report.employeeId === selectedEmp);
     }
 
-    return matchesMonth && matchesEmp;
+    let matchesProj = true;
+    if (selectedProject !== 'all') {
+      matchesProj = (report.projectId === selectedProject);
+    }
+
+    return matchesMonth && matchesEmp && matchesProj;
   });
 
   if (filteredReports.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="5">
+        <td colspan="6">
           <div class="empty-state">
             <div class="empty-state-title">No matching daily reports found</div>
             <p>Try adjusting your filters.</p>
@@ -7328,7 +7439,7 @@ function renderHRReports() {
     headerTr.className = 'month-group-header-row';
     headerTr.style.pointerEvents = 'none'; // prevent hover cursor pointers
     headerTr.innerHTML = `
-      <td colspan="5" style="font-weight: 700; padding: 12px 20px; font-size: 0.9rem;">
+      <td colspan="6" style="font-weight: 700; padding: 12px 20px; font-size: 0.9rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; pointer-events: none;">
           <span>📅 ${monthKey}</span>
           <span class="badge" style="background-color: var(--primary-bg); color: var(--primary); font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 600;">
@@ -7360,6 +7471,7 @@ function renderHRReports() {
           </div>
         </td>
         <td>${report.dept}</td>
+        <td><span style="font-weight: 600; color: var(--primary);">${report.projectName || '—'}</span></td>
         <td>
           <div style="display: flex; align-items: center; gap: 8px;">
             <span>${truncateText(report.details, 40)}</span>
@@ -7477,7 +7589,7 @@ function renderHRReports() {
       }
 
       detailsTr.innerHTML = `
-        <td colspan="5" style="padding: 0;">
+        <td colspan="6" style="padding: 0;">
           <div class="report-details-pane" style="margin: 8px 12px 16px 12px;" onclick="event.stopPropagation()">
             <div style="font-weight: 500; color: var(--text-secondary); white-space: pre-wrap; word-break: break-word;">${report.details}</div>
             ${imagesHtml}
@@ -7495,13 +7607,16 @@ function handleDailyReportSubmit(e) {
 
   const reportDateInput = document.getElementById('report-date');
   const reportDetailsInput = document.getElementById('report-details');
+  const reportProjectSelect = document.getElementById('report-project');
 
   if (!reportDateInput || !reportDetailsInput) return;
 
   const dateVal = reportDateInput.value;
   const detailsVal = reportDetailsInput.value.trim();
+  const projectIdVal = reportProjectSelect ? reportProjectSelect.value : '';
+  const projectNameVal = reportProjectSelect && reportProjectSelect.selectedIndex >= 0 ? reportProjectSelect.options[reportProjectSelect.selectedIndex].text : '';
 
-  if (!dateVal || !detailsVal) {
+  if (!dateVal || !detailsVal || !projectIdVal) {
     showToast('Please fill out all required fields.', 'error');
     return;
   }
@@ -7512,6 +7627,8 @@ function handleDailyReportSubmit(e) {
     employeeName: state.currentUser.name,
     employeeRole: state.currentUser.role,
     dept: state.currentUser.dept,
+    projectId: projectIdVal,
+    projectName: projectNameVal,
     date: dateVal,
     details: detailsVal,
     images: [...currentAttachedImagesReport],

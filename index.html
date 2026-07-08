@@ -961,6 +961,13 @@
                 </h2>
                 <form id="daily-report-form">
                   <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="report-project" style="font-weight: 600;">Associated Project</label>
+                    <select id="report-project" required
+                      style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+                      <option value="" disabled selected>Select project...</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 16px;">
                     <label for="report-date" style="font-weight: 600;">Report Date</label>
                     <input type="date" id="report-date" required
                       style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);">
@@ -986,21 +993,34 @@
             <!-- Past Reports List Card (Bottom) -->
             <div style="width: 100%;">
               <div class="card" style="padding: 24px;">
-                <h2 class="card-title" style="margin-bottom: 20px;">
-                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                    style="stroke: var(--success);">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  My Submitted Reports
-                </h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
+                  <h2 class="card-title" style="margin: 0;">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                      style="stroke: var(--success);">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    My Submitted Reports
+                  </h2>
+                  <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <select id="emp-filter-report-project"
+                      style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; outline: none;">
+                      <option value="all">All Projects</option>
+                    </select>
+                    <select id="emp-filter-report-month"
+                      style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; outline: none;">
+                      <option value="all">All Months</option>
+                    </select>
+                  </div>
+                </div>
                 <div class="table-container">
                   <table>
                     <thead>
                       <tr>
-                        <th>Date</th>
+                        <th style="width: 120px;">Date</th>
+                        <th style="width: 150px;">Project</th>
                         <th>Work Summary</th>
-                        <th id="reports-remarks-header">HR Remarks</th>
+                        <th id="reports-remarks-header" style="width: 180px;">HR Remarks</th>
                       </tr>
                     </thead>
                     <tbody id="emp-reports-tbody">
@@ -1030,6 +1050,15 @@
             <div class="filter-bar"
               style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;">
               <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                <label for="filter-report-project"
+                  style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Filter
+                  by Project:</label>
+                <select id="filter-report-project"
+                  style="padding: 10px 16px; font-size: 0.9rem; width: 100%; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+                  <option value="all">All Projects</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
                 <label for="filter-report-month"
                   style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Filter
                   by Month:</label>
@@ -1053,11 +1082,12 @@
               <table>
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Employee Name</th>
-                    <th>Department</th>
+                    <th style="width: 120px;">Date</th>
+                    <th style="width: 150px;">Employee Name</th>
+                    <th style="width: 120px;">Department</th>
+                    <th style="width: 150px;">Project</th>
                     <th>Work Details Summary</th>
-                    <th>Status</th>
+                    <th style="width: 180px;">Status</th>
                   </tr>
                 </thead>
                 <tbody id="hr-reports-tbody">
