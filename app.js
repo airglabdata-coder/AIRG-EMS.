@@ -3308,41 +3308,6 @@ function renderEmployeeRoster() {
               })()}
             </div>
           </div>
-
-          <div style="margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 12px; width: 100%;">
-            <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Session Activity Logs (By Date)</span>
-            ${(() => {
-              const logs = emp.activityLogs || [];
-              if (logs.length === 0) {
-                return `<div style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">No login/logout logs recorded yet.</div>`;
-              }
-              const sortedLogs = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
-              const rows = sortedLogs.map(log => `
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                  <td style="padding: 6px 0; color: var(--text-primary); font-weight: 500;">${log.date}</td>
-                  <td style="padding: 6px 0; color: #22c55e; font-weight: 600;">${log.login || '-'}</td>
-                  <td style="padding: 6px 0; color: #ef4444; font-weight: 600;">${log.logout || '-'}</td>
-                </tr>
-              `).join('');
-              return `
-                <div style="max-height: 150px; overflow-y: auto; padding-right: 4px; border: 1px solid var(--border-color); border-radius: 4px; padding: 8px;">
-                  <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem;">
-                    <thead>
-                      <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase;">
-                        <th style="padding-bottom: 6px; font-weight: 600;">Date</th>
-                        <th style="padding-bottom: 6px; font-weight: 600;">Login Time</th>
-                        <th style="padding-bottom: 6px; font-weight: 600;">Logout Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${rows}
-                    </tbody>
-                  </table>
-                </div>
-              `;
-            })()}
-          </div>
-
           ${deleteBtnHTML}
         </div>
       `;
