@@ -3299,15 +3299,50 @@ function renderEmployeeRoster() {
             <div style="flex: 1; min-width: 150px;">
               <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Role</span>
               ${(() => {
-          const normalizedRole = (emp.role || '').toLowerCase();
-          const hasHR = normalizedRole.includes('hr');
-          const hasTechLead = normalizedRole.includes('tech lead');
-          const hasManager = normalizedRole.includes('manager');
+                const normalizedRole = (emp.role || '').toLowerCase();
+                const hasHR = normalizedRole.includes('hr');
+                const hasTechLead = normalizedRole.includes('tech lead');
+                const hasManager = normalizedRole.includes('manager');
 
-          return `<strong style="color: var(--text-primary); font-size: 0.9rem;">${emp.role || 'Employee'}</strong>`;
-        })()}
+                return `<strong style="color: var(--text-primary); font-size: 0.9rem;">${emp.role || 'Employee'}</strong>`;
+              })()}
             </div>
           </div>
+
+          <div style="margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 12px; width: 100%;">
+            <span class="text-muted" style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Session Activity Logs (By Date)</span>
+            ${(() => {
+              const logs = emp.activityLogs || [];
+              if (logs.length === 0) {
+                return `<div style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">No login/logout logs recorded yet.</div>`;
+              }
+              const sortedLogs = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+              const rows = sortedLogs.map(log => `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                  <td style="padding: 6px 0; color: var(--text-primary); font-weight: 500;">${log.date}</td>
+                  <td style="padding: 6px 0; color: #22c55e; font-weight: 600;">${log.login || '-'}</td>
+                  <td style="padding: 6px 0; color: #ef4444; font-weight: 600;">${log.logout || '-'}</td>
+                </tr>
+              `).join('');
+              return `
+                <div style="max-height: 150px; overflow-y: auto; padding-right: 4px; border: 1px solid var(--border-color); border-radius: 4px; padding: 8px;">
+                  <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem;">
+                    <thead>
+                      <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase;">
+                        <th style="padding-bottom: 6px; font-weight: 600;">Date</th>
+                        <th style="padding-bottom: 6px; font-weight: 600;">Login Time</th>
+                        <th style="padding-bottom: 6px; font-weight: 600;">Logout Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${rows}
+                    </tbody>
+                  </table>
+                </div>
+              `;
+            })()}
+          </div>
+
           ${deleteBtnHTML}
         </div>
       `;
@@ -8636,6 +8671,13 @@ function loginAsUser(user) {
   state.currentUser = user;
   document.body.classList.remove('auth-view');
 
+  // Log session login event
+  fetch('/api/activity-log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ employeeId: user.id, type: 'login' })
+  }).catch(err => console.error('Failed to log login:', err));
+
   // Update Profile Widget
   updateHeaderAvatar(user);
   const headerName = document.getElementById('header-name');
@@ -8677,6 +8719,11 @@ function logout() {
   if (state.currentUser) {
     const logoutId = state.currentUser.id;
     fetch(`/api/sync?employeeId=${logoutId}&active=false`).catch(() => {});
+    fetch('/api/activity-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: logoutId, type: 'logout' })
+    }).catch(() => {});
   }
   localStorage.removeItem('ems_logged_in_user');
   state.currentUser = null;
@@ -10174,6 +10221,43 @@ function renderEmployeeDetails() {
             </div>
           </div>
         </div>
+
+        <!-- Bottom Row: Session Activity Logs -->
+        <div style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 12px; margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+          <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); margin: 0 0 8px 0; display: flex; align-items: center; gap: 6px;">
+            🕒 Session Activity Logs (By Date)
+          </h4>
+          ${(() => {
+            const logs = emp.activityLogs || [];
+            if (logs.length === 0) {
+              return `<div style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">No login/logout logs recorded yet.</div>`;
+            }
+            const sortedLogs = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+            const rows = sortedLogs.map(log => `
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); text-align: left;">
+                <td style="padding: 8px 0; color: var(--text-primary); font-weight: 500;">${log.date}</td>
+                <td style="padding: 8px 0; color: #22c55e; font-weight: 600;">${log.login || '-'}</td>
+                <td style="padding: 8px 0; color: #ef4444; font-weight: 600;">${log.logout || '-'}</td>
+              </tr>
+            `).join('');
+            return `
+              <div style="max-height: 200px; overflow-y: auto; padding-right: 4px; border: 1px solid var(--border-color); border-radius: 4px; padding: 8px 12px;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem;">
+                  <thead>
+                    <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
+                      <th style="padding-bottom: 8px; font-weight: 600;">Date</th>
+                      <th style="padding-bottom: 8px; font-weight: 600;">Login Time</th>
+                      <th style="padding-bottom: 8px; font-weight: 600;">Logout Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rows}
+                  </tbody>
+                </table>
+              </div>
+            `;
+          })()}
+        </div>
       `;
       card.appendChild(detailsDiv);
     }
@@ -10635,6 +10719,13 @@ window.addEventListener('DOMContentLoaded', init);
 // Clean up active status on window close or tab navigation
 window.addEventListener('beforeunload', () => {
   if (state.currentUser) {
-    fetch(`/api/sync?employeeId=${state.currentUser.id}&active=false`, { keepalive: true }).catch(() => {});
+    const userId = state.currentUser.id;
+    fetch(`/api/sync?employeeId=${userId}&active=false`, { keepalive: true }).catch(() => {});
+    fetch('/api/activity-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: userId, type: 'logout' }),
+      keepalive: true
+    }).catch(() => {});
   }
 });

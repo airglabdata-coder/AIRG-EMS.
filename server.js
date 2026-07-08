@@ -288,6 +288,63 @@ app.post('/api/sync', async (req, res) => {
   }
 });
 
+// Endpoint to log employee activity (login/logout times by date)
+app.post('/api/activity-log', async (req, res) => {
+  const { employeeId, type } = req.body;
+  if (!employeeId || !type) {
+    return res.status(400).json({ error: 'Missing employeeId or type' });
+  }
+
+  try {
+    const emp = await models.Employee.findOne({ id: employeeId });
+    if (!emp) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    const dateObj = new Date();
+    const dateOptions = { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric' };
+    const timeOptions = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+
+    const formattedDate = dateObj.toLocaleDateString('en-US', dateOptions);
+    const formattedTime = dateObj.toLocaleTimeString('en-US', timeOptions);
+
+    let logs = emp.get('activityLogs') || [];
+    let existingIndex = logs.findIndex(log => log.date === formattedDate);
+
+    if (existingIndex > -1) {
+      if (type === 'login') {
+        logs[existingIndex].login = formattedTime;
+      } else if (type === 'logout') {
+        logs[existingIndex].logout = formattedTime;
+      }
+    } else {
+      const newLog = {
+        date: formattedDate,
+        login: type === 'login' ? formattedTime : '',
+        logout: type === 'logout' ? formattedTime : ''
+      };
+      logs.push(newLog);
+    }
+
+    emp.set('activityLogs', logs);
+    emp.markModified('activityLogs');
+    await emp.save();
+
+    // Trigger client updates by modifying sync metadata
+    const timestamp = Date.now();
+    await models.SystemMetadata.findOneAndUpdate(
+      { key: 'lastUpdated' },
+      { timestamp },
+      { upsert: true }
+    );
+
+    return res.json({ success: true, activityLogs: logs, timestamp });
+  } catch (err) {
+    console.error('Failed to log activity:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 
 // Configure Web Push VAPID Details
 let vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
