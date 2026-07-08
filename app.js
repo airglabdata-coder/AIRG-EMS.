@@ -191,17 +191,23 @@ async function fetchCentralizedState() {
 
 function initSyncPolling() {
   setInterval(async () => {
-    const activeEl = document.activeElement;
-    if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
-      return;
-    }
-    const openModals = document.querySelectorAll('.modal-overlay.active');
-    if (openModals.length > 0) {
-      return;
-    }
+    if (!state.currentUser) return;
+
+    // Check if the user is busy typing or has an active modal overlay open
+    const isUserBusy = (() => {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        return true;
+      }
+      const openModals = document.querySelectorAll('.modal-overlay.active');
+      if (openModals.length > 0) {
+        return true;
+      }
+      return false;
+    })();
 
     try {
-      const url = state.currentUser ? `/api/sync?employeeId=${state.currentUser.id}` : '/api/sync';
+      const url = `/api/sync?employeeId=${state.currentUser.id}`;
       const res = await fetch(url);
 
       // If server returned an error, skip this poll cycle — keep existing state intact
@@ -212,6 +218,7 @@ function initSyncPolling() {
 
       const data = await res.json();
 
+      // Always update active users list and re-render online status indicators
       if (data && data.activeUsers) {
         const prevActive = JSON.stringify(state.activeUsers || []);
         const nextActive = JSON.stringify(data.activeUsers || []);
@@ -227,6 +234,11 @@ function initSyncPolling() {
             renderEmployeeDetails();
           }
         }
+      }
+
+      // If user is typing or viewing a modal, skip synchronization of database state
+      if (isUserBusy) {
+        return;
       }
 
       if (data && data.state && !data.empty && !data.error && data.timestamp !== state.lastSyncedTimestamp) {
