@@ -74,6 +74,16 @@
           <span>Employee Details</span>
         </a>
       </li>
+      <li id="menu-item-reg-approval" style="display: none;">
+        <a href="#" class="menu-item" data-view="registration-approval">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M18 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Reg Approvals</span>
+          <span class="menu-badge" id="menu-reg-approval-badge" style="display: none; background-color: var(--danger); font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; margin-left: auto;"></span>
+        </a>
+      </li>
       <li>
         <a href="#" class="menu-item" data-view="communications" id="menu-item-comm">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -619,6 +629,38 @@
                 <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 600;">Record Entry</button>
               </div>
             </form>
+          </div>
+
+          <!-- Registration Approval Queue (HR / Admin only) -->
+          <div class="card" id="hr-registration-approval-card" style="display: none; padding: 24px; margin-bottom: 32px;">
+            <div class="card-header" style="padding: 0 0 20px 0; margin-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+              <h2 class="card-title" style="margin: 0;">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                  style="stroke: var(--primary);">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M18 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Registration Approval Queue
+              </h2>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Emp ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Role / Designation</th>
+                    <th>Dept</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="hr-registration-queue-tbody">
+                  <!-- Injected via app.js -->
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <!-- Leave Requests Pending Approval Queue -->
@@ -1733,6 +1775,33 @@
       <!-- Responsive Grid for the 4 Managers -->
       <div id="schools-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; width: 100%;">
         <!-- Populated dynamically via JS -->
+      </div>
+    </div>
+
+    <!-- ================= REGISTRATION APPROVAL (HR / Admin View) ================= -->
+    <div id="registration-approval-view-container" style="display: none; width: 100%;">
+      <div class="card" style="box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--bg-secondary); padding: 24px;">
+        <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px;">
+          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">Registration Approval Queue</h2>
+        </div>
+        <div class="table-container" style="width: 100%; overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Emp ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Role / Designation</th>
+                <th>Dept</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="registration-approval-queue-tbody">
+              <!-- Injected via app.js -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 

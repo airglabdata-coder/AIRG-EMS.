@@ -2563,7 +2563,7 @@ function populateEmployeeDropdown() {
   const empSelect = document.getElementById('active-employee-select');
   if (!empSelect) return;
   empSelect.innerHTML = '';
-  state.employees.filter(emp => (emp.role === 'Employee' || emp.role === 'Tech Lead') && !isPratap(emp) && !emp.isDeleted).forEach(emp => {
+  state.employees.filter(emp => (emp.role === 'Employee' || emp.role === 'Tech Lead') && !isPratap(emp) && !emp.isDeleted && emp.status !== 'pending_approval').forEach(emp => {
     const option = document.createElement('option');
     option.value = emp.id;
     option.textContent = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
@@ -2598,6 +2598,17 @@ function updateSidebarMenu() {
       empDetailsMenu.style.display = 'flex';
     } else {
       empDetailsMenu.style.display = 'none';
+    }
+  }
+
+  const regApprovalMenu = document.getElementById('menu-item-reg-approval');
+  if (regApprovalMenu) {
+    const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
+    const isHROrAdmin = userRole.includes('hr') || userRole.includes('admin');
+    if (isHROrAdmin) {
+      regApprovalMenu.style.display = 'flex';
+    } else {
+      regApprovalMenu.style.display = 'none';
     }
   }
 }
@@ -2673,9 +2684,11 @@ function switchView(viewName) {
   const ticketsContainer = document.getElementById('tickets-view-container');
   const schoolContainer = document.getElementById('school-management-view-container');
   const empDetailsContainer = document.getElementById('emp-details-view-container');
+  const regApprovalContainer = document.getElementById('registration-approval-view-container');
 
   if (schoolContainer) schoolContainer.style.display = 'none';
   if (empDetailsContainer) empDetailsContainer.style.display = 'none';
+  if (regApprovalContainer) regApprovalContainer.style.display = 'none';
 
   if (viewName === 'communications') {
     if (empContainer) empContainer.style.display = 'none';
@@ -2826,11 +2839,36 @@ function switchView(viewName) {
     if (ticketsContainer) ticketsContainer.style.display = 'none';
     if (schoolContainer) schoolContainer.style.display = 'none';
     if (empDetailsContainer) empDetailsContainer.style.display = 'block';
+    if (regApprovalContainer) regApprovalContainer.style.display = 'none';
 
     const titleLabel = document.getElementById('page-title-label');
     if (titleLabel) titleLabel.textContent = 'Employee Details';
 
     renderEmployeeDetails();
+  } else if (viewName === 'registration-approval') {
+    const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
+    const isHROrAdmin = userRole.includes('hr') || userRole.includes('admin');
+    if (!isHROrAdmin) {
+      switchView('tasks');
+      return;
+    }
+
+    if (empContainer) empContainer.style.display = 'none';
+    if (hrContainer) hrContainer.style.display = 'none';
+    if (commContainer) commContainer.style.display = 'none';
+    if (calendarContainer) calendarContainer.style.display = 'none';
+    if (reportsContainer) reportsContainer.style.display = 'none';
+    if (payslipsContainer) payslipsContainer.style.display = 'none';
+    if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
+    if (ticketsContainer) ticketsContainer.style.display = 'none';
+    if (schoolContainer) schoolContainer.style.display = 'none';
+    if (empDetailsContainer) empDetailsContainer.style.display = 'none';
+    if (regApprovalContainer) regApprovalContainer.style.display = 'block';
+
+    const titleLabel = document.getElementById('page-title-label');
+    if (titleLabel) titleLabel.textContent = 'Registration Approval Queue';
+
+    renderRegistrationApprovalQueue();
   } else {
     if (commContainer) commContainer.style.display = 'none';
     if (calendarContainer) calendarContainer.style.display = 'none';
@@ -3046,7 +3084,7 @@ function renderHRDashboard(viewName = 'dashboard') {
   });
 
   // Calculate HR stats cards (clamped by department for Tech Leads & Managers)
-  const activeEmployees = state.employees.filter(emp => !emp.isDeleted);
+  const activeEmployees = state.employees.filter(emp => !emp.isDeleted && emp.status !== 'pending_approval');
   const deptEmployees = (state.currentRole === 'techlead' || state.currentRole === 'manager')
     ? activeEmployees.filter(emp => {
       if (!emp.dept) return false;
@@ -3285,7 +3323,7 @@ function renderEmployeeRoster() {
 
 
   let employeesToRender = state.employees.filter(emp => {
-    if (emp.isDeleted) return false;
+    if (emp.isDeleted || emp.status === 'pending_approval') return false;
     const normalizedRole = (emp.role || '').toLowerCase();
     const isSystemAdmin = normalizedRole.includes('admin') || 
                           emp.email.toLowerCase() === 'admin@company.com' ||
@@ -3536,6 +3574,57 @@ function deleteEmployee(empId, event) {
     showToast(`Employee "${emp.name}" deleted successfully.`, 'success');
   }
 }
+
+function approveRegistration(empId) {
+  const emp = state.employees.find(e => e.id === empId);
+  if (!emp) return;
+  
+  if (confirm(`Are you sure you want to approve registration for "${emp.name}"?`)) {
+    delete emp.status; // Remove pending_approval status, making them active
+    localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+    triggerBackendSync();
+    
+    // Refresh dropdowns and UI
+    populateEmployeeDropdown();
+    populateTaskModalOptions();
+    renderEmployeeRoster();
+    if (typeof renderEmployeeDetails === 'function') {
+      renderEmployeeDetails();
+    }
+    const activeMenuItem = document.querySelector('.menu-item.active');
+    const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
+    switchView(currentView);
+    
+    showToast(`Registration approved for "${emp.name}".`, 'success');
+  }
+}
+
+function rejectRegistration(empId) {
+  const emp = state.employees.find(e => e.id === empId);
+  if (!emp) return;
+  
+  if (confirm(`Are you sure you want to reject and delete registration for "${emp.name}"?`)) {
+    state.employees = state.employees.filter(e => e.id !== empId);
+    localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+    triggerBackendSync();
+    
+    // Refresh dropdowns and UI
+    populateEmployeeDropdown();
+    populateTaskModalOptions();
+    renderEmployeeRoster();
+    if (typeof renderEmployeeDetails === 'function') {
+      renderEmployeeDetails();
+    }
+    const activeMenuItem = document.querySelector('.menu-item.active');
+    const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
+    switchView(currentView);
+    
+    showToast(`Registration rejected and deleted for "${emp.name}".`, 'success');
+  }
+}
+
+window.approveRegistration = approveRegistration;
+window.rejectRegistration = rejectRegistration;
 
 function updateEmployeeRole(empId, event) {
   if (event) event.stopPropagation();
@@ -5358,7 +5447,7 @@ function populateTechLeadOptions() {
   if (!select) return;
   select.innerHTML = '<option value="" disabled selected>Select tech lead...</option>';
   state.employees.forEach(emp => {
-    if (isPratap(emp) || emp.isDeleted) return; // Hide Pratap & Deleted
+    if (isPratap(emp) || emp.isDeleted || emp.status === 'pending_approval') return; // Hide Pratap, Deleted & Pending
     const opt = document.createElement('option');
     opt.value = emp.id;
     opt.textContent = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
@@ -5829,6 +5918,8 @@ function handleEmployeeCreationSubmit(e) {
   // Generate avatar initials
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
 
+  const isPending = !state.currentUser;
+
   const newEmp = {
     id: id,
     name: name,
@@ -5845,7 +5936,8 @@ function handleEmployeeCreationSubmit(e) {
     bankAcc: '',
     bankIfsc: '',
     photo: currentUploadedEmployeePhoto,
-    password: password || 'password123'
+    password: password || 'password123',
+    status: isPending ? 'pending_approval' : undefined
   };
 
   state.employees.push(newEmp);
@@ -5857,8 +5949,6 @@ function handleEmployeeCreationSubmit(e) {
   if (photoPreview) {
     photoPreview.style.display = 'none';
   }
-
-
 
   // Re-populate all dropdown switchers and modal option lists
   populateEmployeeDropdown();
@@ -5879,15 +5969,14 @@ function handleEmployeeCreationSubmit(e) {
 
   hideEmployeeModal();
 
-  if (!state.currentUser) {
-    showToast(`Employee "${name}" registered successfully! You can now log in.`, 'success');
+  if (isPending) {
+    showToast(`Registration submitted successfully! Waiting for HR/Admin approval.`, 'success');
     return;
   }
 
   // Refresh views
   const activeMenuItem = document.querySelector('.menu-item.active');
   const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
-
   switchView(currentView);
 
   showToast(`Employee "${name}" registered successfully!`, 'success');
@@ -5904,7 +5993,7 @@ function handleAssignTaskProjectChange(e) {
     // Show ALL employees from every branch/department, grouped by department
     const grouped = {};
     state.employees.forEach(emp => {
-      if (isPratap(emp) || emp.isDeleted) return; // Hide Pratap & Deleted
+      if (isPratap(emp) || emp.isDeleted || emp.status === 'pending_approval') return; // Hide Pratap, Deleted & Pending
       if (!grouped[emp.dept]) grouped[emp.dept] = [];
       grouped[emp.dept].push(emp);
     });
@@ -6068,7 +6157,7 @@ function getUnreadChatsCount() {
 
   // 2. Direct chats count
   let unreadDirect = 0;
-  const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id && !emp.isDeleted);
+  const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id && !emp.isDeleted && emp.status !== 'pending_approval');
   otherEmployees.forEach(emp => {
     unreadDirect += getUnreadChatCount(emp.id);
   });
@@ -6135,6 +6224,8 @@ function updateAllMenuBadges() {
     if (reportsBadge) reportsBadge.style.display = 'none';
     const requestsBadge = document.getElementById('menu-requests-badge');
     if (requestsBadge) requestsBadge.style.display = 'none';
+    const regApprovalBadge = document.getElementById('menu-reg-approval-badge');
+    if (regApprovalBadge) regApprovalBadge.style.display = 'none';
     return;
   }
 
@@ -6218,6 +6309,20 @@ function updateAllMenuBadges() {
       requestsBadge.style.display = 'inline-flex';
     } else {
       requestsBadge.style.display = 'none';
+    }
+  }
+
+  // 7. Update Registration Approval menu item badge
+  const pendingRegsCount = state.employees.filter(emp => emp.status === 'pending_approval').length;
+  const regApprovalBadge = document.getElementById('menu-reg-approval-badge');
+  if (regApprovalBadge) {
+    const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
+    const isHROrAdmin = userRole.includes('hr') || userRole.includes('admin');
+    if (isHROrAdmin && pendingRegsCount > 0) {
+      regApprovalBadge.textContent = pendingRegsCount;
+      regApprovalBadge.style.display = 'inline-flex';
+    } else {
+      regApprovalBadge.style.display = 'none';
     }
   }
 }
@@ -6324,7 +6429,7 @@ function renderCommSidebar() {
     itemsBox.appendChild(groupLink);
 
     // 2. Add Direct Messages for all other employees
-    const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id && (isPratap(state.currentUser) || !isPratap(emp)) && !emp.isDeleted);
+    const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id && (isPratap(state.currentUser) || !isPratap(emp)) && !emp.isDeleted && emp.status !== 'pending_approval');
     otherEmployees.forEach(emp => {
       const isDirectActive = state.activeChatType === 'direct' && state.activeChatTargetId === emp.id;
       const empLink = document.createElement('div');
@@ -6979,7 +7084,7 @@ function populateNoticeEmployeeCheckboxes() {
   container.innerHTML = '';
 
   state.employees.forEach(emp => {
-    if (isPratap(emp) || emp.isDeleted) return; // Hide Pratap & Deleted
+    if (isPratap(emp) || emp.isDeleted || emp.status === 'pending_approval') return; // Hide Pratap, Deleted & Pending
     const item = document.createElement('label');
     item.className = 'employee-checkbox-item';
     item.dataset.name = emp.name.toLowerCase();
@@ -8653,7 +8758,7 @@ function populateSalaryEmployeeSelect() {
   if (!select) return;
   const currentVal = select.value;
   select.innerHTML = '';
-  const eligibleEmployees = state.employees.filter(emp => emp.role.toLowerCase() !== 'admin' && !isPratap(emp) && !emp.isDeleted);
+  const eligibleEmployees = state.employees.filter(emp => emp.role.toLowerCase() !== 'admin' && !isPratap(emp) && !emp.isDeleted && emp.status !== 'pending_approval');
   eligibleEmployees.forEach(emp => {
     const opt = document.createElement('option');
     opt.value = emp.id;
@@ -9239,6 +9344,14 @@ function handleLoginSubmit(e) {
 
   const found = state.employees.find(emp => emp.email.toLowerCase() === email);
   if (found) {
+    if (found.isDeleted) {
+      showToast('This account has been deactivated.', 'error');
+      return;
+    }
+    if (found.status === 'pending_approval') {
+      showToast('Your registration is pending approval by HR / Pratap Sir.', 'warning');
+      return;
+    }
     const matchPassword = found.password || 'password123';
     if (password === matchPassword) {
       localStorage.setItem('ems_logged_in_user', JSON.stringify(found));
@@ -9255,6 +9368,14 @@ function quickLogin(identifier) {
     emp.id === identifier || emp.email.toLowerCase() === identifier.toLowerCase()
   );
   if (found) {
+    if (found.isDeleted) {
+      showToast('This account has been deactivated.', 'error');
+      return;
+    }
+    if (found.status === 'pending_approval') {
+      showToast('Your registration is pending approval by HR / Pratap Sir.', 'warning');
+      return;
+    }
     localStorage.setItem('ems_logged_in_user', JSON.stringify(found));
     loginAsUser(found);
     showToast(`Signed in as ${found.name}.`, 'success');
@@ -10652,6 +10773,56 @@ function viewOnboardingDocument(src, event) {
   }
 }
 
+function renderRegistrationApprovalQueue() {
+  const tbody = document.getElementById('registration-approval-queue-tbody');
+  if (!tbody) return;
+
+  const pendingRegs = state.employees.filter(emp => emp.status === 'pending_approval');
+
+  if (pendingRegs.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7">
+          <div class="empty-state" style="padding: 32px; text-align: center;">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 12px; display: inline-block;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7" />
+            </svg>
+            <div class="empty-state-title" style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem; margin-bottom: 4px;">No pending registrations</div>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">All employee registration requests have been approved.</p>
+          </div>
+        </td>
+      </tr>
+    `;
+  } else {
+    tbody.innerHTML = '';
+    pendingRegs.forEach(emp => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="color: var(--text-primary); font-weight: 500;"><strong>${emp.id}</strong></td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="avatar" style="width: 32px; height: 32px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--primary-gradient); color: white; font-weight: bold;">
+              ${emp.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+            </div>
+            <strong style="color: var(--text-primary);">${emp.name}</strong>
+          </div>
+        </td>
+        <td style="color: var(--text-primary);">${emp.email}</td>
+        <td style="color: var(--text-primary);">${emp.phone || '—'}</td>
+        <td><strong style="color: var(--text-primary);">${emp.role}</strong><br><span class="text-muted" style="font-size:0.75rem;">${emp.designation || '—'}</span></td>
+        <td><span class="badge" style="background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color);">${emp.dept || '—'}</span></td>
+        <td>
+          <div style="display:flex; gap: 8px;">
+            <button class="btn btn-success btn-sm" onclick="approveRegistration('${emp.id}')">Approve</button>
+            <button class="btn btn-danger btn-sm" onclick="rejectRegistration('${emp.id}')">Reject</button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+}
+
 function renderEmployeeDetails() {
   const container = document.getElementById('emp-details-cards-list');
   if (!container) return;
@@ -10659,7 +10830,7 @@ function renderEmployeeDetails() {
   container.innerHTML = '';
 
   state.employees.forEach(emp => {
-    if (isPratap(emp)) return; // Hide Pratap
+    if (isPratap(emp) || emp.status === 'pending_approval') return; // Hide Pratap & Pending
     if (!state.expandedEmployeeDetails) {
       state.expandedEmployeeDetails = new Set();
     }
@@ -11254,7 +11425,7 @@ function populateManagerDropdowns() {
   reassignManagerSelect.innerHTML = defaultHtml;
 
   const managers = state.employees.filter(emp => {
-    if (isPratap(emp) || emp.isDeleted) return false; // Hide Pratap & Deleted
+    if (isPratap(emp) || emp.isDeleted || emp.status === 'pending_approval') return false; // Hide Pratap, Deleted & Pending
     const roleStr = (emp.role || '').toLowerCase();
     return roleStr.includes('manager') || roleStr.includes('hr');
   });
