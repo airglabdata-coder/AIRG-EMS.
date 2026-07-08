@@ -8167,12 +8167,33 @@ function renderPayslips() {
   // Calculate LWP deduction rate: base total earning (basic + hra + other) divided by number of days in the month
   const [yearVal, monthVal] = selectedMonth.split('-').map(Number);
   const daysInMonth = new Date(yearVal, monthVal, 0).getDate();
+
+  // Collect national holidays falling in this month (green calendar events)
+  const monthHolidayDates = (state.nationalHolidays || [])
+    .filter(h => h.date && h.date.startsWith(selectedMonth))
+    .map(h => ({ date: h.date, name: h.name, day: new Date(h.date).getDay() }));
+
+  // Unique holiday calendar dates that fall on weekdays (non-Sunday)
+  const weekdayHolidayDates = new Set(
+    monthHolidayDates.filter(h => h.day !== 0).map(h => h.date)
+  );
+
   let workingDays = 0;
   for (let d = 1; d <= daysInMonth; d++) {
-    if (new Date(yearVal, monthVal - 1, d).getDay() !== 0) {
+    const dateStr = `${yearVal}-${String(monthVal).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayOfWeek = new Date(yearVal, monthVal - 1, d).getDay();
+    // Exclude Sundays and national holidays (green calendar events)
+    if (dayOfWeek !== 0 && !weekdayHolidayDates.has(dateStr)) {
       workingDays++;
     }
   }
+
+  // Build holiday tooltip string for the payslip
+  const holidayNames = monthHolidayDates.map(h => h.name);
+  const uniqueHolidayNames = [...new Set(holidayNames)];
+  const holidayTooltip = uniqueHolidayNames.length > 0
+    ? `${weekdayHolidayDates.size} public holiday${weekdayHolidayDates.size !== 1 ? 's' : ''} excluded: ${uniqueHolidayNames.join(', ')}`
+    : '';
   const lwpDeduction = Math.round(((basic + hra + other) / daysInMonth) * lwpDays);
 
   const totalDeductions = profTax + lwpDeduction;
@@ -8241,7 +8262,7 @@ function renderPayslips() {
         </tr>
         <tr style="border: none !important;">
           <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Total Working Days</td>
-          <td style="padding: 4px 0; border: none !important; color: #000;">: ${workingDays}</td>
+          <td style="padding: 4px 0; border: none !important; color: #000;">: ${workingDays}${holidayTooltip ? ` <span title="${holidayTooltip}" style="font-size: 0.72rem; color: #555; cursor: help; border-bottom: 1px dashed #888;">(${weekdayHolidayDates.size} holiday${weekdayHolidayDates.size !== 1 ? 's' : ''} excl.)</span>` : ''}</td>
           <td style="padding: 4px 0; border: none !important; font-weight: 500; color: #000;">Department</td>
           <td style="padding: 4px 0; border: none !important; color: #000;">: ${targetEmp.dept ? targetEmp.dept.split(',')[0].trim() : 'AI'}</td>
         </tr>
