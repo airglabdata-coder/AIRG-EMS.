@@ -543,7 +543,7 @@ const DEFAULT_EMPLOYEES = [
     name: "Shravani Khanvilkar",
     dept: "AI, Electronics, Lab Setup, Instructor",
     email: "shravani@gurujiair.com",
-    role: "HR",
+    role: "HR, Tech Lead",
     balance: 20,
     absent: 0,
     avatar: "SK",
@@ -2491,7 +2491,7 @@ function setRole(role) {
           name: "Shravani Khanvilkar",
           dept: "AI, Electronics, Lab Setup, Instructor",
           email: "shravani@gurujiair.com",
-          role: "HR",
+          role: "HR, Tech Lead",
           balance: 20,
           absent: 0,
           avatar: "SK",
@@ -3064,7 +3064,7 @@ function renderHRDashboard(viewName = 'dashboard') {
   const isHRorAdmin = state.currentRole === 'hr' || state.currentRole === 'admin';
   const recordLeaveCard = document.getElementById('hr-record-leave-card');
   if (recordLeaveCard) {
-    if (isHRorAdmin && viewName === 'dashboard') {
+    if (isHRorAdmin && (viewName === 'dashboard' || viewName === 'requests')) {
       recordLeaveCard.style.display = 'block';
       const empSelect = document.getElementById('hr-leave-emp-select');
       if (empSelect) {
@@ -5374,8 +5374,8 @@ function changeProjectTechLead(projId, newTechLeadId) {
   proj.techLeadId = newTechLeadId;
 
   // Promote employee to Tech Lead if they aren't already a Tech Lead or Admin
-  if (chosenEmp && chosenEmp.role !== 'Tech Lead' && chosenEmp.role !== 'Admin') {
-    chosenEmp.role = 'Tech Lead';
+  if (chosenEmp && !chosenEmp.role.includes('Tech Lead') && chosenEmp.role !== 'Admin') {
+    chosenEmp.role = chosenEmp.role ? `${chosenEmp.role}, Tech Lead` : 'Tech Lead';
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
     showToast(`${chosenEmp.name} has been promoted to Tech Lead!`, 'info');
   }
@@ -8120,6 +8120,20 @@ function renderPayslips() {
 
   const netPay = totalEarnings - totalDeductions;
 
+  const defaultNotesText = `• Leave Without Pay (LWP) and Absent days are subject to salary deductions.
+• Leave With Pay days are fully paid leaves.`;
+  const payslipNotesText = (salary.notes !== undefined && salary.notes !== null) ? salary.notes : defaultNotesText;
+
+  // Format notes lines for display
+  const formattedNotesHTML = payslipNotesText.split('\n').map(line => {
+    line = line.trim();
+    if (!line) return '';
+    if (!line.startsWith('•') && !line.startsWith('-')) {
+      return `<div style="margin-bottom: 2px;">• ${line}</div>`;
+    }
+    return `<div style="margin-bottom: 2px;">${line}</div>`;
+  }).join('');
+
   // Format month name
   const [year, month] = selectedMonth.split('-');
   const dateObj = new Date(year, month - 1);
@@ -8212,28 +8226,32 @@ function renderPayslips() {
         <thead>
           <tr>
             <th style="border: 1px solid #000; background-color: #d3d3d3; padding: 8px 12px; text-align: left; font-weight: bold; color: #000;">Deductions</th>
+            <th style="border: 1px solid #000; background-color: #d3d3d3; padding: 8px 12px; text-align: center; font-weight: bold; color: #000; width: 15%;">Days</th>
             <th style="border: 1px solid #000; background-color: #d3d3d3; padding: 8px 12px; text-align: right; font-weight: bold; color: #000; width: 18%;">Amount</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td style="border: 1px solid #000; padding: 8px 12px; text-align: left; color: #000;">Professional Tax</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: center; color: #000;">-</td>
             <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${profTax || ''}</td>
           </tr>
           <tr>
             <td style="border: 1px solid #000; padding: 8px 12px; text-align: left; color: #000;">Leave Without Pay</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: center; color: #000;">${lwpDays || 0}</td>
             <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${lwpDeduction > 0 ? lwpDeduction : ''}</td>
           </tr>
           <tr>
             <td style="border: 1px solid #000; padding: 8px 12px; text-align: left; color: #000;">Leave With Pay</td>
-            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;"></td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: center; color: #000;">${paidLeaveDays || 0}</td>
+            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">-</td>
           </tr>
           <tr style="font-weight: bold;">
-            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">Total Deductions</td>
+            <td colspan="2" style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">Total Deductions</td>
             <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${totalDeductions}</td>
           </tr>
           <tr style="font-weight: bold;">
-            <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">Net Pay</td>
+            <td colspan="2" style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">Net Pay</td>
             <td style="border: 1px solid #000; padding: 8px 12px; text-align: right; color: #000;">${netPay}</td>
           </tr>
         </tbody>
@@ -8241,9 +8259,20 @@ function renderPayslips() {
 
       <!-- Signatures Block -->
       <div class="payslip-signatures" style="display: flex; justify-content: space-between; margin-top: 60px; margin-bottom: 40px; padding: 0 20px; font-size: 0.9rem; color: #000; width: 100%; box-sizing: border-box;">
-        <div style="text-align: center; width: 35%;">
-          <p class="payslip-sig-label" style="margin: 0 0 50px 0; font-weight: 500; color: #000;">Employer Signature</p>
-          <div style="border-bottom: 1.5px solid #000; width: 100%;"></div>
+        <div style="width: 45%; display: flex; flex-direction: column; text-align: left;">
+          <div style="text-align: center;">
+            <p class="payslip-sig-label" style="margin: 0 0 50px 0; font-weight: 500; color: #000;">Employer Signature</p>
+            <div style="border-bottom: 1.5px solid #000; width: 100%;"></div>
+          </div>
+          <!-- Notes section below the employer signature -->
+          <div class="payslip-notes" style="font-size: 0.72rem; color: #555; line-height: 1.4; margin-top: 15px; text-align: left; font-family: inherit; width: 100%;">
+            <strong style="color: #000; display: block; margin-bottom: 4px;">Notes:</strong>
+            ${isHRorAdmin ? `
+              <textarea id="payslip-notes-input" style="width: 100%; border: 1px dashed var(--border-color); background: transparent; color: #555; font-size: 0.72rem; font-family: inherit; resize: vertical; padding: 6px; box-sizing: border-box; outline: none; border-radius: var(--border-radius-sm);" rows="3" onchange="updatePayslipNotes(this.value)">${payslipNotesText}</textarea>
+            ` : `
+              <div style="font-size: 0.72rem; color: #555; line-height: 1.4;">${formattedNotesHTML}</div>
+            `}
+          </div>
         </div>
         <div style="text-align: center; width: 35%;">
           <p class="payslip-sig-label" style="margin: 0 0 50px 0; font-weight: 500; color: #000;">Employee Signature</p>
@@ -8338,6 +8367,19 @@ function printPayslip() {
           .payslip-footnote {
             margin-top: 15px !important;
           }
+          textarea {
+            border: none !important;
+            resize: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+            color: #555 !important;
+            width: 100% !important;
+            overflow: hidden !important;
+            font-family: inherit !important;
+            font-size: 0.72rem !important;
+            line-height: 1.4 !important;
+            outline: none !important;
+          }
         </style>
       </head>
       <body>
@@ -8399,6 +8441,10 @@ function handleSalaryEmpChange() {
     if (lwpEl) {
       lwpEl.value = salary.lwpDays || 0;
     }
+    const notesEl = document.getElementById('salary-custom-notes');
+    if (notesEl) {
+      notesEl.value = salary.notes || '';
+    }
   }
   renderPayslips();
 }
@@ -8423,6 +8469,7 @@ function handleSalaryConfigSubmit(e) {
   const other = totalEarningBase - (basic + hra);
   const profTax = totalEarningBase > 7500 ? 200 : 0;
   const lwpDays = Number(document.getElementById('salary-lwp').value || 0);
+  const customNotes = document.getElementById('salary-custom-notes') ? document.getElementById('salary-custom-notes').value.trim() : '';
 
   const salaryData = {
     totalEarning: totalEarningBase,
@@ -8431,6 +8478,7 @@ function handleSalaryConfigSubmit(e) {
     other: other,
     profTax: profTax,
     lwpDays: lwpDays,
+    notes: customNotes,
     _lwpManualOverride: true  // HR explicitly set LWP — preserve it
   };
 
@@ -8441,6 +8489,38 @@ function handleSalaryConfigSubmit(e) {
   showToast(`Salary details for ${emp.name} for ${selectedMonth} updated!`, 'success');
   renderPayslips();
 }
+
+function updatePayslipNotes(value) {
+  let targetEmp = state.currentUser;
+  const isHRorAdmin = state.currentRole === 'hr' || state.currentRole === 'admin';
+  if (isHRorAdmin) {
+    const select = document.getElementById('salary-emp-select');
+    if (select && select.value) {
+      targetEmp = state.employees.find(e => e.id === select.value) || state.currentUser;
+    }
+  }
+  if (!targetEmp) return;
+
+  const monthSelect = document.getElementById('payslip-month-select');
+  const selectedMonth = monthSelect ? monthSelect.value : '2026-06';
+
+  if (!targetEmp.salaries) {
+    targetEmp.salaries = {};
+  }
+  const salary = getEmployeeSalaryForMonth(targetEmp, selectedMonth);
+  salary.notes = value;
+
+  // Also sync the configuration panel notes textarea if currently on screen
+  const notesEl = document.getElementById('salary-custom-notes');
+  if (notesEl) {
+    notesEl.value = value;
+  }
+
+  localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+  showToast('Payslip notes updated successfully!', 'success');
+  renderPayslips();
+}
+window.updatePayslipNotes = updatePayslipNotes;
 
 function renderReimbursements() {
   const isEmployee = state.currentRole === 'employee' || state.currentRole === 'techlead' || state.currentRole === 'manager';
@@ -8822,6 +8902,20 @@ window.openPdfInNewWindow = openPdfInNewWindow;
 function sanitizeEmployeeRoles() {
   if (!state.employees || !state.projects) return;
   let updated = false;
+
+  // Self-heal Shravani Khanvilkar's role to contain both HR and Tech Lead
+  const shravani = state.employees.find(e => e.id === 'AIRG00042');
+  if (shravani) {
+    if (!shravani.role.includes('HR')) {
+      shravani.role = shravani.role ? `HR, ${shravani.role}` : 'HR';
+      updated = true;
+      if (state.currentUser && state.currentUser.id === shravani.id) {
+        state.currentUser.role = shravani.role;
+        localStorage.setItem('ems_logged_in_user', JSON.stringify(state.currentUser));
+      }
+    }
+  }
+
   state.employees.forEach(emp => {
     if (emp.role === 'Tech Lead') {
       const isLead = state.projects.some(p => p.techLeadId === emp.id);
@@ -8946,7 +9040,19 @@ function loginAsUser(user) {
 
   const switcherContainer = document.querySelector('.role-switcher-container');
   if (switcherContainer) {
-    switcherContainer.style.display = 'none';
+    if (assignedRoles.length > 1) {
+      switcherContainer.style.display = 'flex';
+      const btnEmp = document.getElementById('btn-role-employee');
+      const btnLead = document.getElementById('btn-role-techlead');
+      const btnHR = document.getElementById('btn-role-hr');
+      const btnAdmin = document.getElementById('btn-role-admin');
+      if (btnEmp) btnEmp.style.display = assignedRoles.includes('employee') ? 'inline-block' : 'none';
+      if (btnLead) btnLead.style.display = assignedRoles.includes('techlead') ? 'inline-block' : 'none';
+      if (btnHR) btnHR.style.display = assignedRoles.includes('hr') ? 'inline-block' : 'none';
+      if (btnAdmin) btnAdmin.style.display = assignedRoles.includes('admin') ? 'inline-block' : 'none';
+    } else {
+      switcherContainer.style.display = 'none';
+    }
   }
 
   // Bind initial role UI display
