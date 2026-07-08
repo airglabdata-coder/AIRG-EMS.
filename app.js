@@ -4141,8 +4141,8 @@ function createProjectCard(proj, isMyProject) {
     return emp.dept.split(',').map(d => d.trim().toLowerCase()).includes(deptName.toLowerCase());
   };
 
-  const deptEmployees = state.employees.filter(e => isDeptMember(e, proj.dept) && !isPratap(e));
-  const externalEmployees = state.employees.filter(e => !isDeptMember(e, proj.dept) && (e.id === proj.techLeadId || (proj.employeeIds && proj.employeeIds.includes(e.id)) || taskAssigneeIds.includes(e.id)) && !isPratap(e));
+  const deptEmployees = state.employees.filter(e => isDeptMember(e, proj.dept));
+  const externalEmployees = state.employees.filter(e => !isDeptMember(e, proj.dept) && (e.id === proj.techLeadId || (proj.employeeIds && proj.employeeIds.includes(e.id)) || taskAssigneeIds.includes(e.id)));
   const allProjectEmployees = [...deptEmployees, ...externalEmployees];
 
   const uniqueEmployees = [];
@@ -4189,14 +4189,14 @@ function createProjectCard(proj, isMyProject) {
   }).join('');
 
   // Dropdown for non-member employees
-  const nonMemberEmployees = state.employees.filter(e => !seenIds.has(e.id) && !isPratap(e));
+  const nonMemberEmployees = state.employees.filter(e => !seenIds.has(e.id));
   const existingEmployeesToAssignOptions = nonMemberEmployees.map(emp => {
     const label = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
     return `<option value="${emp.id}">${label}</option>`;
   }).join('');
 
   // Dropdown options for all employees to appoint as Tech Lead
-  const allEmployeesOptions = state.employees.filter(e => !isPratap(e)).map(emp => {
+  const allEmployeesOptions = state.employees.map(emp => {
     const isCurrent = emp.id === proj.techLeadId;
     const label = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
     return `<option value="${emp.id}" ${isCurrent ? 'selected' : ''}>${label}</option>`;
