@@ -2864,7 +2864,7 @@ function switchView(viewName) {
     if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
     if (ticketsContainer) ticketsContainer.style.display = 'none';
     if (schoolContainer) schoolContainer.style.display = 'none';
-    if (empDetailsContainer) empDetailsContainer.style.display = 'block';
+    if (empDetailsContainer) empDetailsContainer.style.display = 'flex';
     if (regApprovalContainer) regApprovalContainer.style.display = 'none';
 
     const titleLabel = document.getElementById('page-title-label');
@@ -2889,7 +2889,7 @@ function switchView(viewName) {
     if (ticketsContainer) ticketsContainer.style.display = 'none';
     if (schoolContainer) schoolContainer.style.display = 'none';
     if (empDetailsContainer) empDetailsContainer.style.display = 'none';
-    if (regApprovalContainer) regApprovalContainer.style.display = 'block';
+    if (regApprovalContainer) regApprovalContainer.style.display = 'flex';
 
     const titleLabel = document.getElementById('page-title-label');
     if (titleLabel) titleLabel.textContent = 'Registration Approval Queue';

@@ -252,17 +252,19 @@
       </div>
 
       <!-- ================= REGISTRATION APPROVAL (HR / Admin View) ================= -->
-      <div id="registration-approval-view-container" style="display: none; width: 100%;">
-        <div class="card" style="box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--bg-secondary); padding: 24px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
-            <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0;">Registration Approval Queue</h2>
-            <div class="search-input-wrapper" style="max-width: 300px; width: 100%;">
-              <input type="text" id="reg-approval-search" placeholder="Search by Employee ID..." style="width: 100%;">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
+      <div id="registration-approval-view-container" style="display: none; flex-direction: column; gap: 24px; width: 100%; margin-top: 0; margin-bottom: auto; flex: 0 0 auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; flex-wrap: wrap; gap: 16px;">
+          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0;">Registration Approval Queue</h2>
+        </div>
+        <div class="filter-bar">
+          <div class="search-input-wrapper" style="max-width: 300px; width: 100%;">
+            <input type="text" id="reg-approval-search" placeholder="Search by Employee ID..." style="width: 100%;">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
           </div>
+        </div>
+        <div class="card" style="box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--bg-secondary); padding: 24px;">
           <div class="table-container" style="width: 100%; overflow-x: auto;">
             <table>
               <thead>
@@ -1820,20 +1822,20 @@
     </div>
 
     <!-- ================= EMPLOYEE DETAILS (HR View) ================= -->
-    <div id="emp-details-view-container" style="display: none; width: 100%;">
-      <div class="card" style="box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--bg-secondary); padding: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
-          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0;">Employee Details</h2>
-          <div class="search-input-wrapper" style="max-width: 300px; width: 100%;">
-            <input type="text" id="emp-details-search" placeholder="Search by Name..." style="width: 100%;">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
+    <div id="emp-details-view-container" style="display: none; flex-direction: column; gap: 24px; width: 100%; margin-top: 0; margin-bottom: auto; flex: 0 0 auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; flex-wrap: wrap; gap: 16px;">
+        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0;">Employee Details</h2>
+      </div>
+      <div class="filter-bar">
+        <div class="search-input-wrapper" style="max-width: 300px; width: 100%;">
+          <input type="text" id="emp-details-search" placeholder="Search by Name..." style="width: 100%;">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
         </div>
-        <div id="emp-details-cards-list" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
-          <!-- Populated dynamically via JS -->
-        </div>
+      </div>
+      <div id="emp-details-cards-list" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+        <!-- Populated dynamically via JS -->
       </div>
     </div>
 
