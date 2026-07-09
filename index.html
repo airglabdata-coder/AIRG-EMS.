@@ -251,6 +251,39 @@
           Approvals</button>
       </div>
 
+      <!-- ================= REGISTRATION APPROVAL (HR / Admin View) ================= -->
+      <div id="registration-approval-view-container" style="display: none; width: 100%;">
+        <div class="card" style="box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--bg-secondary); padding: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0;">Registration Approval Queue</h2>
+            <div class="search-input-wrapper" style="max-width: 300px; width: 100%;">
+              <input type="text" id="reg-approval-search" placeholder="Search by Employee ID..." style="width: 100%;">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+          <div class="table-container" style="width: 100%; overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Emp ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Role / Designation</th>
+                  <th>Dept</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="registration-approval-queue-tbody">
+                <!-- Injected via app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- ================= EMPLOYEE PANEL ================= -->
       <div id="employee-view-container" style="display: flex; flex-direction: column; gap: 32px; width: 100%;">
 
@@ -778,6 +811,16 @@
               <button class="btn btn-primary btn-sm" onclick="openCreateDeptModal()">+ Add Department</button>
               <button class="btn btn-primary btn-sm" onclick="openCreateEmployeeModal()">+ Add Employee</button>
               <button class="btn btn-primary btn-sm" onclick="openAssignRoleModal()">Assign Role</button>
+            </div>
+          </div>
+          <!-- Filter Controls -->
+          <div class="filter-bar" style="margin-top: 16px;">
+            <div class="search-input-wrapper">
+              <input type="text" id="roster-search" placeholder="Search by name...">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
             </div>
           </div>
           <div id="hr-roster-list" class="roster-list">
@@ -1778,38 +1821,17 @@
       </div>
     </div>
 
-    <!-- ================= REGISTRATION APPROVAL (HR / Admin View) ================= -->
-    <div id="registration-approval-view-container" style="display: none; width: 100%;">
-      <div class="card" style="box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--bg-secondary); padding: 24px;">
-        <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px;">
-          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">Registration Approval Queue</h2>
-        </div>
-        <div class="table-container" style="width: 100%; overflow-x: auto;">
-          <table>
-            <thead>
-              <tr>
-                <th>Emp ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Role / Designation</th>
-                <th>Dept</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="registration-approval-queue-tbody">
-              <!-- Injected via app.js -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
     <!-- ================= EMPLOYEE DETAILS (HR View) ================= -->
     <div id="emp-details-view-container" style="display: none; width: 100%;">
       <div class="card" style="box-sizing: border-box; width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--bg-secondary); padding: 24px;">
-        <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px;">
-          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">Employee Details</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
+          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0;">Employee Details</h2>
+          <div class="search-input-wrapper" style="max-width: 300px; width: 100%;">
+            <input type="text" id="emp-details-search" placeholder="Search by Name..." style="width: 100%;">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
         </div>
         <div id="emp-details-cards-list" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
           <!-- Populated dynamically via JS -->

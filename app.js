@@ -1952,6 +1952,24 @@ async function init() {
     typeFilter.addEventListener('change', renderHRDashboard);
   }
 
+  // Registration Queue Search Filter
+  const regApprovalSearch = document.getElementById('reg-approval-search');
+  if (regApprovalSearch) {
+    regApprovalSearch.addEventListener('input', renderRegistrationApprovalQueue);
+  }
+
+  // Roster Search Filter
+  const rosterSearch = document.getElementById('roster-search');
+  if (rosterSearch) {
+    rosterSearch.addEventListener('input', renderEmployeeRoster);
+  }
+
+  // Employee Details Search Filter
+  const empDetailsSearch = document.getElementById('emp-details-search');
+  if (empDetailsSearch) {
+    empDetailsSearch.addEventListener('input', renderEmployeeDetails);
+  }
+
   // Modal Setup
   const btnCloseModal = document.getElementById('btn-close-modal');
   const btnCancelModal = document.getElementById('btn-cancel-modal');
@@ -2625,6 +2643,14 @@ function switchView(viewName) {
   if (leaveSubTabs && viewName !== 'dashboard' && viewName !== 'requests' && viewName !== 'reports') {
     leaveSubTabs.style.display = 'none';
   }
+
+  // Clear name/ID search filters on tab transition
+  const regSearch = document.getElementById('reg-approval-search');
+  if (regSearch) regSearch.value = '';
+  const rosterSearch = document.getElementById('roster-search');
+  if (rosterSearch) rosterSearch.value = '';
+  const empDetailsSearch = document.getElementById('emp-details-search');
+  if (empDetailsSearch) empDetailsSearch.value = '';
 
   // Mark resolved requests as read for employee
   if (state.currentUser && (viewName === 'dashboard' || viewName === 'requests')) {
@@ -3321,9 +3347,12 @@ function renderEmployeeRoster() {
   if (!listEl) return;
   listEl.innerHTML = '';
 
+  const searchEl = document.getElementById('roster-search');
+  const query = searchEl ? searchEl.value.trim().toLowerCase() : '';
 
   let employeesToRender = state.employees.filter(emp => {
     if (emp.isDeleted || emp.status === 'pending_approval') return false;
+    if (query && !emp.name.toLowerCase().includes(query)) return false;
     const normalizedRole = (emp.role || '').toLowerCase();
     const isSystemAdmin = normalizedRole.includes('admin') || 
                           emp.email.toLowerCase() === 'admin@company.com' ||
@@ -5937,7 +5966,8 @@ function handleEmployeeCreationSubmit(e) {
     bankIfsc: '',
     photo: currentUploadedEmployeePhoto,
     password: password || 'password123',
-    status: isPending ? 'pending_approval' : undefined
+    status: isPending ? 'pending_approval' : undefined,
+    createdAt: new Date().toISOString()
   };
 
   state.employees.push(newEmp);
@@ -10777,7 +10807,25 @@ function renderRegistrationApprovalQueue() {
   const tbody = document.getElementById('registration-approval-queue-tbody');
   if (!tbody) return;
 
-  const pendingRegs = state.employees.filter(emp => emp.status === 'pending_approval');
+  const searchEl = document.getElementById('reg-approval-search');
+  const query = searchEl ? searchEl.value.trim().toLowerCase() : '';
+
+  let pendingRegs = state.employees.filter(emp => emp.status === 'pending_approval');
+
+  // Search filter (Employee ID)
+  if (query) {
+    pendingRegs = pendingRegs.filter(emp => emp.id.toLowerCase().includes(query));
+  }
+
+  // Sort descending by registration date (latest first)
+  pendingRegs.sort((a, b) => {
+    if (a.createdAt && b.createdAt) {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    }
+    const idxA = state.employees.indexOf(a);
+    const idxB = state.employees.indexOf(b);
+    return idxB - idxA;
+  });
 
   if (pendingRegs.length === 0) {
     tbody.innerHTML = `
@@ -10785,10 +10833,10 @@ function renderRegistrationApprovalQueue() {
         <td colspan="7">
           <div class="empty-state" style="padding: 32px; text-align: center;">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 12px; display: inline-block;">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <div class="empty-state-title" style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem; margin-bottom: 4px;">No pending registrations</div>
-            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">All employee registration requests have been approved.</p>
+            <div class="empty-state-title" style="font-weight: 600; color: var(--text-primary); font-size: 0.95rem; margin-bottom: 4px;">No matching pending registrations</div>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">Try adjusting your search query.</p>
           </div>
         </td>
       </tr>
@@ -10829,8 +10877,12 @@ function renderEmployeeDetails() {
 
   container.innerHTML = '';
 
+  const searchEl = document.getElementById('emp-details-search');
+  const query = searchEl ? searchEl.value.trim().toLowerCase() : '';
+
   state.employees.forEach(emp => {
     if (isPratap(emp) || emp.status === 'pending_approval') return; // Hide Pratap & Pending
+    if (query && !emp.name.toLowerCase().includes(query)) return;
     if (!state.expandedEmployeeDetails) {
       state.expandedEmployeeDetails = new Set();
     }
