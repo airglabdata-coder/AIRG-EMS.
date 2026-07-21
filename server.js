@@ -1,4 +1,7 @@
 require('dotenv').config();
+// Force Google DNS to bypass Windows DNS restrictions (fixes querySrv ECONNREFUSED)
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -29,7 +32,7 @@ if (!MONGODB_URI) {
   process.exit(1);
 }
 
-mongoose.connect(MONGODB_URI)
+mongoose.connect(MONGODB_URI, { family: 4 })
   .then(async () => {
     console.log('✅ Connected to MongoDB Atlas successfully.');
   })
@@ -39,7 +42,8 @@ mongoose.connect(MONGODB_URI)
     console.error('   Error:', err.message);
     console.error('   Please check your MONGODB_URI and network connection.');
     console.error('============================================================');
-    process.exit(1);
+    console.log('⚠️  WARNING: Starting server WITHOUT database connection so you can view the UI.');
+    // process.exit(1);
   });
 
 // Helper to pull entire state from MongoDB
