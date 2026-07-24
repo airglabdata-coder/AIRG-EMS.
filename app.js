@@ -2249,11 +2249,14 @@ function getEmployeeLeaveBreakdown(employeeId) {
                      typeLower.includes('leave without pay') || 
                      typeLower.includes('loss of pay');
     const isDirectPaid = typeLower === 'leave with pay';
+    const isWfh = typeLower.includes('work from home');
 
     const increment = (req.duration === 0.5) ? 0.5 : 1;
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      if (isUnpaid) {
+      if (isWfh) {
+        // Do nothing for WFH; it does not consume leave balance or affect pay
+      } else if (isUnpaid) {
         unpaidPerMonth[ym] = (unpaidPerMonth[ym] || 0) + increment;
       } else if (isDirectPaid) {
         directPaidPerMonth[ym] = (directPaidPerMonth[ym] || 0) + increment;
@@ -3609,7 +3612,7 @@ function approveRegistration(empId) {
   if (!emp) return;
   
   if (confirm(`Are you sure you want to approve registration for "${emp.name}"?`)) {
-    delete emp.status; // Remove pending_approval status, making them active
+    emp.status = 'active'; // Overwrite pending_approval status
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
     triggerBackendSync();
     
@@ -7711,7 +7714,10 @@ function populateDailyReportDropdowns() {
   const submitProjectSelect = document.getElementById('report-project');
   if (submitProjectSelect) {
     const currentVal = submitProjectSelect.value;
-    submitProjectSelect.innerHTML = '<option value="" disabled selected>Select project...</option>';
+    submitProjectSelect.innerHTML = `
+      <option value="" disabled selected>Select project...</option>
+      <option value="general">General / Direct to HR & Management (No Project)</option>
+    `;
     state.projects.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.id;
@@ -8144,10 +8150,10 @@ function handleDailyReportSubmit(e) {
       recipientIds.push(proj.techLeadId);
     }
   } else {
-    // Fallback: send to Admin
+    // Fallback: send to Admin, HR, CEO, and Tech Leads
     state.employees.forEach(emp => {
       const roleLower = (emp.role || '').toLowerCase();
-      if (roleLower.includes('admin') && emp.id !== state.currentUser.id) {
+      if ((roleLower.includes('admin') || roleLower.includes('hr') || roleLower.includes('ceo') || roleLower.includes('tech lead') || roleLower.includes('manager')) && emp.id !== state.currentUser.id) {
         recipientIds.push(emp.id);
       }
     });
