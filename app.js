@@ -10886,6 +10886,33 @@ function renderEmployeeDetails() {
   const searchEl = document.getElementById('emp-details-search');
   const query = searchEl ? searchEl.value.trim().toLowerCase() : '';
 
+  // Show top banner if any employee has a pending password reset request
+  const pendingResets = state.employees.filter(e => e.passwordResetRequested && !e.isDeleted && e.status !== 'pending_approval');
+  if (pendingResets.length > 0) {
+    const banner = document.createElement('div');
+    banner.style.cssText = `
+      background: linear-gradient(135deg, rgba(220,38,38,0.15), rgba(239,68,68,0.08));
+      border: 1px solid rgba(220,38,38,0.4);
+      border-radius: var(--border-radius);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 8px;
+      animation: pulse-border 2s infinite;
+    `;
+    banner.innerHTML = `
+      <span style="font-size: 1.4rem;">🔐</span>
+      <div style="flex: 1;">
+        <div style="font-size: 0.9rem; font-weight: 700; color: #ef4444;">${pendingResets.length} Password Reset Request${pendingResets.length > 1 ? 's' : ''} Pending</div>
+        <div style="font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px;">${pendingResets.map(e => e.name).join(', ')} — Click "Send Reset Link" on their card below.</div>
+      </div>
+    `;
+    container.appendChild(banner);
+  }
+
   state.employees.forEach(emp => {
     if (isPratap(emp) || emp.status === 'pending_approval') return; // Hide Pratap & Pending
     if (query && !emp.name.toLowerCase().includes(query)) return;
@@ -10895,8 +10922,8 @@ function renderEmployeeDetails() {
     const isExpanded = state.expandedEmployeeDetails.has(emp.id);
     const card = document.createElement('div');
     card.className = 'project-card';
-    card.style.background = 'var(--bg-secondary)';
-    card.style.border = '1px solid var(--border-color)';
+    card.style.background = emp.passwordResetRequested ? 'rgba(220,38,38,0.06)' : 'var(--bg-secondary)';
+    card.style.border = emp.passwordResetRequested ? '1.5px solid rgba(220,38,38,0.5)' : '1px solid var(--border-color)';
     card.style.borderRadius = 'var(--border-radius)';
     card.style.padding = '20px';
     card.style.cursor = 'pointer';
@@ -10946,6 +10973,11 @@ function renderEmployeeDetails() {
           <div>
             <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
               <span>${emp.name}</span>
+              ${emp.passwordResetRequested ? `
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: rgba(220,38,38,0.15); color: #ef4444; border: 1px solid rgba(220,38,38,0.3); border-radius: 12px; font-size: 0.7rem; font-weight: 700; animation: pulse-border 1.5s infinite;">
+                  🔐 Reset Requested
+                </span>
+              ` : ''}
               ${emp.isDeleted ? `
                 <span class="badge badge-rejected" style="font-size: 0.65rem; padding: 2px 8px; border-radius: 12px;">Former Employee</span>
               ` : (state.activeUsers && state.activeUsers.includes(emp.id)) ? `
@@ -10962,6 +10994,9 @@ function renderEmployeeDetails() {
         </div>
         
         <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="btn btn-secondary btn-sm" onclick="sendPasswordResetLink('${emp.id}', event)" style="padding: 4px 10px; font-size: 0.75rem;">
+            Send Reset Link
+          </button>
           <span class="badge" style="background-color: var(--bg-tertiary); color: var(--text-primary); font-size: 0.75rem; font-weight: 700; padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border-color);">
             ${emp.designation || emp.role || 'Employee'}
           </span>
@@ -11071,6 +11106,27 @@ window.closeFillDetailsModal = closeFillDetailsModal;
 window.handleFillDetailsSubmit = handleFillDetailsSubmit;
 window.renderEmployeeDetails = renderEmployeeDetails;
 window.viewOnboardingDocument = viewOnboardingDocument;
+window.sendPasswordResetLink = sendPasswordResetLink;
+
+async function sendPasswordResetLink(empId, event) {
+  if (event) event.stopPropagation();
+  try {
+    showToast('Requesting password reset link...', 'info');
+    const res = await fetch('/api/request-password-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: empId })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast('Password reset link sent to employee email!', 'success');
+    } else {
+      showToast(data.error || 'Failed to send reset link', 'error');
+    }
+  } catch (err) {
+    showToast('Network error while requesting reset link', 'error');
+  }
+}
 
 function openReassignSchoolModal(schoolId) {
   populateManagerDropdowns();
@@ -11529,3 +11585,158 @@ window.addEventListener('beforeunload', () => {
     }).catch(() => {});
   }
 });
+
+// Password Reset Overlay Logic
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const resetToken = urlParams.get('resetToken');
+  if (resetToken) {
+    // We must wait slightly for init() to show the login screen, then we hide it
+    setTimeout(() => {
+      const loginContainer = document.getElementById('login-container');
+      const resetContainer = document.getElementById('reset-password-container');
+      if (loginContainer) loginContainer.style.display = 'none';
+      if (resetContainer) resetContainer.style.display = 'flex';
+    }, 100);
+  }
+});
+
+// Forgot Password Modal Logic
+function showForgotPasswordModal() {
+  const overlay = document.getElementById('forgot-password-overlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    setTimeout(() => { const inp = document.getElementById('forgot-email'); if (inp) inp.focus(); }, 100);
+  }
+}
+function hideForgotPasswordModal() {
+  const overlay = document.getElementById('forgot-password-overlay');
+  if (overlay) overlay.style.display = 'none';
+  const form = document.getElementById('forgot-password-form');
+  if (form) form.reset();
+}
+window.showForgotPasswordModal = showForgotPasswordModal;
+window.hideForgotPasswordModal = hideForgotPasswordModal;
+
+async function handleForgotPasswordRequest(event) {
+  event.preventDefault();
+  const email = document.getElementById('forgot-email').value.trim();
+  const btn = document.getElementById('forgot-submit-btn');
+  if (!email) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  try {
+    const res = await fetch('/api/forgot-password-notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      hideForgotPasswordModal();
+      showToast('✅ HR has been notified! Please wait for a reset link in your email inbox.', 'success');
+    } else {
+      showToast(data.error || 'Could not find this email. Please check and try again.', 'error');
+    }
+  } catch (err) {
+    showToast('Network error. Please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Notify HR';
+  }
+}
+window.handleForgotPasswordRequest = handleForgotPasswordRequest;
+
+// Super Admin Recovery Logic
+function showSuperAdminRecoveryModal() {
+  const overlay = document.getElementById('super-admin-recovery-overlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    setTimeout(() => { const inp = document.getElementById('super-recovery-email'); if (inp) inp.focus(); }, 100);
+  }
+}
+function hideSuperAdminRecoveryModal() {
+  const overlay = document.getElementById('super-admin-recovery-overlay');
+  if (overlay) overlay.style.display = 'none';
+  const form = document.getElementById('super-admin-recovery-form');
+  if (form) form.reset();
+}
+window.showSuperAdminRecoveryModal = showSuperAdminRecoveryModal;
+window.hideSuperAdminRecoveryModal = hideSuperAdminRecoveryModal;
+
+async function handleSuperAdminRecoverySubmit(event) {
+  event.preventDefault();
+  const email = document.getElementById('super-recovery-email').value.trim();
+  const recoveryCode = document.getElementById('super-recovery-code').value.trim();
+  const newPassword = document.getElementById('super-recovery-new-password').value;
+  const btn = document.getElementById('super-recovery-submit-btn');
+  
+  if (!email || !recoveryCode || !newPassword) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Resetting...';
+
+  try {
+    const res = await fetch('/api/super-admin-recovery', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, recoveryCode, newPassword })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      hideSuperAdminRecoveryModal();
+      showToast('✅ ' + data.message, 'success');
+      setTimeout(() => window.location.reload(), 1500);
+    } else {
+      showToast(data.error || 'Failed to reset password.', 'error');
+    }
+  } catch (err) {
+    showToast('Network error. Please try again.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Reset Password';
+  }
+}
+window.handleSuperAdminRecoverySubmit = handleSuperAdminRecoverySubmit;
+
+
+async function handlePasswordResetSubmit(event) {
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('resetToken');
+  const newPassword = document.getElementById('reset-new-password').value;
+  const confirmPassword = document.getElementById('reset-confirm-password').value;
+
+  if (newPassword !== confirmPassword) {
+    showToast('Passwords do not match', 'error');
+    return;
+  }
+  
+  if (newPassword.length < 8) {
+    showToast('Password must be at least 8 characters long', 'error');
+    return;
+  }
+
+  try {
+    showToast('Resetting password...', 'info');
+    const res = await fetch('/api/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast('Password reset successfully! Redirecting...', 'success');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 2000);
+    } else {
+      showToast(data.error || 'Failed to reset password', 'error');
+    }
+  } catch (err) {
+    showToast('Network error while resetting password', 'error');
+  }
+}
+window.handlePasswordResetSubmit = handlePasswordResetSubmit;

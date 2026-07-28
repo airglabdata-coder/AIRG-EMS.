@@ -8,6 +8,8 @@ const path = require('path');
 const mongoose = require('mongoose');
 const models = require('./models');
 const webpush = require('web-push');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -506,6 +508,187 @@ app.post('/api/send-notification', async (req, res) => {
 
   await Promise.all(sendPromises);
   res.json({ success: true, mode: 'webpush', count: subscriptions.length });
+});
+// --- Password Reset Implementation ---
+
+// Gmail SMTP Transporter (using HR's Gmail account)
+const gmailTransporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD
+  }
+});
+
+// Helper: send email
+async function sendEmail(to, subject, htmlBody, textBody) {
+  const mailOptions = {
+    from: `"AIRG EMS - HR Department" <${process.env.GMAIL_USER}>`,
+    to: to,
+    subject: subject,
+    text: textBody,
+    html: htmlBody
+  };
+  return gmailTransporter.sendMail(mailOptions);
+}
+
+// 1. Employee clicks "Forgot Password" → notifies HR via email + in-app notification
+app.post('/api/forgot-password-notify', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Missing email' });
+
+  try {
+    const emp = await models.Employee.findOne({ email: email });
+    if (!emp) return res.status(404).json({ error: 'No employee found with this email address.' });
+
+    // Find all HR and Admin employees to notify
+    const hrAdmins = await models.Employee.find({ role: { $in: ['HR', 'Admin'] } });
+
+    // Send email notification to each HR/Admin
+    for (const hr of hrAdmins) {
+      if (hr.email) {
+        const subject = `Password Reset Request from ${emp.name}`;
+        const html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <h2 style="color: #dc2626;">🔐 Password Reset Request</h2>
+            <p><strong>${emp.name}</strong> has requested a password reset.</p>
+            <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+              <tr><td style="padding: 8px; font-weight: bold;">Employee Name:</td><td style="padding: 8px;">${emp.name}</td></tr>
+              <tr style="background:#fff;"><td style="padding: 8px; font-weight: bold;">Employee ID:</td><td style="padding: 8px;">${emp.id}</td></tr>
+              <tr><td style="padding: 8px; font-weight: bold;">Email:</td><td style="padding: 8px;">${emp.email}</td></tr>
+              <tr style="background:#fff;"><td style="padding: 8px; font-weight: bold;">Role:</td><td style="padding: 8px;">${emp.role}</td></tr>
+            </table>
+            <p style="color: #555;">Please log into the AIRG EMS portal and go to <strong>Employee Details</strong> to send a password reset link to this employee.</p>
+            <p style="font-size: 12px; color: #999;">This is an automated notification from AIRG Employee Management System.</p>
+          </div>`;
+        const text = `Password Reset Request: ${emp.name} (${emp.email}) has requested a password reset. Please log in to the AIRG EMS portal and send them a reset link from the Employee Details page.`;
+        await sendEmail(hr.email, subject, html, text).catch(e => console.error(`Could not notify HR ${hr.email}:`, e.message));
+      }
+    }
+
+    // Store a pending reset flag on the employee so HR can see it in the portal
+    emp.passwordResetRequested = true;
+    emp.passwordResetRequestedAt = new Date().toISOString();
+    await emp.save();
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+
+    console.log(`\n📨 Password reset requested by: ${emp.name} (${emp.email})`);
+    res.json({ success: true, message: 'HR has been notified. Please wait for the reset link in your email.' });
+  } catch (err) {
+    console.error('Error in forgot-password-notify:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 2. HR sends reset link → real email to employee
+app.post('/api/request-password-reset', async (req, res) => {
+  const { employeeId } = req.body;
+  if (!employeeId) return res.status(400).json({ error: 'Missing employeeId' });
+
+  try {
+    const emp = await models.Employee.findOne({ id: employeeId });
+    if (!emp) return res.status(404).json({ error: 'Employee not found' });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiry = Date.now() + 15 * 60 * 1000; // 15 mins
+
+    emp.resetToken = token;
+    emp.resetTokenExpiry = expiry;
+    emp.passwordResetRequested = false; // Clear the request flag
+    await emp.save();
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+
+    const resetLink = `http://localhost:${PORT}/?resetToken=${token}`;
+    console.log(`\n---------------------------------------------------`);
+    console.log(`🔑 PASSWORD RESET LINK FOR: ${emp.name}`);
+    console.log(`🔗 ${resetLink}`);
+    console.log(`---------------------------------------------------\n`);
+
+    // Send real email to the employee
+    const subject = 'Password Reset Request - AIRG EMS';
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+        <h2 style="color: #1e293b;">🔐 Reset Your Password</h2>
+        <p>Hello <strong>${emp.name}</strong>,</p>
+        <p>Your HR has initiated a password reset for your AIRG Employee Portal account. Click the button below to set a new password:</p>
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${resetLink}" style="background: #dc2626; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">Reset My Password</a>
+        </div>
+        <p style="color: #888; font-size: 13px;">⚠️ This link expires in <strong>15 minutes</strong>. If you did not request this, please ignore this email.</p>
+        <p style="color: #888; font-size: 13px;">If the button doesn't work, copy and paste this link in your browser:<br><a href="${resetLink}">${resetLink}</a></p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+        <p style="font-size: 12px; color: #999;">AIRG International Employee Management System</p>
+      </div>`;
+    const text = `Hello ${emp.name},\n\nYour HR has initiated a password reset. Click this link to reset your password:\n\n${resetLink}\n\nThis link expires in 15 minutes.`;
+
+    await sendEmail(emp.email, subject, html, text);
+    console.log(`✅ Password reset email sent to: ${emp.email}`);
+
+    res.json({ success: true, message: `Password reset link sent to ${emp.email}` });
+  } catch (err) {
+    console.error('Error in request-password-reset:', err);
+    res.status(500).json({ error: 'Failed to send email. Please check Gmail credentials.' });
+  }
+});
+
+// 3. Employee submits new password via the reset link
+app.post('/api/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) return res.status(400).json({ error: 'Missing token or newPassword' });
+
+  try {
+    const emp = await models.Employee.findOne({ resetToken: token });
+    if (!emp) return res.status(400).json({ error: 'Invalid or expired reset token.' });
+    if (Date.now() > emp.resetTokenExpiry) return res.status(400).json({ error: 'Reset token has expired. Please request a new one.' });
+
+    emp.password = newPassword;
+    emp.resetToken = undefined;
+    emp.resetTokenExpiry = undefined;
+    await emp.save();
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+
+    res.json({ success: true, message: 'Password has been successfully reset.' });
+  } catch (err) {
+    console.error('Error in reset-password:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 4. Super Admin Recovery Endpoint
+app.post('/api/super-admin-recovery', async (req, res) => {
+  const { email, recoveryCode, newPassword } = req.body;
+  
+  if (!email || !recoveryCode || !newPassword) {
+    return res.status(400).json({ error: 'Missing required fields.' });
+  }
+
+  if (recoveryCode !== process.env.SUPER_ADMIN_RECOVERY_CODE) {
+    return res.status(403).json({ error: 'Invalid recovery code.' });
+  }
+
+  try {
+    const emp = await models.Employee.findOne({ email: email });
+    if (!emp) {
+      return res.status(404).json({ error: 'No employee found with this email.' });
+    }
+
+    if (emp.role !== 'Admin' && emp.role !== 'CEO') {
+       return res.status(403).json({ error: 'This recovery method is only available for Admins.' });
+    }
+
+    emp.password = newPassword;
+    emp.passwordResetRequested = false;
+    emp.resetToken = undefined;
+    emp.resetTokenExpiry = undefined;
+    await emp.save();
+    
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+
+    res.json({ success: true, message: 'Admin password has been successfully reset using Recovery Code.' });
+  } catch (err) {
+    console.error('Error in super-admin-recovery:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 

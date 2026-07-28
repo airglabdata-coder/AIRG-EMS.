@@ -19,7 +19,11 @@ const EmployeeSchema = new mongoose.Schema({
   photo: { type: String },
   designation: { type: String },
   salaries: { type: Map, of: mongoose.Schema.Types.Mixed },
-  salary: { type: mongoose.Schema.Types.Mixed }
+  salary: { type: mongoose.Schema.Types.Mixed },
+  resetToken: { type: String },
+  resetTokenExpiry: { type: Number },
+  passwordResetRequested: { type: Boolean, default: false },
+  passwordResetRequestedAt: { type: String }
 }, { strict: false });
 
 // LeaveRequest Schema

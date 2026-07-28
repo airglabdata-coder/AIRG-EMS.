@@ -2883,8 +2883,19 @@
           <input type="email" id="login-email" placeholder="e.g. sarah.j@company.com" required style="width: 100%;">
         </div>
         <div class="form-group" style="margin-bottom: 24px;">
-          <label for="login-password">Password</label>
-          <input type="password" id="login-password" placeholder="••••••••" required style="width: 100%;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label for="login-password" style="margin-bottom: 0;">Password</label>
+            <a href="#" onclick="showForgotPasswordModal(); return false;" style="font-size: 0.8rem; color: var(--primary); text-decoration: none;">Forgot Password?</a>
+          </div>
+          <div style="position: relative;">
+            <input type="password" id="login-password" placeholder="••••••••" required style="width: 100%; padding-right: 40px; box-sizing: border-box;">
+            <button type="button" onclick="togglePasswordVisibility()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; display: flex; align-items: center;">
+              <svg id="eye-icon" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-weight: 600;">Log
           In</button>
@@ -2899,7 +2910,78 @@
     </div>
   </div>
 
-  <script src="app.js?v=2"></script>
+  <!-- ================= FORGOT PASSWORD MODAL ================= -->
+  <div id="forgot-password-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10001; background: rgba(0,0,0,0.6); align-items: center; justify-content: center;">
+    <div style="background: var(--bg-secondary); border-radius: var(--border-radius); padding: 32px; width: 100%; max-width: 400px; margin: 0 16px; box-shadow: var(--shadow-lg); border: 1px solid var(--border-color);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">🔐 Forgot Password</h3>
+        <button onclick="hideForgotPasswordModal()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.4rem; line-height: 1;">×</button>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px;">Enter your registered email address. HR will be notified and will send a reset link to your inbox. <a href="#" onclick="hideForgotPasswordModal(); showSuperAdminRecoveryModal(); return false;" style="color: #ef4444; text-decoration: none; font-weight: 600; display: block; margin-top: 10px;">Admin/CEO Recovery →</a></p>
+      <form id="forgot-password-form" onsubmit="handleForgotPasswordRequest(event)">
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="forgot-email">Your Registered Email</label>
+          <input type="email" id="forgot-email" placeholder="e.g. atharva@gurulair.com" required style="width: 100%;">
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button type="button" onclick="hideForgotPasswordModal()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="flex: 1;" id="forgot-submit-btn">Notify HR</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= SUPER ADMIN RECOVERY MODAL ================= -->
+  <div id="super-admin-recovery-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10002; background: rgba(0,0,0,0.8); align-items: center; justify-content: center;">
+    <div style="background: var(--bg-secondary); border-radius: var(--border-radius); padding: 32px; width: 100%; max-width: 400px; margin: 0 16px; box-shadow: 0 0 20px rgba(220,38,38,0.3); border: 1px solid #ef4444;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #ef4444;">🛡️ Super Admin Recovery</h3>
+        <button onclick="hideSuperAdminRecoveryModal()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.4rem; line-height: 1;">×</button>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px;">For CEO/Admins only. Bypass the HR approval process using your secret recovery code.</p>
+      <form id="super-admin-recovery-form" onsubmit="handleSuperAdminRecoverySubmit(event)">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="super-recovery-email">Admin Email</label>
+          <input type="email" id="super-recovery-email" placeholder="CEO / Admin email" required style="width: 100%;">
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="super-recovery-code">Secret Recovery Code</label>
+          <input type="password" id="super-recovery-code" required style="width: 100%;">
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="super-recovery-new-password">New Password</label>
+          <input type="password" id="super-recovery-new-password" minlength="8" required style="width: 100%;">
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button type="button" onclick="hideSuperAdminRecoveryModal()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="flex: 1; background: #ef4444; border-color: #ef4444;" id="super-recovery-submit-btn">Reset Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= RESET PASSWORD OVERLAY ================= -->
+  <div id="reset-password-container" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000; background: var(--bg-primary); align-items: center; justify-content: center;">
+    <div class="login-card" style="width: 100%; max-width: 400px; margin: 0 16px;">
+      <div class="login-header" style="text-align: center; margin-bottom: 24px;">
+        <img src="air g logo black.png" alt="AIR G International" style="max-width: 180px; max-height: 80px; object-fit: contain; margin-bottom: 16px;">
+        <p class="text-muted">Set New Password</p>
+      </div>
+      <form id="reset-password-form" onsubmit="handlePasswordResetSubmit(event)">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="reset-new-password">New Password</label>
+          <input type="password" id="reset-new-password" placeholder="••••••••" required style="width: 100%;">
+        </div>
+        <div class="form-group" style="margin-bottom: 24px;">
+          <label for="reset-confirm-password">Confirm Password</label>
+          <input type="password" id="reset-confirm-password" placeholder="••••••••" required style="width: 100%;">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-weight: 600;">Save Password</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js?v=4"></script>
   <script src="mobile.js"></script>
   <script>
     // Failsafe inline mobile layout toggler
@@ -2939,6 +3021,21 @@
         }
       });
     })();
+
+    // Password Visibility Toggle Logic
+    function togglePasswordVisibility() {
+      const passwordInput = document.getElementById('login-password');
+      const eyeIcon = document.getElementById('eye-icon');
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        // Eye-slash icon (hide)
+        eyeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />';
+      } else {
+        passwordInput.type = 'password';
+        // Normal Eye icon (show)
+        eyeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />';
+      }
+    }
   </script>
 </body>
 
