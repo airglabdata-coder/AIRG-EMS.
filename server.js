@@ -692,11 +692,16 @@ app.post('/api/super-admin-recovery', async (req, res) => {
 });
 
 
-// Start the unified server
-app.listen(PORT, () => {
-  console.log(`===================================================`);
-  console.log(`🚀 AIR G International EMS Server is running!`);
-  console.log(`🌐 URL: http://localhost:${PORT}`);
-  console.log(`💾 Database: MongoDB Atlas (sole data store)`);
-  console.log(`===================================================`);
-});
+// Export the app for Vercel Serverless
+module.exports = app;
+
+// Start the local server if not running on Vercel
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`===================================================`);
+    console.log(`🚀 AIR G International EMS Server is running!`);
+    console.log(`🌐 URL: http://localhost:${PORT}`);
+    console.log(`💾 Database: MongoDB Atlas (sole data store)`);
+    console.log(`===================================================`);
+  });
+}
