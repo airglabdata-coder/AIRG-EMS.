@@ -1,7 +1,9 @@
 require('dotenv').config();
-// Force Google DNS to bypass Windows DNS restrictions (fixes querySrv ECONNREFUSED)
 const dns = require('dns');
-dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+// Only override DNS on local Windows environment (NOT on Vercel — it breaks MongoDB connection)
+if (!process.env.VERCEL) {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+}
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -34,7 +36,11 @@ if (!MONGODB_URI) {
   process.exit(1);
 }
 
-mongoose.connect(MONGODB_URI, { family: 4 })
+const mongooseOptions = process.env.VERCEL
+  ? { serverSelectionTimeoutMS: 10000, socketTimeoutMS: 45000 }
+  : { family: 4 };
+
+mongoose.connect(MONGODB_URI, mongooseOptions)
   .then(async () => {
     console.log('✅ Connected to MongoDB Atlas successfully.');
   })
