@@ -236,11 +236,6 @@ function initSyncPolling() {
         }
       }
 
-      // If user is typing or viewing a modal, skip synchronization of database state
-      if (isUserBusy) {
-        return;
-      }
-
       if (data && data.state && !data.empty && !data.error && data.timestamp !== state.lastSyncedTimestamp) {
         isSyncingToServer = true;
         state.activeUsers = data.activeUsers || state.activeUsers;
@@ -280,8 +275,14 @@ function initSyncPolling() {
         if (s.schools) safeOriginalSetItem('ems_schools', JSON.stringify(s.schools));
 
         isSyncingToServer = false;
-
         sanitizeEmployeeRoles();
+
+        // If user is typing or viewing a modal, skip UI re-rendering to prevent disruption
+        if (isUserBusy) {
+          return;
+        }
+
+        // Removed redundant update block
 
         if (!state.currentUser) return;
 
@@ -5918,9 +5919,9 @@ function handleEmployeeCreationSubmit(e) {
 
 
   const passwordEl = document.getElementById('new-emp-password');
-  const password = passwordEl ? passwordEl.value : '';
+  const password = passwordEl ? passwordEl.value.trim() : '';
   const passwordConfirmEl = document.getElementById('new-emp-password-confirm');
-  const passwordConfirm = passwordConfirmEl ? passwordConfirmEl.value : '';
+  const passwordConfirm = passwordConfirmEl ? passwordConfirmEl.value.trim() : '';
 
   if (!id || !name || !email || !role || !phone || isNaN(balance) || !password) {
     showToast('Please fill out all fields.', 'error');
@@ -5944,6 +5945,13 @@ function handleEmployeeCreationSubmit(e) {
   const idExists = state.employees.some(emp => emp.id.toLowerCase() === id.toLowerCase());
   if (idExists) {
     showToast(`Employee ID "${id}" already exists. Please choose a unique ID.`, 'error');
+    return;
+  }
+  
+  // Check if Email already exists to prevent duplicate registrations
+  const emailExists = state.employees.some(emp => emp.email.toLowerCase() === email.toLowerCase());
+  if (emailExists) {
+    showToast(`Email "${email}" is already registered.`, 'error');
     return;
   }
 
@@ -9376,7 +9384,7 @@ function handleLoginSubmit(e) {
   if (!emailInput || !passwordInput) return;
 
   const email = emailInput.value.trim().toLowerCase();
-  const password = passwordInput.value;
+  const password = passwordInput.value.trim();
 
   const found = state.employees.find(emp => emp.email.toLowerCase() === email);
   if (found) {
