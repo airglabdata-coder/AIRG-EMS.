@@ -40,22 +40,32 @@ const mongooseOptions = process.env.VERCEL
   ? { serverSelectionTimeoutMS: 10000, socketTimeoutMS: 45000 }
   : { family: 4 };
 
-mongoose.connect(MONGODB_URI, mongooseOptions)
-  .then(async () => {
-    console.log('✅ Connected to MongoDB Atlas successfully.');
-  })
-  .catch(err => {
-    console.error('============================================================');
-    console.error('❌ FATAL: Failed to connect to MongoDB Atlas.');
-    console.error('   Error:', err.message);
-    console.error('   Please check your MONGODB_URI and network connection.');
-    console.error('============================================================');
-    console.log('⚠️  WARNING: Starting server WITHOUT database connection so you can view the UI.');
-    // process.exit(1);
-  });
+// Implement connection caching for serverless environments (Vercel)
+let cached = global.mongoose;
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
+async function connectDB() {
+  if (cached.conn) {
+    return cached.conn;
+  }
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(MONGODB_URI, mongooseOptions).then(mongoose => mongoose);
+  }
+  try {
+    cached.conn = await cached.promise;
+    return cached.conn;
+  } catch (err) {
+    cached.promise = null;
+    console.error('❌ FATAL: Failed to connect to MongoDB Atlas.', err.message);
+    throw err;
+  }
+}
 
 // Helper to pull entire state from MongoDB
 async function getMongoDBState() {
+  await connectDB();
   const [
     employees,
     requests,
@@ -139,6 +149,7 @@ async function syncCollection(Model, array, keyField = 'id') {
 
 // Helper to save entire state in MongoDB
 async function saveMongoDBState(stateObj) {
+  await connectDB();
   const syncOps = [
     syncCollection(models.Employee, stateObj.employees, 'id'),
     syncCollection(models.LeaveRequest, stateObj.requests, 'id'),
@@ -272,6 +283,16 @@ function trackAndGetActiveUsers(employeeId, isActiveParam) {
 }
 
 
+
+// Ensure DB connection for all API routes
+app.use('/api', async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    res.status(500).json({ error: 'Database connection failed' });
+  }
+});
 
 // Endpoint to fetch centralized state
 app.get('/api/sync', async (req, res) => {
