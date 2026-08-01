@@ -128,7 +128,9 @@ async function syncCollection(Model, array, keyField = 'id') {
   const incomingIds = array.map(item => item[keyField]).filter(Boolean);
 
   // Delete documents no longer present in the client payload
-  await Model.deleteMany({ [keyField]: { $nin: incomingIds } });
+  if (Model.modelName !== 'Employee') {
+    await Model.deleteMany({ [keyField]: { $nin: incomingIds } });
+  }
 
   // Construct bulk upserts
   const ops = array.map(item => {
