@@ -305,17 +305,6 @@ app.use('/api', async (req, res, next) => {
   }
 });
 
-// Temporary endpoint to clean up deleted employees
-app.get('/api/clean-deleted', async (req, res) => {
-  try {
-    await connectDB();
-    const result = await models.Employee.deleteMany({ isDeleted: true });
-    res.json({ success: true, deletedCount: result.deletedCount });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Endpoint to fetch centralized state
 app.get('/api/sync', async (req, res) => {
   try {
