@@ -301,8 +301,27 @@ function initSyncPolling() {
           renderTickets();
         } else if (currentView === 'reports') {
           renderDailyReports();
+        } else if (currentView === 'school-management') {
+          renderSchoolManagement();
+        } else if (currentView === 'emp-details') {
+          renderEmployeeDetails();
+        } else if (currentView === 'registration-approval') {
+          renderRegistrationApprovalQueue();
         } else {
-          renderEmployeeDashboard(currentView);
+          const isHROrAdmin = state.currentRole === 'hr' || state.currentRole === 'admin' || state.currentRole === 'techlead' || state.currentRole === 'manager';
+          if (isHROrAdmin) {
+            if (currentView === 'dashboard' || currentView === 'requests') {
+              renderHRDashboard(currentView);
+            } else if (currentView === 'roster') {
+              renderEmployeeRoster();
+            } else if (currentView === 'tasks') {
+              renderHRTasksAndProjects();
+            } else {
+              renderEmployeeDashboard(currentView);
+            }
+          } else {
+            renderEmployeeDashboard(currentView);
+          }
         }
         updateCommMenuBadges();
       }
