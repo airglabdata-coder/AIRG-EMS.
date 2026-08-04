@@ -4018,6 +4018,7 @@ function handleProfileSave(e) {
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
   state.currentUser = emp;
   localStorage.setItem('ems_logged_in_user', JSON.stringify(emp));
+  triggerBackendSync();
 
   // Update header avatar and details immediately
   updateHeaderAvatar(emp);
