@@ -130,6 +130,15 @@ async function syncCollection(Model, array, keyField = 'id') {
   // Delete documents no longer present in the client payload
   if (Model.modelName !== 'Employee') {
     await Model.deleteMany({ [keyField]: { $nin: incomingIds } });
+  } else {
+    // For Employee model, permanently delete any employee marked as isDeleted: true
+    const deletedEmployees = array.filter(item => item.isDeleted);
+    const deletedIds = deletedEmployees.map(item => item[keyField]).filter(Boolean);
+    if (deletedIds.length > 0) {
+      await Model.deleteMany({ [keyField]: { $in: deletedIds } });
+    }
+    // Filter them out so we don't upsert them
+    array = array.filter(item => !item.isDeleted);
   }
 
   // Construct bulk upserts
