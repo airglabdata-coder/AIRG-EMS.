@@ -175,7 +175,8 @@ const SchoolSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   managerName: { type: String },
-  instructors: { type: Array, default: [] }
+  instructors: { type: Array, default: [] },
+  problems: { type: String }
 }, { strict: false });
 
 // Compile and Export Models

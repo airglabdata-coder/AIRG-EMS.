@@ -272,6 +272,18 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
   }
   stateObj.projects = finalProjects;
 
+  // 5. Validate and sanitize incoming Schools
+  let finalSchools = [];
+  const existingSchools = await models.School.find({});
+  const isHROrManagerOrLead = syncingUserRole.includes('admin') || syncingUserRole.includes('hr') || syncingUserRole.includes('manager') || syncingUserRole.includes('tech lead') || syncingUserRole.includes('techlead');
+
+  if (isHROrManagerOrLead) {
+    finalSchools = stateObj.schools || [];
+  } else {
+    finalSchools = existingSchools.map(s => s.toJSON());
+  }
+  stateObj.schools = finalSchools;
+
   const syncOps = [
     syncCollection(models.Employee, stateObj.employees, 'id', isReviewer),
     syncCollection(models.LeaveRequest, stateObj.requests, 'id', isReviewer),

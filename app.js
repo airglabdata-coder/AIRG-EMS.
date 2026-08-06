@@ -214,6 +214,32 @@ async function fetchCentralizedState() {
         safeOriginalSetItem('ems_tickets', JSON.stringify(s.tickets));
       }
       if (s.schools) {
+        // Compare to see if any school has new/updated problems
+        const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
+        const isHRorCEO = userRole.includes('hr') || userRole.includes('admin');
+        if (isHRorCEO && state.schools && state.schools.length > 0) {
+          const oldSchoolsMap = new Map(state.schools.map(sch => [sch.id, sch]));
+          s.schools.forEach(newSch => {
+            const oldSch = oldSchoolsMap.get(newSch.id);
+            const oldProb = oldSch ? (oldSch.problems || '') : '';
+            const newProb = newSch.problems || '';
+            if (newProb && newProb !== oldProb) {
+              // Trigger instant alert!
+              showToast(`🚨 URGENT Problem reported at ${newSch.name}: ${newProb}`, 'error');
+              
+              try {
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-200.wav');
+                audio.play().catch(() => {});
+              } catch (e) {}
+
+              // Display a prominent browser alert to catch immediate attention
+              setTimeout(() => {
+                alert(`🚨 URGENT SCHOOL PROBLEM REPORTED!\n\nSchool: ${newSch.name}\nProblem: "${newProb}"`);
+              }, 100);
+            }
+          });
+        }
+
         state.schools = s.schools;
         safeOriginalSetItem('ems_schools', JSON.stringify(s.schools));
       }
@@ -5016,7 +5042,7 @@ function submitChangeTechLead(projId) {
 }
 window.submitChangeTechLead = submitChangeTechLead;
 
-function assignEmployeeToProject(projId) {
+async function assignEmployeeToProject(projId) {
   const select = document.getElementById(`select-add-member-${projId}`);
   if (!select) return;
   const empId = select.value;
@@ -5034,7 +5060,7 @@ function assignEmployeeToProject(projId) {
   }
 
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
-  triggerBackendSync();
+  await syncStateNow();
 
   // Refresh views
   const activeMenuItem = document.querySelector('.menu-item.active');
@@ -5044,7 +5070,7 @@ function assignEmployeeToProject(projId) {
 }
 window.assignEmployeeToProject = assignEmployeeToProject;
 
-function removeEmployeeFromProject(projId, empId) {
+async function removeEmployeeFromProject(projId, empId) {
   const proj = state.projects.find(p => p.id === projId);
   if (!proj) return;
 
@@ -5068,7 +5094,7 @@ function removeEmployeeFromProject(projId, empId) {
   }
 
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
-  triggerBackendSync();
+  await syncStateNow();
 
   // Refresh views
   const activeMenuItem = document.querySelector('.menu-item.active');
@@ -5626,7 +5652,7 @@ function hideProjectModal() {
   if (projectPreview) projectPreview.innerHTML = '';
 }
 
-function handleProjectCreationSubmit(e) {
+async function handleProjectCreationSubmit(e) {
   e.preventDefault();
 
   const name = document.getElementById('project-name').value.trim();
@@ -5721,6 +5747,8 @@ function handleProjectCreationSubmit(e) {
 
     localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
   }
+
+  await syncStateNow();
 
   hideProjectModal();
   renderHRTasksAndProjects();
@@ -11428,6 +11456,7 @@ function openSchoolDetailsModal(schoolId) {
   document.getElementById('edit-school-name').value = sch.name || '';
   document.getElementById('edit-school-students').value = sch.studentsCount || '';
   document.getElementById('edit-school-details').value = sch.details || '';
+  document.getElementById('edit-school-problems').value = sch.problems || '';
 
   if (sch.files) {
     state.editingSchoolFiles = [...sch.files];
@@ -11533,7 +11562,7 @@ function setupSchoolFileListener() {
   };
 }
 
-function handleSchoolDetailsSubmit(e) {
+async function handleSchoolDetailsSubmit(e) {
   e.preventDefault();
   const schoolId = state.editingSchoolId;
   const sch = state.schools.find(s => s.id === schoolId);
@@ -11542,14 +11571,33 @@ function handleSchoolDetailsSubmit(e) {
   const nameVal = document.getElementById('edit-school-name').value.trim();
   const studentsVal = document.getElementById('edit-school-students').value;
   const detailsVal = document.getElementById('edit-school-details').value.trim();
+  const problemsVal = document.getElementById('edit-school-problems').value.trim();
+
+  const oldProblems = sch.problems || '';
 
   sch.name = nameVal;
   sch.studentsCount = studentsVal !== '' ? Number(studentsVal) : 0;
   sch.details = detailsVal;
+  sch.problems = problemsVal;
   sch.files = [...state.editingSchoolFiles];
 
   localStorage.setItem('ems_schools', JSON.stringify(state.schools));
-  triggerBackendSync();
+
+  if (problemsVal && problemsVal !== oldProblems) {
+    const noticeId = `NTC${500 + state.notices.length + 1}`;
+    const newNotice = {
+      id: noticeId,
+      title: `🚨 URGENT: Problem at ${nameVal}`,
+      content: `Tech Lead ${state.currentUser.name} reported a problem at ${nameVal}:\n\n"${problemsVal}"`,
+      targetEmployeeIds: [],
+      senderName: state.currentUser.name,
+      timestamp: new Date().toLocaleString()
+    };
+    state.notices.push(newNotice);
+    localStorage.setItem('ems_notices', JSON.stringify(state.notices));
+  }
+
+  await syncStateNow();
 
   renderSchoolManagement();
   closeSchoolDetailsModal();
