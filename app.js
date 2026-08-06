@@ -4694,14 +4694,10 @@ function createProjectCard(proj, isMyProject) {
     }
   });
 
-  // Sort: Tech Lead first, then department employees, then external contributors
+  // Sort: Tech Lead first, then by name
   uniqueEmployees.sort((a, b) => {
     if (a.id === proj.techLeadId) return -1;
     if (b.id === proj.techLeadId) return 1;
-    const aIsDept = isDeptMember(a, proj.dept);
-    const bIsDept = isDeptMember(b, proj.dept);
-    if (aIsDept && !bIsDept) return -1;
-    if (!aIsDept && bIsDept) return 1;
     return a.name.localeCompare(b.name);
   });
 
