@@ -188,6 +188,7 @@ async function fetchCentralizedState() {
         safeOriginalSetItem('ems_chats', JSON.stringify(s.chats));
       }
       if (s.dailyReports) {
+        s.dailyReports.forEach(r => r.synced = true);
         const localReports = JSON.parse(localStorage.getItem('ems_reports') || '[]');
         const serverReportIds = new Set(s.dailyReports.map(r => r.id));
         const unsyncedReports = localReports.filter(r => !r.synced && !serverReportIds.has(r.id));

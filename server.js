@@ -291,16 +291,20 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
     const incomingRequestIds = (stateObj.requests || []).map(r => r.id).filter(Boolean);
     const incomingReimbursementIds = (stateObj.reimbursements || []).map(r => r.id).filter(Boolean);
 
+    console.log(`[DELETION SYNC] syncingEmployeeId=${syncingEmployeeId}, incomingReportIdsCount=${incomingReportIds.length}`);
+
     if (isReviewer) {
-      await models.DailyReport.deleteMany({ id: { $nin: incomingReportIds } });
-      await models.Ticket.deleteMany({ id: { $nin: incomingTicketIds } });
-      await models.LeaveRequest.deleteMany({ id: { $nin: incomingRequestIds } });
-      await models.Reimbursement.deleteMany({ id: { $nin: incomingReimbursementIds } });
+      const repDel = await models.DailyReport.deleteMany({ id: { $nin: incomingReportIds } });
+      const tktDel = await models.Ticket.deleteMany({ id: { $nin: incomingTicketIds } });
+      const reqDel = await models.LeaveRequest.deleteMany({ id: { $nin: incomingRequestIds } });
+      const remDel = await models.Reimbursement.deleteMany({ id: { $nin: incomingReimbursementIds } });
+      console.log(`[DELETION SYNC ADMIN] deleted reports=${repDel.deletedCount}, tickets=${tktDel.deletedCount}`);
     } else {
-      await models.DailyReport.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingReportIds } });
-      await models.Ticket.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingTicketIds } });
-      await models.LeaveRequest.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingRequestIds } });
-      await models.Reimbursement.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingReimbursementIds } });
+      const repDel = await models.DailyReport.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingReportIds } });
+      const tktDel = await models.Ticket.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingTicketIds } });
+      const reqDel = await models.LeaveRequest.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingRequestIds } });
+      const remDel = await models.Reimbursement.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingReimbursementIds } });
+      console.log(`[DELETION SYNC OWNER] employeeId=${syncingEmployeeId}, deleted reports=${repDel.deletedCount}, tickets=${tktDel.deletedCount}`);
     }
   }
 
@@ -482,11 +486,12 @@ app.post('/api/sync', async (req, res) => {
   }
 
   try {
+    console.log(`[SYNC POST] employeeId=${req.query.employeeId}, reportsCount=${(newState.dailyReports || []).length}`);
     const updatedTimestamp = await saveMongoDBState(newState, req.query.employeeId);
     const activeList = trackAndGetActiveUsers(req.query.employeeId, req.query.active);
     return res.json({ success: true, timestamp: updatedTimestamp, activeUsers: activeList });
   } catch (err) {
-    console.error('❌ Failed to write to MongoDB Atlas:', err.message);
+    console.error('❌ Failed to write to MongoDB Atlas:', err);
     return res.status(500).json({ error: 'Database write failed. Please try again.' });
   }
 });
