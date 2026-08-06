@@ -2720,8 +2720,9 @@
           </div>
         </div>
         <div class="modal-footer"
-          style="padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color);">
+          style="padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border-color); flex-wrap: wrap;">
           <button type="button" class="btn btn-secondary btn-sm" onclick="closeSchoolDetailsModal()">Cancel</button>
+          <button type="button" class="btn btn-sm" onclick="submitSchoolProblemOnly(event)" style="background: #ef4444; color: white; border: none; font-weight: 600; cursor: pointer;">Report Problem Only</button>
           <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
         </div>
       </form>
@@ -2986,7 +2987,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
   <script src="mobile.js"></script>
   <script>
     // Failsafe inline mobile layout toggler

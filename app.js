@@ -217,7 +217,7 @@ async function fetchCentralizedState() {
         // Compare to see if any school has new/updated problems
         const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
         const isHRorCEO = userRole.includes('hr') || userRole.includes('admin');
-        if (isHRorCEO && state.schools && state.schools.length > 0) {
+        if (isHRorCEO && wasStateFetchedFromServer && state.schools && state.schools.length > 0) {
           const oldSchoolsMap = new Map(state.schools.map(sch => [sch.id, sch]));
           s.schools.forEach(newSch => {
             const oldSch = oldSchoolsMap.get(newSch.id);
@@ -11604,9 +11604,48 @@ async function handleSchoolDetailsSubmit(e) {
   showToast(`School "${sch.name}" details updated successfully.`, 'success');
 }
 
+async function submitSchoolProblemOnly(e) {
+  if (e) e.preventDefault();
+  const schoolId = state.editingSchoolId;
+  const sch = state.schools.find(s => s.id === schoolId);
+  if (!sch) return;
+
+  const problemsVal = document.getElementById('edit-school-problems').value.trim();
+  const oldProblems = sch.problems || '';
+
+  if (!problemsVal) {
+    showToast('Please enter a problem description.', 'error');
+    return;
+  }
+
+  sch.problems = problemsVal;
+  localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+
+  if (problemsVal !== oldProblems) {
+    const noticeId = `NTC${500 + state.notices.length + 1}`;
+    const newNotice = {
+      id: noticeId,
+      title: `🚨 URGENT: Problem at ${sch.name}`,
+      content: `Tech Lead ${state.currentUser.name} reported a problem at ${sch.name}:\n\n"${problemsVal}"`,
+      targetEmployeeIds: [],
+      senderName: state.currentUser.name,
+      timestamp: new Date().toLocaleString()
+    };
+    state.notices.push(newNotice);
+    localStorage.setItem('ems_notices', JSON.stringify(state.notices));
+  }
+
+  await syncStateNow();
+
+  renderSchoolManagement();
+  closeSchoolDetailsModal();
+  showToast(`Problem for school "${sch.name}" reported successfully.`, 'success');
+}
+
 window.openSchoolDetailsModal = openSchoolDetailsModal;
 window.closeSchoolDetailsModal = closeSchoolDetailsModal;
 window.handleSchoolDetailsSubmit = handleSchoolDetailsSubmit;
+window.submitSchoolProblemOnly = submitSchoolProblemOnly;
 
 function openRemoveInstructorModal() {
   document.getElementById('remove-instructor-form').reset();
