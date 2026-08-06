@@ -261,6 +261,12 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
             finalProjects[idx] = incoming;
           }
         }
+      } else {
+        // This is a new project! Allow it if the syncing user is the Tech Lead of this new project
+        const isTechLead = syncingEmployeeId && incoming.techLeadId === syncingEmployeeId;
+        if (isTechLead) {
+          finalProjects.push(incoming);
+        }
       }
     });
   }

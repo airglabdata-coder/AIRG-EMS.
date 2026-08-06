@@ -2687,7 +2687,7 @@ function updateSidebarMenu() {
   const schoolMenu = document.getElementById('menu-item-school');
   if (schoolMenu) {
     const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
-    const isHROrManager = userRole.includes('hr') || userRole.includes('manager') || userRole.includes('admin');
+    const isHROrManager = userRole.includes('hr') || userRole.includes('manager') || userRole.includes('admin') || userRole.includes('tech lead') || userRole.includes('techlead');
     if (isHROrManager) {
       schoolMenu.style.display = 'flex';
     } else {
@@ -2914,7 +2914,7 @@ function switchView(viewName) {
     renderTickets();
   } else if (viewName === 'school-management') {
     const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
-    const isHROrManager = userRole.includes('hr') || userRole.includes('manager') || userRole.includes('admin');
+    const isHROrManager = userRole.includes('hr') || userRole.includes('manager') || userRole.includes('admin') || userRole.includes('tech lead') || userRole.includes('techlead');
     if (!isHROrManager) {
       switchView('tasks');
       return;
@@ -5034,6 +5034,7 @@ function assignEmployeeToProject(projId) {
   }
 
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+  triggerBackendSync();
 
   // Refresh views
   const activeMenuItem = document.querySelector('.menu-item.active');
@@ -5560,10 +5561,17 @@ function openCreateProjectModal() {
     // Restrict department selection to tech lead's department(s)
     if (projectDeptSelect) {
       projectDeptSelect.innerHTML = '';
-      const userDepts = (state.currentUser.dept || '')
+      let userDepts = (state.currentUser.dept || '')
         .split(',')
         .map(d => d.trim())
         .filter(Boolean);
+      if (userDepts.length === 0) {
+        // Fallback to all departments if the tech lead has no department set
+        userDepts = state.departments && state.departments.length > 0 ? state.departments : ['AI', 'Electronics', 'Lab Setup', 'Instructor'];
+        projectDeptSelect.disabled = false;
+      } else {
+        projectDeptSelect.disabled = userDepts.length <= 1;
+      }
       userDepts.forEach(dept => {
         const opt = document.createElement('option');
         opt.value = dept;
@@ -5573,7 +5581,6 @@ function openCreateProjectModal() {
       if (userDepts.length > 0) {
         projectDeptSelect.value = userDepts[0];
       }
-      projectDeptSelect.disabled = userDepts.length <= 1;
     }
 
     // Restrict tech lead option to the current user
