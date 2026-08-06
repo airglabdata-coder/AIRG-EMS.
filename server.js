@@ -230,6 +230,42 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
   // Assign the sanitized employees array back to the stateObj so syncCollection saves it
   stateObj.employees = finalEmployees;
 
+  // 4. Validate and sanitize incoming Projects
+  let finalProjects = [];
+  const existingProjects = await models.Project.find({});
+  const existingProjectsMap = new Map(existingProjects.map(p => [p.id, p]));
+  const syncingUser = syncingEmployeeId ? existingMap.get(syncingEmployeeId) : null;
+  const syncingUserRole = syncingUser ? (syncingUser.role || '').toLowerCase() : '';
+  const isHRorAdmin = syncingUserRole.includes('admin') || syncingUserRole.includes('hr');
+
+  if (isHRorAdmin) {
+    // Admin and HR can modify any projects
+    finalProjects = stateObj.projects || [];
+  } else {
+    // If not HR/Admin, start with the existing database projects as the base
+    finalProjects = existingProjects.map(p => p.toJSON());
+    const finalProjectsMap = new Map(finalProjects.map(p => [p.id, p]));
+
+    const incomingProjects = stateObj.projects || [];
+    incomingProjects.forEach(incoming => {
+      if (!incoming || !incoming.id) return;
+
+      const existing = finalProjectsMap.get(incoming.id);
+      if (existing) {
+        // Check if the syncing user is the Tech Lead of this project
+        const isTechLead = syncingEmployeeId && existing.techLeadId === syncingEmployeeId;
+        if (isTechLead) {
+          // Tech Lead can update this project!
+          const idx = finalProjects.findIndex(p => p.id === incoming.id);
+          if (idx !== -1) {
+            finalProjects[idx] = incoming;
+          }
+        }
+      }
+    });
+  }
+  stateObj.projects = finalProjects;
+
   const syncOps = [
     syncCollection(models.Employee, stateObj.employees, 'id', isReviewer),
     syncCollection(models.LeaveRequest, stateObj.requests, 'id', isReviewer),
