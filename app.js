@@ -9384,21 +9384,7 @@ function sanitizeEmployeeRoles() {
     }
   }
 
-  state.employees.forEach(emp => {
-    if (emp.role === 'Tech Lead') {
-      const isLead = state.projects.some(p => p.techLeadId === emp.id);
-      if (!isLead) {
-        emp.role = 'Employee';
-        updated = true;
-        console.log(`Self-healed role for ${emp.name} from Tech Lead to Employee`);
-        if (state.currentUser && state.currentUser.id === emp.id) {
-          state.currentUser.role = 'Employee';
-          state.currentRole = 'employee';
-          localStorage.setItem('ems_logged_in_user', JSON.stringify(state.currentUser));
-        }
-      }
-    }
-  });
+
   if (updated) {
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
     triggerBackendSync();
@@ -9449,12 +9435,24 @@ function showLoginScreen() {
 async function handleLoginSubmit(e) {
   e.preventDefault();
 
+  const loginBtn = document.getElementById('login-submit-btn');
+  if (loginBtn) {
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Logging in... Please wait';
+  }
+
   // Fetch latest state from server first to make sure we have up-to-date approval status
   await fetchCentralizedState();
 
   const emailInput = document.getElementById('login-email');
   const passwordInput = document.getElementById('login-password');
-  if (!emailInput || !passwordInput) return;
+  if (!emailInput || !passwordInput) {
+    if (loginBtn) {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Log In';
+    }
+    return;
+  }
 
   const email = emailInput.value.trim().toLowerCase();
   const password = passwordInput.value.trim();
@@ -9463,10 +9461,18 @@ async function handleLoginSubmit(e) {
   if (found) {
     if (found.isDeleted) {
       showToast('This account has been deactivated.', 'error');
+      if (loginBtn) {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Log In';
+      }
       return;
     }
     if (found.status === 'pending_approval') {
       showToast('Your registration is pending approval by HR / Pratap Sir.', 'warning');
+      if (loginBtn) {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Log In';
+      }
       return;
     }
     const matchPassword = found.password || 'password123';
@@ -9474,10 +9480,18 @@ async function handleLoginSubmit(e) {
       localStorage.setItem('ems_logged_in_user', JSON.stringify(found));
       loginAsUser(found);
       showToast('Logged in successfully.', 'success');
+      if (loginBtn) {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Log In';
+      }
       return;
     }
   }
   showToast('Invalid email or password.', 'error');
+  if (loginBtn) {
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Log In';
+  }
 }
 
 function quickLogin(identifier) {
