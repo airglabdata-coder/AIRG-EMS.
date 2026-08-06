@@ -5060,7 +5060,7 @@ async function assignEmployeeToProject(projId) {
   }
 
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
-  await syncStateNow();
+  syncStateNow();
 
   // Refresh views
   const activeMenuItem = document.querySelector('.menu-item.active');
@@ -5094,7 +5094,7 @@ async function removeEmployeeFromProject(projId, empId) {
   }
 
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
-  await syncStateNow();
+  syncStateNow();
 
   // Refresh views
   const activeMenuItem = document.querySelector('.menu-item.active');
@@ -5748,7 +5748,7 @@ async function handleProjectCreationSubmit(e) {
     localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
   }
 
-  await syncStateNow();
+  syncStateNow();
 
   hideProjectModal();
   renderHRTasksAndProjects();
@@ -11597,7 +11597,7 @@ async function handleSchoolDetailsSubmit(e) {
     localStorage.setItem('ems_notices', JSON.stringify(state.notices));
   }
 
-  await syncStateNow();
+  syncStateNow();
 
   renderSchoolManagement();
   closeSchoolDetailsModal();
@@ -11635,7 +11635,7 @@ async function submitSchoolProblemOnly(e) {
     localStorage.setItem('ems_notices', JSON.stringify(state.notices));
   }
 
-  await syncStateNow();
+  syncStateNow();
 
   renderSchoolManagement();
   closeSchoolDetailsModal();
