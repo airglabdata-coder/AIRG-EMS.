@@ -122,15 +122,12 @@ async function getMongoDBState() {
 }
 
 // Helper to bulk upsert array entries & handle deletions
-async function syncCollection(Model, array, keyField = 'id') {
+async function syncCollection(Model, array, keyField = 'id', isReviewer = false) {
   if (!array || !Array.isArray(array)) return;
 
   const incomingIds = array.map(item => item[keyField]).filter(Boolean);
 
-  // Delete documents no longer present in the client payload
-  if (Model.modelName !== 'Employee') {
-    await Model.deleteMany({ [keyField]: { $nin: incomingIds } });
-  } else {
+  if (Model.modelName === 'Employee') {
     // For Employee model, permanently delete any employee marked as isDeleted: true
     const deletedEmployees = array.filter(item => item.isDeleted);
     const deletedIds = deletedEmployees.map(item => item[keyField]).filter(Boolean);
@@ -139,6 +136,15 @@ async function syncCollection(Model, array, keyField = 'id') {
     }
     // Filter them out so we don't upsert them
     array = array.filter(item => !item.isDeleted);
+  } else if (['Notice', 'Announcement', 'Task', 'Project'].includes(Model.modelName)) {
+    // Only allow Admin/HR to delete notices, announcements, tasks, and projects.
+    // If the syncing user is NOT an Admin/HR, we DO NOT delete anything!
+    if (isReviewer) {
+      await Model.deleteMany({ [keyField]: { $nin: incomingIds } });
+    }
+  } else {
+    // For Chat, DailyReport, LeaveRequest, Reimbursement, Ticket, etc.
+    // We NEVER delete documents missing from the client payload under any circumstances!
   }
 
   // Construct bulk upserts
@@ -225,19 +231,19 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
   stateObj.employees = finalEmployees;
 
   const syncOps = [
-    syncCollection(models.Employee, stateObj.employees, 'id'),
-    syncCollection(models.LeaveRequest, stateObj.requests, 'id'),
-    syncCollection(models.Project, stateObj.projects, 'id'),
-    syncCollection(models.Task, stateObj.tasks, 'id'),
-    syncCollection(models.Chat, stateObj.chats, 'id'),
-    syncCollection(models.DailyReport, stateObj.dailyReports, 'id'),
-    syncCollection(models.Announcement, stateObj.announcements, 'id'),
-    syncCollection(models.Notice, stateObj.notices, 'id'),
-    syncCollection(models.Reimbursement, stateObj.reimbursements, 'id'),
-    syncCollection(models.Ticket, stateObj.tickets, 'id'),
-    syncCollection(models.NationalHoliday, stateObj.nationalHolidays, 'date'),
-    syncCollection(models.CelebrationDay, stateObj.celebrationDays, 'date'),
-    syncCollection(models.School, stateObj.schools, 'id')
+    syncCollection(models.Employee, stateObj.employees, 'id', isReviewer),
+    syncCollection(models.LeaveRequest, stateObj.requests, 'id', isReviewer),
+    syncCollection(models.Project, stateObj.projects, 'id', isReviewer),
+    syncCollection(models.Task, stateObj.tasks, 'id', isReviewer),
+    syncCollection(models.Chat, stateObj.chats, 'id', isReviewer),
+    syncCollection(models.DailyReport, stateObj.dailyReports, 'id', isReviewer),
+    syncCollection(models.Announcement, stateObj.announcements, 'id', isReviewer),
+    syncCollection(models.Notice, stateObj.notices, 'id', isReviewer),
+    syncCollection(models.Reimbursement, stateObj.reimbursements, 'id', isReviewer),
+    syncCollection(models.Ticket, stateObj.tickets, 'id', isReviewer),
+    syncCollection(models.NationalHoliday, stateObj.nationalHolidays, 'date', isReviewer),
+    syncCollection(models.CelebrationDay, stateObj.celebrationDays, 'date', isReviewer),
+    syncCollection(models.School, stateObj.schools, 'id', isReviewer)
   ];
 
   await Promise.all(syncOps);
@@ -376,6 +382,20 @@ app.get('/api/sync', async (req, res) => {
     return res.json(data);
   } catch (err) {
     console.error('❌ Failed to read from MongoDB Atlas:', err.message);
+    return res.status(500).json({ error: 'Database read failed. Please try again.' });
+  }
+});
+
+// Endpoint to retrieve only the last updated timestamp and active users
+app.get('/api/sync-timestamp', async (req, res) => {
+  try {
+    await connectDB();
+    let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' });
+    const timestamp = meta ? meta.timestamp : Date.now();
+    const activeUsers = trackAndGetActiveUsers(req.query.employeeId, req.query.active);
+    return res.json({ timestamp, activeUsers });
+  } catch (err) {
+    console.error('❌ Failed to read sync timestamp:', err.message);
     return res.status(500).json({ error: 'Database read failed. Please try again.' });
   }
 });

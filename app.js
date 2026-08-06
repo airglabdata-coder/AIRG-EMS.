@@ -259,23 +259,21 @@ function initSyncPolling() {
     })();
 
     try {
-      const url = `/api/sync?employeeId=${state.currentUser.id}`;
-      const res = await fetch(url);
-
-      // If server returned an error, skip this poll cycle — keep existing state intact
-      if (!res.ok) {
-        console.warn('Sync poll: server returned error status', res.status, '— skipping update.');
+      // 1. Fetch lightweight timestamp and active users list
+      const timestampUrl = `/api/sync-timestamp?employeeId=${state.currentUser.id}`;
+      const timestampRes = await fetch(timestampUrl);
+      if (!timestampRes.ok) {
+        console.warn('Sync poll timestamp: server returned error status', timestampRes.status);
         return;
       }
+      const timestampData = await timestampRes.json();
 
-      const data = await res.json();
-
-      // Always update active users list and re-render online status indicators
-      if (data && data.activeUsers) {
+      // 2. Always update active users list and re-render online indicators if it changed
+      if (timestampData && timestampData.activeUsers) {
         const prevActive = JSON.stringify(state.activeUsers || []);
-        const nextActive = JSON.stringify(data.activeUsers || []);
+        const nextActive = JSON.stringify(timestampData.activeUsers || []);
         if (prevActive !== nextActive) {
-          state.activeUsers = data.activeUsers;
+          state.activeUsers = timestampData.activeUsers;
           const activeMenuItem = document.querySelector('.menu-item.active');
           const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
           if (currentView === 'communications') {
@@ -287,6 +285,22 @@ function initSyncPolling() {
           }
         }
       }
+
+      // 3. If lastSyncedTimestamp matches server, skip loading full state
+      if (timestampData && timestampData.timestamp === state.lastSyncedTimestamp) {
+        return;
+      }
+
+      // 4. Perform full sync since state has updated on the server
+      const url = `/api/sync?employeeId=${state.currentUser.id}`;
+      const res = await fetch(url);
+
+      if (!res.ok) {
+        console.warn('Sync poll: server returned error status', res.status, '— skipping update.');
+        return;
+      }
+
+      const data = await res.json();
 
       if (data && data.state && !data.empty && !data.error && data.timestamp !== state.lastSyncedTimestamp) {
         isSyncingToServer = true;
@@ -334,8 +348,6 @@ function initSyncPolling() {
           return;
         }
 
-        // Removed redundant update block
-
         if (!state.currentUser) return;
 
         const activeMenuItem = document.querySelector('.menu-item.active');
@@ -380,7 +392,7 @@ function initSyncPolling() {
     } catch (err) {
       console.error('Polling sync failed:', err);
     }
-  }, 5000);
+  }, 1500);
 }
 
 
