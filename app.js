@@ -6876,7 +6876,8 @@ function deleteDailyReport(reportId) {
   const idx = state.dailyReports.findIndex(r => r.id === reportId);
   if (idx === -1) return;
   state.dailyReports.splice(idx, 1);
-  localStorage.setItem('ems_daily_reports', JSON.stringify(state.dailyReports));
+  localStorage.setItem('ems_reports', JSON.stringify(state.dailyReports));
+  syncStateNow();
   renderDailyReports();
   showToast('Report deleted.', 'success');
 }
