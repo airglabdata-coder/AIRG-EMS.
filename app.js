@@ -4680,14 +4680,10 @@ function createProjectCard(proj, isMyProject) {
   // Get all employees associated with the project
   const taskAssigneeIds = state.tasks.filter(t => t.projectId === proj.id).map(t => t.assigneeId);
 
-  const isDeptMember = (emp, deptName) => {
-    if (!emp.dept || !deptName) return false;
-    return emp.dept.split(',').map(d => d.trim().toLowerCase()).includes(deptName.toLowerCase());
-  };
-
-  const deptEmployees = state.employees.filter(e => isDeptMember(e, proj.dept));
-  const externalEmployees = state.employees.filter(e => !isDeptMember(e, proj.dept) && (e.id === proj.techLeadId || (proj.employeeIds && proj.employeeIds.includes(e.id)) || taskAssigneeIds.includes(e.id)));
-  const allProjectEmployees = [...deptEmployees, ...externalEmployees];
+  // Project members are: the Tech Lead, anyone explicitly assigned, and anyone with a task in the project
+  const allProjectEmployees = state.employees.filter(e => {
+    return e.id === proj.techLeadId || (proj.employeeIds && proj.employeeIds.includes(e.id)) || taskAssigneeIds.includes(e.id);
+  });
 
   const uniqueEmployees = [];
   const seenIds = new Set();
@@ -5041,18 +5037,6 @@ function assignEmployeeToProject(projId) {
     proj.employeeIds.push(empId);
   }
 
-  // Automatically add the project's department to the employee's department list if not already present
-  const employee = state.employees.find(e => e.id === empId);
-  if (employee && proj.dept) {
-    const currentDepts = employee.dept ? employee.dept.split(',').map(d => d.trim()) : [];
-    if (!currentDepts.map(d => d.toLowerCase()).includes(proj.dept.toLowerCase())) {
-      currentDepts.push(proj.dept);
-      employee.dept = currentDepts.join(', ');
-      localStorage.setItem('ems_employees', JSON.stringify(state.employees));
-      triggerBackendSync();
-    }
-  }
-
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
 
   // Refresh views
@@ -5072,16 +5056,7 @@ function removeEmployeeFromProject(projId, empId) {
     proj.employeeIds = proj.employeeIds.filter(id => id !== empId);
   }
 
-  // 2. Remove project's department from the employee's departments list
-  const employee = state.employees.find(e => e.id === empId);
-  if (employee && proj.dept) {
-    const currentDepts = employee.dept ? employee.dept.split(',').map(d => d.trim()) : [];
-    const updatedDepts = currentDepts.filter(d => d.toLowerCase() !== proj.dept.toLowerCase());
-    employee.dept = updatedDepts.join(', ');
-    localStorage.setItem('ems_employees', JSON.stringify(state.employees));
-  }
-
-  // 3. Unassign the employee from any tasks inside this project
+  // 2. Unassign the employee from any tasks inside this project
   let tasksModified = false;
   state.tasks.forEach(t => {
     if (t.projectId === projId && t.assigneeId === empId) {
