@@ -159,8 +159,71 @@ async function syncCollection(Model, array, keyField = 'id') {
 }
 
 // Helper to save entire state in MongoDB
-async function saveMongoDBState(stateObj) {
+async function saveMongoDBState(stateObj, syncingEmployeeId) {
   await connectDB();
+
+  // 1. Fetch all existing employees from MongoDB first to validate/merge
+  const existingEmployees = await models.Employee.find({});
+  const existingMap = new Map(existingEmployees.map(e => [e.id, e]));
+
+  // 2. Fetch the syncing user to check their role
+  let isReviewer = false;
+  if (syncingEmployeeId) {
+    const syncingUser = existingMap.get(syncingEmployeeId);
+    if (syncingUser) {
+      const roleLower = (syncingUser.role || '').toLowerCase();
+      if (roleLower.includes('admin') || roleLower.includes('hr')) {
+        isReviewer = true;
+      }
+    }
+  }
+
+  // 3. Process the incoming employees list based on the syncing user's permissions
+  let finalEmployees = [];
+
+  if (isReviewer) {
+    // Admin/HR can sync everything as is
+    finalEmployees = stateObj.employees || [];
+  } else {
+    // If not HR/Admin (i.e. guest registering, or regular employee syncing):
+    // Start with the existing database employees as the base
+    finalEmployees = existingEmployees.map(e => e.toJSON());
+    const finalMap = new Map(finalEmployees.map(e => [e.id, e]));
+
+    const incomingEmployees = stateObj.employees || [];
+    incomingEmployees.forEach(incoming => {
+      if (!incoming || !incoming.id) return;
+
+      const existing = finalMap.get(incoming.id);
+      if (!existing) {
+        // New registration request: guest registers as 'pending_approval'
+        incoming.status = 'pending_approval';
+        if (incoming.role && incoming.role.toLowerCase().includes('admin')) {
+          incoming.role = 'Employee';
+        }
+        finalEmployees.push(incoming);
+      } else {
+        // Regular employee can only update their own record
+        if (incoming.id === syncingEmployeeId) {
+          // Merge their changes but preserve status and role from database
+          const merged = {
+            ...existing,
+            ...incoming,
+            status: existing.status, // Preserve status from database
+            role: existing.role      // Preserve role from database
+          };
+          const idx = finalEmployees.findIndex(e => e.id === incoming.id);
+          if (idx !== -1) {
+            finalEmployees[idx] = merged;
+          }
+        }
+      }
+    });
+  }
+
+  // Assign the sanitized employees array back to the stateObj so syncCollection saves it
+  stateObj.employees = finalEmployees;
+
   const syncOps = [
     syncCollection(models.Employee, stateObj.employees, 'id'),
     syncCollection(models.LeaveRequest, stateObj.requests, 'id'),
@@ -325,7 +388,7 @@ app.post('/api/sync', async (req, res) => {
   }
 
   try {
-    const updatedTimestamp = await saveMongoDBState(newState);
+    const updatedTimestamp = await saveMongoDBState(newState, req.query.employeeId);
     const activeList = trackAndGetActiveUsers(req.query.employeeId, req.query.active);
     return res.json({ success: true, timestamp: updatedTimestamp, activeUsers: activeList });
   } catch (err) {

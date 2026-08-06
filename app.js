@@ -94,6 +94,52 @@ function triggerBackendSync() {
   }, 300);
 }
 
+async function syncStateNow() {
+  if (syncTimeout) clearTimeout(syncTimeout);
+
+  const cleanState = {
+    employees: state.employees || [],
+    requests: state.requests || [],
+    projects: state.projects || [],
+    tasks: state.tasks || [],
+    departments: state.departments || [],
+    chats: state.chats || [],
+    dailyReports: state.dailyReports || [],
+    announcements: state.announcements || [],
+    notices: state.notices || [],
+    reimbursements: state.reimbursements || [],
+    tickets: state.tickets || [],
+    nationalHolidays: state.nationalHolidays || [],
+    celebrationDays: state.celebrationDays || [],
+    smsNotifications: state.smsNotifications || [],
+    schools: state.schools || []
+  };
+
+  const url = state.currentUser ? `/api/sync?employeeId=${state.currentUser.id}` : '/api/sync';
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cleanState)
+    });
+    if (!res.ok) {
+      console.error('Server sync failed with status:', res.status);
+      return false;
+    }
+    const data = await res.json();
+    if (data && data.success) {
+      state.lastSyncedTimestamp = data.timestamp;
+      if (data.activeUsers) {
+        state.activeUsers = data.activeUsers;
+      }
+      return true;
+    }
+  } catch (err) {
+    console.error('Failed to sync to database server:', err);
+  }
+  return false;
+}
+
 async function fetchCentralizedState() {
   try {
     const url = state.currentUser ? `/api/sync?employeeId=${state.currentUser.id}` : '/api/sync';
@@ -138,8 +184,14 @@ async function fetchCentralizedState() {
         safeOriginalSetItem('ems_chats', JSON.stringify(s.chats));
       }
       if (s.dailyReports) {
-        state.dailyReports = s.dailyReports;
-        safeOriginalSetItem('ems_reports', JSON.stringify(s.dailyReports));
+        const localReports = JSON.parse(localStorage.getItem('ems_reports') || '[]');
+        const serverReportIds = new Set(s.dailyReports.map(r => r.id));
+        const unsyncedReports = localReports.filter(r => !serverReportIds.has(r.id));
+        state.dailyReports = [...s.dailyReports, ...unsyncedReports];
+        safeOriginalSetItem('ems_reports', JSON.stringify(state.dailyReports));
+        if (unsyncedReports.length > 0) {
+          triggerBackendSync();
+        }
       }
       if (s.announcements) {
         cleanBloatedAttachments(s.announcements);
@@ -2783,7 +2835,7 @@ function switchView(viewName) {
     const titleLabel = document.getElementById('page-title-label');
     if (titleLabel) titleLabel.textContent = 'Daily Reports';
 
-    const isReportReviewer = (state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
+    const isReportReviewer = (state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin' || state.currentRole === 'hr');
     const leaveSubTabs = document.getElementById('leave-sub-tabs');
     if (isReportReviewer) {
       if (leaveSubTabs) leaveSubTabs.style.display = 'flex';
@@ -6232,7 +6284,7 @@ function getUnreadChatsCount() {
 
 function getUnreadReportsCount() {
   if (!state.currentUser) return 0;
-  const isReportReviewer = (state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
+  const isReportReviewer = (state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin' || state.currentRole === 'hr');
 
   if (isReportReviewer) {
     // Count unreviewed reports where the current user is the recipient/reviewer
@@ -7473,20 +7525,27 @@ function getReportReporterRole(report) {
 }
 
 function canUserSeeReport(currentUserRole, reporterRole) {
+  if (currentUserRole === 'admin' || currentUserRole === 'hr') {
+    return true;
+  }
   if (reporterRole === 'employee') {
     return ['techlead', 'manager'].includes(currentUserRole);
   }
   if (reporterRole === 'techlead' || reporterRole === 'manager') {
-    return ['admin'].includes(currentUserRole);
+    return false;
   }
   if (reporterRole === 'hr') {
-    return ['admin'].includes(currentUserRole);
+    return false;
   }
   return false;
 }
 
 function isReportReviewerFor(reviewerId, reviewerRole, report) {
   if (!reviewerId || !reviewerRole || !report) return false;
+
+  if (reviewerRole === 'admin' || reviewerRole === 'hr') {
+    return true;
+  }
 
   const proj = state.projects.find(p => p.id === report.projectId);
   if (!proj || !proj.techLeadId) {
@@ -7542,7 +7601,7 @@ function renderDailyReports() {
 
   populateDailyReportDropdowns();
 
-  const isReportReviewer = (state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
+  const isReportReviewer = (state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin' || state.currentRole === 'hr');
 
   if (isReportReviewer) {
     if (state.activeLeaveSubTab === 'apply') {
@@ -8117,7 +8176,7 @@ function renderHRReports() {
   });
 }
 
-function handleDailyReportSubmit(e) {
+async function handleDailyReportSubmit(e) {
   e.preventDefault();
 
   const reportDateInput = document.getElementById('report-date');
@@ -8159,6 +8218,9 @@ function handleDailyReportSubmit(e) {
     state.dailyReports.pop();
     return;
   }
+
+  // Force an immediate server sync to avoid data loss on reload
+  await syncStateNow();
 
   // Find project recipient for daily report routing
   const proj = state.projects.find(p => p.id === projectIdVal);
@@ -9397,8 +9459,12 @@ function showLoginScreen() {
   }
 }
 
-function handleLoginSubmit(e) {
+async function handleLoginSubmit(e) {
   e.preventDefault();
+
+  // Fetch latest state from server first to make sure we have up-to-date approval status
+  await fetchCentralizedState();
+
   const emailInput = document.getElementById('login-email');
   const passwordInput = document.getElementById('login-password');
   if (!emailInput || !passwordInput) return;
