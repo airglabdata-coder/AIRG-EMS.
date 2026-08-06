@@ -284,6 +284,26 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
   }
   stateObj.schools = finalSchools;
 
+  // Handle owner/HR-based deletion for DailyReport, Ticket, LeaveRequest, Reimbursement
+  if (syncingEmployeeId) {
+    const incomingReportIds = (stateObj.dailyReports || []).map(r => r.id).filter(Boolean);
+    const incomingTicketIds = (stateObj.tickets || []).map(t => t.id).filter(Boolean);
+    const incomingRequestIds = (stateObj.requests || []).map(r => r.id).filter(Boolean);
+    const incomingReimbursementIds = (stateObj.reimbursements || []).map(r => r.id).filter(Boolean);
+
+    if (isReviewer) {
+      await models.DailyReport.deleteMany({ id: { $nin: incomingReportIds } });
+      await models.Ticket.deleteMany({ id: { $nin: incomingTicketIds } });
+      await models.LeaveRequest.deleteMany({ id: { $nin: incomingRequestIds } });
+      await models.Reimbursement.deleteMany({ id: { $nin: incomingReimbursementIds } });
+    } else {
+      await models.DailyReport.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingReportIds } });
+      await models.Ticket.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingTicketIds } });
+      await models.LeaveRequest.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingRequestIds } });
+      await models.Reimbursement.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingReimbursementIds } });
+    }
+  }
+
   const syncOps = [
     syncCollection(models.Employee, stateObj.employees, 'id', isReviewer),
     syncCollection(models.LeaveRequest, stateObj.requests, 'id', isReviewer),

@@ -132,6 +132,10 @@ async function syncStateNow() {
       if (data.activeUsers) {
         state.activeUsers = data.activeUsers;
       }
+      if (state.dailyReports && state.dailyReports.length > 0) {
+        state.dailyReports.forEach(r => r.synced = true);
+        safeOriginalSetItem('ems_reports', JSON.stringify(state.dailyReports));
+      }
       return true;
     }
   } catch (err) {
@@ -186,7 +190,7 @@ async function fetchCentralizedState() {
       if (s.dailyReports) {
         const localReports = JSON.parse(localStorage.getItem('ems_reports') || '[]');
         const serverReportIds = new Set(s.dailyReports.map(r => r.id));
-        const unsyncedReports = localReports.filter(r => !serverReportIds.has(r.id));
+        const unsyncedReports = localReports.filter(r => !r.synced && !serverReportIds.has(r.id));
         state.dailyReports = [...s.dailyReports, ...unsyncedReports];
         safeOriginalSetItem('ems_reports', JSON.stringify(state.dailyReports));
         if (unsyncedReports.length > 0) {
