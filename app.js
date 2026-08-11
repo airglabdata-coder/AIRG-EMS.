@@ -10,6 +10,10 @@ window.onerror = function (message, source, lineno, colno, error) {
   return false;
 };
 
+function getTodayDateString() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
+
 // --- Central Database Sync Layer ---
 const originalSetItem = localStorage.setItem;
 let isSyncingToServer = false;
@@ -2465,7 +2469,7 @@ function getEmployeeLeaveAccumulation(employeeId, targetYearMonth) {
 }
 
 function setupDateLimits() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDateString();
   const startDate = document.getElementById('start-date');
   const endDate = document.getElementById('end-date');
   if (startDate && endDate) {
@@ -3851,7 +3855,7 @@ function handleLeaveFormSubmit(e) {
 
   // Create leave request object
   const newReq = {
-    id: `REQ${100 + state.requests.length + 1}`,
+    id: `REQ-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
     employeeId: state.currentUser.id,
     employeeName: state.currentUser.name,
     dept: state.currentUser.dept,
@@ -3862,7 +3866,7 @@ function handleLeaveFormSubmit(e) {
     reason: reason,
     status: 'pending',
     comment: '',
-    submittedAt: new Date().toISOString().split('T')[0]
+    submittedAt: getTodayDateString()
   };
 
   // Update State
@@ -3941,7 +3945,7 @@ function handleHRDirectLeaveSubmit(e) {
     reason: reason,
     status: 'approved',
     comment: `Recorded directly by HR (${state.currentUser.name})`,
-    submittedAt: new Date().toISOString().split('T')[0]
+    submittedAt: getTodayDateString()
   };
 
   state.requests.unshift(newRequest);
@@ -4563,14 +4567,21 @@ function renderEmployeeTasksAndProjects() {
         const sessions = log.sessions || (log.login || log.logout ? [{ login: log.login || '', logout: log.logout || '', loginMs: null, logoutMs: null }] : []);
         const totalMins = log.totalMinutesWorked || sessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
 
-        const sessionRows = sessions.map((s, idx) => `
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
-            <td style="padding: 8px 12px; color: var(--text-muted); font-size: 0.8rem;">Session ${idx + 1}</td>
-            <td style="padding: 8px 12px; color: #22c55e; font-weight: 600; font-size: 0.82rem;">${s.login || '—'}</td>
-            <td style="padding: 8px 12px; color: ${s.logout ? '#ef4444' : 'var(--text-muted)'}; font-weight: 600; font-size: 0.82rem;">${s.logout || (s.login ? '(active)' : '—')}</td>
-            <td style="padding: 8px 12px; color: #f59e0b; font-weight: 500; font-size: 0.82rem;">${formatDuration(s.durationMinutes)}</td>
-          </tr>
-        `).join('');
+        const sessionRows = sessions.map((s, idx) => {
+          const isSessionActive = s.loginMs && !s.explicitLogout && (Date.now() - s.logoutMs < 60000);
+          const logoutVal = isSessionActive ? '<span style="color:#22c55e; font-weight:700;">(active)</span>' : (s.logout || '—');
+          const durationVal = isSessionActive ? '—' : formatDuration(s.durationMinutes);
+          const logoutColor = isSessionActive ? '#22c55e' : (s.logout ? '#ef4444' : 'var(--text-muted)');
+
+          return `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 8px 12px; color: var(--text-muted); font-size: 0.8rem;">Session ${idx + 1}</td>
+              <td style="padding: 8px 12px; color: #22c55e; font-weight: 600; font-size: 0.82rem;">${s.login || '—'}</td>
+              <td style="padding: 8px 12px; color: ${logoutColor}; font-weight: 600; font-size: 0.82rem;">${logoutVal}</td>
+              <td style="padding: 8px 12px; color: #f59e0b; font-weight: 500; font-size: 0.82rem;">${durationVal}</td>
+            </tr>
+          `;
+        }).join('');
 
         return `
           <div style="margin-bottom: 16px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden;">
@@ -5730,7 +5741,7 @@ async function handleProjectCreationSubmit(e) {
       "All acrylic boards (certificate, section wise like drone)"
     ];
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayDateString();
 
     defaultTodos.forEach((todo, idx) => {
       const task = {
@@ -5793,15 +5804,16 @@ function openAssignTaskModal() {
   // Default due date to 1 week from now
   const oneWeekLater = new Date();
   oneWeekLater.setDate(oneWeekLater.getDate() + 7);
-  document.getElementById('task-due-date').value = oneWeekLater.toISOString().split('T')[0];
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
+  document.getElementById('task-due-date').value = formatter.format(oneWeekLater);
 
   // Set minimum date to today
-  document.getElementById('task-due-date').min = new Date().toISOString().split('T')[0];
+  document.getElementById('task-due-date').min = getTodayDateString();
 
   const startDateInput = document.getElementById('task-start-date');
   if (startDateInput) {
-    startDateInput.value = new Date().toISOString().split('T')[0];
-    startDateInput.min = new Date().toISOString().split('T')[0];
+    startDateInput.value = getTodayDateString();
+    startDateInput.min = getTodayDateString();
   }
 
   populateTaskModalOptions();
@@ -6168,16 +6180,17 @@ function openCreateEmpTaskModal() {
   // Default due date to 1 week from now
   const oneWeekLater = new Date();
   oneWeekLater.setDate(oneWeekLater.getDate() + 7);
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
   const dueDateInput = document.getElementById('emp-task-due-date');
   if (dueDateInput) {
-    dueDateInput.value = oneWeekLater.toISOString().split('T')[0];
-    dueDateInput.min = new Date().toISOString().split('T')[0];
+    dueDateInput.value = formatter.format(oneWeekLater);
+    dueDateInput.min = getTodayDateString();
   }
 
   const startDateInput = document.getElementById('emp-task-start-date');
   if (startDateInput) {
-    startDateInput.value = new Date().toISOString().split('T')[0];
-    startDateInput.min = new Date().toISOString().split('T')[0];
+    startDateInput.value = getTodayDateString();
+    startDateInput.min = getTodayDateString();
   }
 
   // Populate the projects select with employee's department projects + other projects they have tasks in + "Personal Task"
@@ -7274,7 +7287,7 @@ function renderCalendar() {
   }
 
   // 2. Render Active Month Cells
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayDateString();
 
   for (let day = 1; day <= totalDays; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -7426,7 +7439,7 @@ function renderInlineCalendar() {
   }
 
   // 2. Render Active Month Cells
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayDateString();
 
   for (let day = 1; day <= totalDays; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -7528,7 +7541,7 @@ function changeInlineCalendarMonth(offset, event) {
 function setTodayReportDate() {
   const reportDateInput = document.getElementById('report-date');
   if (reportDateInput) {
-    reportDateInput.value = new Date().toISOString().split('T')[0];
+    reportDateInput.value = getTodayDateString();
   }
 }
 
@@ -8220,7 +8233,7 @@ async function handleDailyReportSubmit(e) {
   }
 
   const newReport = {
-    id: `REP${500 + state.dailyReports.length + 1}`,
+    id: `REP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
     employeeId: state.currentUser.id,
     employeeName: state.currentUser.name,
     employeeRole: state.currentUser.role,
@@ -8346,7 +8359,7 @@ function saveHRRemarks(reportId, event) {
 
   report.remarks = remarksText;
   report.reviewedBy = state.currentUser.name;
-  report.reviewedAt = new Date().toISOString().split('T')[0];
+  report.reviewedAt = getTodayDateString();
 
   if (!safeSaveReports()) {
     report.remarks = originalRemarks;
@@ -9043,7 +9056,7 @@ function renderReimbursements() {
     // Reset date default to today
     const dateInput = document.getElementById('reimbursement-date');
     if (dateInput && !dateInput.value) {
-      dateInput.value = new Date().toISOString().split('T')[0];
+      dateInput.value = getTodayDateString();
     }
 
     // Render claims history
@@ -9203,7 +9216,7 @@ function handleReimbursementSubmit(e) {
   }
 
   const newClaim = {
-    id: `REIM${100 + state.reimbursements.length + 1}`,
+    id: `REIM-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
     employeeId: state.currentUser.id,
     employeeName: state.currentUser.name,
     type: type,
@@ -9897,15 +9910,8 @@ function handleTicketFormSubmit(e) {
     assignedToName = 'Pratap Pawar';
   }
 
-  // Find next sequential ID
-  const maxIdNum = state.tickets.reduce((max, t) => {
-    const match = t.id.match(/^TCK(\d+)$/);
-    return match ? Math.max(max, parseInt(match[1])) : max;
-  }, 0);
-  const newId = `TCK${String(maxIdNum + 1).padStart(3, '0')}`;
-
   const newTicket = {
-    id: newId,
+    id: `TCK-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
     employeeId: state.currentUser.id,
     employeeName: state.currentUser.name,
     title: titleInput.value.trim(),
@@ -11768,12 +11774,6 @@ window.addEventListener('beforeunload', () => {
   if (state.currentUser) {
     const userId = state.currentUser.id;
     fetch(`/api/sync?employeeId=${userId}&active=false`, { keepalive: true }).catch(() => {});
-    fetch('/api/activity-log', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeId: userId, type: 'logout' }),
-      keepalive: true
-    }).catch(() => {});
   }
 });
 

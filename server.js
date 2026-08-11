@@ -440,6 +440,84 @@ function trackAndGetActiveUsers(employeeId, isActiveParam) {
   return Object.keys(activeUsers);
 }
 
+// Helper to automatically update the active session's logout time (heartbeat tracking)
+async function updateUserSessionHeartbeat(employeeId) {
+  if (!employeeId) return;
+  try {
+    const emp = await models.Employee.findOne({ id: employeeId });
+    if (!emp) return;
+
+    const dateObj = new Date();
+    const dateOptions = { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric' };
+    const timeOptions = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+
+    const formattedDate = dateObj.toLocaleDateString('en-US', dateOptions);
+    const formattedTime = dateObj.toLocaleTimeString('en-US', timeOptions);
+    const nowMs = dateObj.getTime();
+
+    let logs = emp.get('activityLogs') || [];
+    let dayEntry = logs.find(log => log.date === formattedDate);
+
+    // If no entry for today, we can create one
+    if (!dayEntry) {
+      dayEntry = { date: formattedDate, sessions: [] };
+      logs.push(dayEntry);
+    }
+
+    if (!dayEntry.sessions) {
+      dayEntry.sessions = [];
+    }
+
+    // Check if there was an active session on a previous day and auto-close it
+    let modifiedAny = false;
+    logs.forEach(log => {
+      if (log.date !== formattedDate && log.sessions) {
+        log.sessions.forEach(s => {
+          if (s.login && s.explicitLogout !== true) {
+            s.explicitLogout = true;
+            modifiedAny = true;
+          }
+        });
+        if (modifiedAny) {
+          log.totalMinutesWorked = log.sessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+        }
+      }
+    });
+
+    // Find the last session of today
+    let lastSession = dayEntry.sessions[dayEntry.sessions.length - 1];
+
+    if (!lastSession) {
+      // Start a new session for today since they are online now!
+      lastSession = {
+        login: formattedTime,
+        logout: formattedTime,
+        loginMs: nowMs,
+        logoutMs: nowMs,
+        durationMinutes: 0,
+        explicitLogout: false
+      };
+      dayEntry.sessions.push(lastSession);
+    } else if (lastSession.explicitLogout !== true) {
+      // Update today's last session
+      lastSession.logout = formattedTime;
+      lastSession.logoutMs = nowMs;
+      if (lastSession.loginMs) {
+        lastSession.durationMinutes = Math.round((nowMs - lastSession.loginMs) / 60000);
+      }
+    }
+
+    // Recalculate total worked minutes for this day
+    dayEntry.totalMinutesWorked = dayEntry.sessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+
+    emp.set('activityLogs', logs);
+    emp.markModified('activityLogs');
+    await emp.save();
+  } catch (err) {
+    console.error('Failed to update user session heartbeat:', err);
+  }
+}
+
 
 
 // Ensure DB connection for all API routes
@@ -455,6 +533,9 @@ app.use('/api', async (req, res, next) => {
 // Endpoint to fetch centralized state
 app.get('/api/sync', async (req, res) => {
   try {
+    if (req.query.employeeId) {
+      await updateUserSessionHeartbeat(req.query.employeeId);
+    }
     const data = await getMongoDBState();
     data.activeUsers = trackAndGetActiveUsers(req.query.employeeId, req.query.active);
     return res.json(data);
@@ -468,6 +549,9 @@ app.get('/api/sync', async (req, res) => {
 app.get('/api/sync-timestamp', async (req, res) => {
   try {
     await connectDB();
+    if (req.query.employeeId) {
+      await updateUserSessionHeartbeat(req.query.employeeId);
+    }
     let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' });
     const timestamp = meta ? meta.timestamp : Date.now();
     const activeUsers = trackAndGetActiveUsers(req.query.employeeId, req.query.active);
@@ -487,6 +571,9 @@ app.post('/api/sync', async (req, res) => {
 
   try {
     console.log(`[SYNC POST] employeeId=${req.query.employeeId}, reportsCount=${(newState.dailyReports || []).length}`);
+    if (req.query.employeeId) {
+      await updateUserSessionHeartbeat(req.query.employeeId);
+    }
     const updatedTimestamp = await saveMongoDBState(newState, req.query.employeeId);
     const activeList = trackAndGetActiveUsers(req.query.employeeId, req.query.active);
     return res.json({ success: true, timestamp: updatedTimestamp, activeUsers: activeList });
@@ -538,29 +625,46 @@ app.post('/api/activity-log', async (req, res) => {
     }
 
     if (type === 'login') {
+      // Close any existing active sessions
+      dayEntry.sessions.forEach(s => {
+        if (s.explicitLogout !== true) {
+          s.explicitLogout = true;
+        }
+      });
       // Start a new session
-      dayEntry.sessions.push({ login: formattedTime, logout: '', loginMs: nowMs, logoutMs: null });
+      dayEntry.sessions.push({
+        login: formattedTime,
+        logout: formattedTime,
+        loginMs: nowMs,
+        logoutMs: nowMs,
+        durationMinutes: 0,
+        explicitLogout: false
+      });
     } else if (type === 'logout') {
-      // Close the most recent open session (no logout yet)
-      const openSession = [...dayEntry.sessions].reverse().find(s => s.login && !s.logout);
+      // Close the most recent open session (no explicit logout yet)
+      const openSession = [...dayEntry.sessions].reverse().find(s => s.explicitLogout !== true);
       if (openSession) {
         openSession.logout = formattedTime;
         openSession.logoutMs = nowMs;
-        // Compute duration for this session in minutes
+        openSession.explicitLogout = true;
         if (openSession.loginMs) {
           openSession.durationMinutes = Math.round((nowMs - openSession.loginMs) / 60000);
         }
       } else {
         // No open session found — add a standalone logout entry
-        dayEntry.sessions.push({ login: '', logout: formattedTime, loginMs: null, logoutMs: nowMs, durationMinutes: 0 });
+        dayEntry.sessions.push({
+          login: '',
+          logout: formattedTime,
+          loginMs: null,
+          logoutMs: nowMs,
+          durationMinutes: 0,
+          explicitLogout: true
+        });
       }
     }
 
     // Recalculate total worked minutes for this day
     dayEntry.totalMinutesWorked = dayEntry.sessions.reduce((sum, s) => {
-      if (s.loginMs && s.logoutMs) {
-        return sum + Math.round((s.logoutMs - s.loginMs) / 60000);
-      }
       return sum + (s.durationMinutes || 0);
     }, 0);
 
