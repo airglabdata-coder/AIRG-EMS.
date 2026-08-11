@@ -5515,8 +5515,10 @@ function renderHRTasksAndProjects() {
                 Array.from(e.target.files).forEach(file => {
                   const reader = new FileReader();
                   reader.onload = (ev) => {
-                    state.editingPersonalTaskImages.push(ev.target.result);
-                    renderPersonalTaskEditPreview(task.id);
+                    compressImage(ev.target.result, 800, 800, 0.6, (compressed) => {
+                      state.editingPersonalTaskImages.push(compressed);
+                      renderPersonalTaskEditPreview(task.id);
+                    });
                   };
                   reader.readAsDataURL(file);
                 });
@@ -10848,7 +10850,16 @@ async function readFileAsBase64(fileInputId) {
   if (!input || !input.files || input.files.length === 0) return null;
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      if (input.files[0].type.startsWith('image/')) {
+        compressImage(dataUrl, 1000, 1000, 0.7, (compressed) => {
+          resolve(compressed);
+        });
+      } else {
+        resolve(dataUrl);
+      }
+    };
     reader.onerror = error => reject(error);
     reader.readAsDataURL(input.files[0]);
   });
@@ -11556,7 +11567,14 @@ function setupSchoolFileListener() {
       try {
         const data = await new Promise((resolve, reject) => {
           const r = new FileReader();
-          r.onload = () => resolve(r.result);
+          r.onload = () => {
+            const dataUrl = r.result;
+            if (file.type.startsWith('image/')) {
+              compressImage(dataUrl, 1000, 1000, 0.7, (compressed) => resolve(compressed));
+            } else {
+              resolve(dataUrl);
+            }
+          };
           r.onerror = e => reject(e);
           r.readAsDataURL(file);
         });
