@@ -60,12 +60,18 @@ const TaskSchema = new mongoose.Schema({
   projectId: { type: String },
   projectName: { type: String },
   desc: { type: String },
+  details: { type: String },
+  images: { type: Array },
+  driveLinks: { type: Array },
+  startDate: { type: String },
+  createdByEmployee: { type: String },
   assigneeId: { type: String },
   assigneeName: { type: String },
   dueDate: { type: String },
   priority: { type: String },
   status: { type: String }
 }, { strict: false });
+
 
 // Chat Schema
 const ChatSchema = new mongoose.Schema({
@@ -74,6 +80,7 @@ const ChatSchema = new mongoose.Schema({
   senderName: { type: String },
   receiverId: { type: String },
   content: { type: String },
+  file: { type: mongoose.Schema.Types.Mixed },
   timestamp: { type: String }
 }, { strict: false });
 
@@ -99,6 +106,8 @@ const AnnouncementSchema = new mongoose.Schema({
   title: { type: String },
   content: { type: String },
   senderName: { type: String },
+  attachments: { type: Array },
+  pinned: { type: Boolean },
   timestamp: { type: String }
 }, { strict: false });
 
@@ -109,6 +118,8 @@ const NoticeSchema = new mongoose.Schema({
   content: { type: String },
   targetEmployeeIds: { type: Array },
   senderName: { type: String },
+  attachments: { type: Array },
+  acknowledgedBy: { type: Array },
   timestamp: { type: String }
 }, { strict: false });
 
@@ -179,6 +190,50 @@ const SchoolSchema = new mongoose.Schema({
   problems: { type: String }
 }, { strict: false });
 
+// TrainerReport Schema (Multi-session table with Geotags, auto-generated PDF, and 3-level Manager -> HR -> CEO approval workflow)
+const TrainerReportSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  trainerId: { type: String, required: true },
+  trainerName: { type: String, required: true },
+  trainerEmail: { type: String },
+  trainerDept: { type: String, default: 'Instructor' },
+  school: { type: String },
+  date: { type: String, required: true },
+  sessions: { type: Array, default: [] }, // [{ class, time, topic, image, geoTag: { lat, lng, timestamp, address }, remark }]
+  summary: { type: String, default: '' },
+  pdfBase64: { type: String },
+  reportingManagerId: { type: String },
+  reportingManagerName: { type: String },
+  status: { 
+    type: String, 
+    enum: ['pending_manager', 'pending_hr', 'pending_ceo', 'approved', 'rejected'],
+    default: 'pending_manager' 
+  },
+  managerReview: {
+    reviewerId: String,
+    reviewerName: String,
+    reviewedAt: String,
+    remarks: String,
+    status: String
+  },
+  hrReview: {
+    reviewerId: String,
+    reviewerName: String,
+    reviewedAt: String,
+    remarks: String,
+    status: String
+  },
+  ceoReview: {
+    reviewerId: String,
+    reviewerName: String,
+    reviewedAt: String,
+    remarks: String,
+    status: String
+  },
+  createdAt: { type: String },
+  updatedAt: { type: String }
+}, { strict: false });
+
 // Compile and Export Models
 module.exports = {
   Employee: mongoose.model('Employee', EmployeeSchema),
@@ -195,5 +250,6 @@ module.exports = {
   CelebrationDay: mongoose.model('CelebrationDay', CelebrationDaySchema),
   SystemMetadata: mongoose.model('SystemMetadata', SystemMetadataSchema),
   PushSubscription: mongoose.model('PushSubscription', PushSubscriptionSchema),
-  School: mongoose.model('School', SchoolSchema)
+  School: mongoose.model('School', SchoolSchema),
+  TrainerReport: mongoose.model('TrainerReport', TrainerReportSchema)
 };

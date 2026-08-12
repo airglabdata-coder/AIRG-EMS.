@@ -1,24 +1,36 @@
-require('dotenv').config({ path: '.env' });
-const mongoose = require('mongoose');
-const models = require('../models');
 const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+const { MongoClient } = require('mongodb');
 
-// Force Google DNS
-dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+const uri = "mongodb+srv://sohamwandkar3114_db_user:HyyFOChP36tp3hAn@cluster0.4yu0ufe.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-mongoose.connect(MONGODB_URI, { family: 4 })
-  .then(async () => {
-    const employees = await models.Employee.find({}, { id: 1, name: 1, role: 1, dept: 1, _id: 0 });
-    console.log("=== EMPLOYEE LIST ===");
-    employees.forEach(emp => {
-      console.log(`ID: ${emp.id} | Name: ${emp.name} | Role: ${emp.role || 'Employee'} | Dept: ${emp.dept || 'None'}`);
+async function listEmployees() {
+  const client = new MongoClient(uri, { family: 4 });
+  try {
+    await client.connect();
+    // Find the right DB
+    const adminDb = client.db('admin');
+    const dbsInfo = await adminDb.admin().listDatabases();
+    let targetDb = null;
+    for (const dbInfo of dbsInfo.databases) {
+      if (dbInfo.name !== 'admin' && dbInfo.name !== 'local') {
+        targetDb = dbInfo.name;
+        break;
+      }
+    }
+    console.log("Using DB:", targetDb);
+    const db = client.db(targetDb);
+    const employees = await db.collection('employees').find({}, { projection: { id: 1, name: 1, role: 1, dept: 1 } }).toArray();
+    console.log(`Total employees: ${employees.length}\n`);
+    employees.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    employees.forEach(e => {
+      console.log(`${e.id || '?'} | ${e.name || '?'} | ${e.role || '?'} | ${e.dept || '?'}`);
     });
-    console.log("=====================");
-    process.exit(0);
-  })
-  .catch(err => {
-    console.error('Failed to connect:', err);
-    process.exit(1);
-  });
+  } catch (e) {
+    console.error('Error:', e.message);
+  } finally {
+    await client.close();
+  }
+}
+
+listEmployees();

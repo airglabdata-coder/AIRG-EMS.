@@ -79,7 +79,8 @@ async function getMongoDBState() {
     tickets,
     nationalHolidays,
     celebrationDays,
-    schools
+    schools,
+    trainerReports
   ] = await Promise.all([
     models.Employee.find({}),
     models.LeaveRequest.find({}),
@@ -93,7 +94,8 @@ async function getMongoDBState() {
     models.Ticket.find({}),
     models.NationalHoliday.find({}),
     models.CelebrationDay.find({}),
-    models.School.find({})
+    models.School.find({}),
+    models.TrainerReport.find({})
   ]);
 
   let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' });
@@ -115,14 +117,15 @@ async function getMongoDBState() {
       tickets: tickets.map(x => x.toJSON()),
       nationalHolidays: nationalHolidays.map(h => ({ date: h.date, name: h.name })),
       celebrationDays: celebrationDays.map(c => ({ date: c.date, name: c.name })),
-      schools: schools.map(x => x.toJSON())
+      schools: schools.map(x => x.toJSON()),
+      trainerReports: trainerReports.map(x => x.toJSON())
     },
     timestamp: meta.timestamp
   };
 }
 
 // Helper to bulk upsert array entries & handle deletions
-async function syncCollection(Model, array, keyField = 'id', isReviewer = false) {
+async function syncCollection(Model, array, keyField = 'id', isReviewer = false, syncingEmployeeId = null) {
   if (!array || !Array.isArray(array)) return;
 
   const incomingIds = array.map(item => item[keyField]).filter(Boolean);
@@ -150,6 +153,43 @@ async function syncCollection(Model, array, keyField = 'id', isReviewer = false)
   // Construct bulk upserts
   const ops = array.map(item => {
     const { _id, __v, ...cleanItem } = item; // strip existing mongo ID fields if present to prevent conflicts
+
+    // === TASK SMART-MERGE ===
+    // PROBLEM: Multiple users are always POSTing their full local state.
+    // If User A saves a task with images, then User B (who has an older copy of
+    // the task with no images) does their routine sync POST, B's sync would
+    // overwrite A's images with an empty array — losing the attachment.
+    //
+    // FIX: For the Task model, we use a protective merge strategy:
+    //   - Only overwrite `images` / `details` / `driveLinks` if the incoming
+    //     value is actually populated, OR if the syncing user is the
+    //     task's assignee (they have full authority over their own task).
+    if (Model.modelName === 'Task') {
+      const setFields = { ...cleanItem };
+      const isAssignee = syncingEmployeeId && cleanItem.assigneeId === syncingEmployeeId;
+
+      if (!isAssignee) {
+        // Non-assignee syncing: protect rich content fields from being wiped
+        if (!cleanItem.images || cleanItem.images.length === 0) {
+          delete setFields.images;
+        }
+        if (cleanItem.details === undefined || cleanItem.details === null || cleanItem.details === '') {
+          delete setFields.details;
+        }
+        if (!cleanItem.driveLinks || cleanItem.driveLinks.length === 0) {
+          delete setFields.driveLinks;
+        }
+      }
+
+      return {
+        updateOne: {
+          filter: { [keyField]: cleanItem[keyField] },
+          update: { $set: setFields },
+          upsert: true
+        }
+      };
+    }
+
     return {
       updateOne: {
         filter: { [keyField]: cleanItem[keyField] },
@@ -306,13 +346,19 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
       const remDel = await models.Reimbursement.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingReimbursementIds } });
       console.log(`[DELETION SYNC OWNER] employeeId=${syncingEmployeeId}, deleted reports=${repDel.deletedCount}, tickets=${tktDel.deletedCount}`);
     }
+
+    // Owner-based deletion for TrainerReports
+    const incomingTrainerReportIds = (stateObj.trainerReports || []).map(r => r.id).filter(Boolean);
+    if (!isReviewer && incomingTrainerReportIds.length > 0) {
+      await models.TrainerReport.deleteMany({ trainerId: syncingEmployeeId, id: { $nin: incomingTrainerReportIds } });
+    }
   }
 
   const syncOps = [
     syncCollection(models.Employee, stateObj.employees, 'id', isReviewer),
     syncCollection(models.LeaveRequest, stateObj.requests, 'id', isReviewer),
     syncCollection(models.Project, stateObj.projects, 'id', isReviewer),
-    syncCollection(models.Task, stateObj.tasks, 'id', isReviewer),
+    syncCollection(models.Task, stateObj.tasks, 'id', isReviewer, syncingEmployeeId),
     syncCollection(models.Chat, stateObj.chats, 'id', isReviewer),
     syncCollection(models.DailyReport, stateObj.dailyReports, 'id', isReviewer),
     syncCollection(models.Announcement, stateObj.announcements, 'id', isReviewer),
@@ -321,7 +367,8 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
     syncCollection(models.Ticket, stateObj.tickets, 'id', isReviewer),
     syncCollection(models.NationalHoliday, stateObj.nationalHolidays, 'date', isReviewer),
     syncCollection(models.CelebrationDay, stateObj.celebrationDays, 'date', isReviewer),
-    syncCollection(models.School, stateObj.schools, 'id', isReviewer)
+    syncCollection(models.School, stateObj.schools, 'id', isReviewer),
+    syncCollection(models.TrainerReport, stateObj.trainerReports, 'id', isReviewer)
   ];
 
   await Promise.all(syncOps);

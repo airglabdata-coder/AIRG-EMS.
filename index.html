@@ -1169,158 +1169,363 @@
 
     <!-- ================= DAILY REPORTS HUB ================= -->
     <div id="reports-view-container" style="display: none; width: 100%;">
-      <div id="reports-employee-section" style="display: none; flex-direction: column; gap: 32px; width: 100%;">
-        <div style="display: flex; flex-direction: column; gap: 24px; width: 100%;">
-          <!-- Submit Form Card (Top) -->
-          <div style="width: 100%;">
-            <div class="card" style="padding: 24px;">
-              <h2 class="card-title" style="margin-bottom: 20px;">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                  style="stroke: var(--primary);">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Submit Daily Report
-              </h2>
-              <form id="daily-report-form">
-                <div class="form-group" style="margin-bottom: 16px;">
-                  <label for="report-project" style="font-weight: 600;">Associated Project</label>
-                  <select id="report-project" required
-                    style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
-                    <option value="" disabled selected>Select project...</option>
-                  </select>
-                </div>
-                <div class="form-group" style="margin-bottom: 16px;">
-                  <label for="report-date" style="font-weight: 600;">Report Date</label>
-                  <input type="date" id="report-date" required
-                    style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);">
-                </div>
-                <div class="form-group" style="margin-bottom: 16px;">
-                  <label for="report-details" style="font-weight: 600;">Daily Work Details</label>
-                  <textarea id="report-details"
-                    placeholder="Describe the work done today. You can copy-paste screenshots directly into this box. (Note: For large files or PDFs, please upload to Google Drive and paste the link here)..."
-                    required
-                    style="min-height: 120px; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; resize: vertical;"></textarea>
-                </div>
-                <div class="form-group" style="margin-bottom: 16px;">
-                  <label for="report-images" style="font-weight: 600;">Attach Photos & Screenshots</label>
-                  <input type="file" id="report-images" accept="image/*,application/pdf" multiple
-                    style="font-size: 0.85rem; width: 100%; color: var(--text-primary);">
-                  <div id="report-images-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+      
+      <!-- Top Sub-Navigation Tabs: Standard Daily Reports vs. Trainer Session Reports -->
+      <div id="reports-subtab-navigation" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; flex-wrap: wrap; align-items: center;">
+        <button type="button" id="tab-btn-daily-reports" class="btn btn-secondary btn-sm" onclick="switchReportsSubTab('standard')" style="font-weight: 600; border-radius: 20px; padding: 7px 16px;">
+          📋 Daily Project Reports
+        </button>
+        <button type="button" id="tab-btn-trainer-reports" class="btn btn-primary btn-sm" onclick="switchReportsSubTab('trainer')" style="font-weight: 600; border-radius: 20px; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px;">
+          <span>🎓 Trainer Session Reports (School Cluster)</span>
+          <span id="trainer-reports-badge" class="badge badge-warning" style="display: none; font-size: 0.7rem; padding: 2px 6px;">0</span>
+        </button>
+      </div>
+
+      <!-- STANDARD DAILY REPORTS SUBVIEW -->
+      <div id="standard-reports-subview" style="display: flex; flex-direction: column; gap: 24px; width: 100%;">
+        <div id="reports-employee-section" style="display: none; flex-direction: column; gap: 32px; width: 100%;">
+          <div style="display: flex; flex-direction: column; gap: 24px; width: 100%;">
+            <!-- Submit Form Card (Top) -->
+            <div style="width: 100%;">
+              <div class="card" style="padding: 24px;">
+                <h2 class="card-title" style="margin-bottom: 20px;">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    style="stroke: var(--primary);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Submit Daily Report
+                </h2>
+                <form id="daily-report-form">
+                  <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="report-project" style="font-weight: 600;">Associated Project</label>
+                    <select id="report-project" required
+                      style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+                      <option value="" disabled selected>Select project...</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="report-date" style="font-weight: 600;">Report Date</label>
+                    <input type="date" id="report-date" required
+                      style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="report-details" style="font-weight: 600;">Daily Work Details</label>
+                    <textarea id="report-details"
+                      placeholder="Describe the work done today. You can copy-paste screenshots directly into this box. (Note: For large files or PDFs, please upload to Google Drive and paste the link here)..."
+                      required
+                      style="min-height: 120px; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; resize: vertical;"></textarea>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="report-images" style="font-weight: 600;">Attach Photos &amp; Screenshots</label>
+                    <input type="file" id="report-images" accept="image/*,application/pdf" multiple
+                      style="font-size: 0.85rem; width: 100%; color: var(--text-primary);">
+                    <div id="report-images-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                    </div>
+                    <div style="margin-top: 10px;">
+                      <label style="font-weight: 600; font-size: 0.8rem;">&#128206; Or Add Google Drive / Any Link</label>
+                      <div style="display: flex; gap: 8px; margin-top: 4px; align-items: center;">
+                        <input type="url" id="report-drive-link" placeholder="Paste Google Drive or any link here..." style="flex: 1; padding: 7px 10px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.82rem;">
+                        <button type="button" onclick="addReportDriveLink()" style="padding: 7px 14px; background: var(--primary); color: #fff; border: none; border-radius: var(--border-radius-sm); cursor: pointer; font-size: 0.82rem; font-weight: 600; white-space: nowrap;">Add Link</button>
+                      </div>
+                      <div id="report-drive-links-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;"></div>
+                    </div>
+                  </div>
+                  <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Report</button>
+                </form>
+              </div>
+            </div>
+            <!-- Past Reports List Card (Bottom) -->
+            <div style="width: 100%;">
+              <div class="card" style="padding: 24px;">
+                <div
+                  style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
+                  <h2 class="card-title" style="margin: 0;">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                      style="stroke: var(--success);">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    My Submitted Reports
+                  </h2>
+                  <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <select id="emp-filter-report-project"
+                      style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; outline: none;">
+                      <option value="all">All Projects</option>
+                    </select>
+                    <select id="emp-filter-report-month"
+                      style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; outline: none;">
+                      <option value="all">All Months</option>
+                    </select>
                   </div>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Report</button>
-              </form>
-            </div>
-          </div>
-          <!-- Past Reports List Card (Bottom) -->
-          <div style="width: 100%;">
-            <div class="card" style="padding: 24px;">
-              <div
-                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
-                <h2 class="card-title" style="margin: 0;">
-                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                    style="stroke: var(--success);">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  My Submitted Reports
-                </h2>
-                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                  <select id="emp-filter-report-project"
-                    style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; outline: none;">
-                    <option value="all">All Projects</option>
-                  </select>
-                  <select id="emp-filter-report-month"
-                    style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer; outline: none;">
-                    <option value="all">All Months</option>
-                  </select>
+                <div class="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style="width: 120px;">Date</th>
+                        <th style="width: 150px;">Project</th>
+                        <th>Work Summary</th>
+                        <th id="reports-remarks-header" style="width: 180px;">HR Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody id="emp-reports-tbody">
+                      <!-- Dynamically populated reports -->
+                    </tbody>
+                  </table>
                 </div>
               </div>
-              <div class="table-container">
-                <table>
+            </div>
+          </div>
+        </div>
+
+        <div id="reports-hr-section" style="display: none; flex-direction: column; gap: 32px; width: 100%;">
+          <div class="card" style="padding: 24px;">
+            <h2 class="card-title" style="margin-bottom: 20px;">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                style="stroke: var(--warning);">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Daily Reports Review Board
+            </h2>
+
+            <!-- Filters Bar -->
+            <div class="filter-bar"
+              style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;">
+              <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                <label for="filter-report-project"
+                  style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Filter
+                  by Project:</label>
+                <select id="filter-report-project"
+                  style="padding: 10px 16px; font-size: 0.9rem; width: 100%; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+                  <option value="all">All Projects</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                <label for="filter-report-month"
+                  style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Filter
+                  by Month:</label>
+                <select id="filter-report-month"
+                  style="padding: 10px 16px; font-size: 0.9rem; width: 100%; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+                  <option value="all">All Months</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                <label for="filter-report-employee"
+                  style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Filter
+                  by Employee:</label>
+                <select id="filter-report-employee"
+                  style="padding: 10px 16px; font-size: 0.9rem; width: 100%; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+                  <option value="all">All Employees</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 120px;">Date</th>
+                    <th style="width: 150px;">Employee Name</th>
+                    <th style="width: 120px;">Department</th>
+                    <th style="width: 150px;">Project</th>
+                    <th>Work Details Summary</th>
+                    <th style="width: 180px;">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="hr-reports-tbody">
+                  <!-- Dynamically populated reports -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= TRAINER SESSION REPORTS SUBVIEW ================= -->
+      <div id="trainer-reports-subview" style="display: none; flex-direction: column; gap: 28px; width: 100%;">
+
+        <!-- 1. Review Hub Card (For Reporting Managers, HR, and CEO / Admin) -->
+        <div id="trainer-reports-review-card" class="card" style="display: none; padding: 24px; border: 1px solid rgba(245, 158, 11, 0.3);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+            <div>
+              <h2 class="card-title" style="margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: #f59e0b;">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span id="trainer-review-hub-title">Trainer Reports Review Hub</span>
+              </h2>
+              <p class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">
+                Review daily classroom session tables submitted by your trainers. Check Geotags, view/download generated PDF, and Approve or Reject.
+              </p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+              <select id="review-filter-trainer" onchange="renderTrainerReportsReviewList()" style="padding: 7px 12px; font-size: 0.82rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+                <option value="all">All Trainers</option>
+              </select>
+              <select id="review-filter-status" onchange="renderTrainerReportsReviewList()" style="padding: 7px 12px; font-size: 0.82rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+                <option value="pending_my_action" selected>⏳ Pending My Action</option>
+                <option value="all">All Reports</option>
+                <option value="approved">✅ Fully Approved</option>
+                <option value="rejected">❌ Rejected</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Review items list container -->
+          <div id="trainer-reports-review-list" style="display: flex; flex-direction: column; gap: 24px;">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </div>
+
+        <!-- 2. Trainer Entry Form Card (For Instructors / Trainers & Admin) -->
+        <div id="trainer-entry-form-card" class="card" style="padding: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+            <div>
+              <h2 class="card-title" style="margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--primary);">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0v6.75M4.5 16.5v-6M19.5 16.5v-6" />
+                </svg>
+                Today's Trainer Session Report (School Cluster)
+              </h2>
+              <p class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">
+                Enter all sessions you took today in the table below. Attach geotagged classroom photos. When you submit, a single PDF will be generated automatically.
+              </p>
+            </div>
+            <div id="trainer-name-display-badge" style="padding: 6px 14px; border-radius: 20px; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; font-weight: 600; font-size: 0.85rem;">
+              Trainer: <span id="current-trainer-name">Instructor</span>
+            </div>
+          </div>
+
+          <form id="trainer-session-form" onsubmit="handleTrainerReportSubmit(event)">
+            <!-- Top Grid: Date, School, Reporting Manager -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px;">Report Date <span style="color: var(--danger);">*</span></label>
+                <input type="date" id="trainer-report-date" required style="width: 100%; padding: 9px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.85rem; box-sizing: border-box;">
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px;">Assigned School / Center <span style="color: var(--danger);">*</span></label>
+                <select id="trainer-report-school" required onchange="handleTrainerSchoolChange()" style="width: 100%; padding: 9px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.85rem; cursor: pointer; box-sizing: border-box;">
+                  <option value="" disabled selected>Select School...</option>
+                  <option value="Shri Mahankant Vidyalaya">Shri Mahankant Vidyalaya (Akurdi, Pune)</option>
+                  <option value="PDEA English School">PDEA English School (Akurdi, Pune)</option>
+                  <option value="Shri Shivaji Vidyalaya">Shri Shivaji Vidyalaya (Dehu Road, Pune)</option>
+                  <option value="Eon Gyanankur English School">Eon Gyanankur English School (Akurdi, Pune)</option>
+                  <option value="Sant Tukaram Secondary School &amp; Junior College">Sant Tukaram Secondary School (Lohgaon, Pune)</option>
+                  <option value="Lonkar Madhyamik Vidyalaya">Lonkar Madhyamik Vidyalaya (Mundhwa, Pune)</option>
+                  <option value="S.S. Nikam Kapad School">S.S. Nikam Kapad School (Mangaon, Raygad)</option>
+                  <option value="Sakharwadi Vidyalaya">Sakharwadi Vidyalaya (Phaltan, Satara)</option>
+                  <option value="Swami Ramanand Bharati High School &amp; Junior College">Swami Ramanand Bharati High School (Tasgaon, Satara)</option>
+                  <option value="Kehtri English School">Kehtri English School (Tasgaon, Satara)</option>
+                  <option value="Pirangut English (CBSE)">Pirangut English (CBSE) (Pirangut, Pune)</option>
+                  <option value="Pirangut English School">Pirangut English School (Pirangut, Pune)</option>
+                  <option value="Sharon English Medium School">Sharon English Medium School (Uttarakhand)</option>
+                  <option value="Holy Convent School">Holy Convent School (Umbraj, Satara)</option>
+                  <option value="Other">Other / Custom School</option>
+                </select>
+                <input type="text" id="trainer-custom-school-input" placeholder="Enter custom school name..." style="display: none; width: 100%; margin-top: 6px; padding: 8px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.85rem; box-sizing: border-box;">
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px;">Reporting Manager <span style="color: var(--danger);">*</span></label>
+                <select id="trainer-report-manager" required style="width: 100%; padding: 9px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.85rem; cursor: pointer; box-sizing: border-box;">
+                  <option value="AIRG00042">Shravani Khanvilkar (HR / Reporting Manager)</option>
+                  <option value="AIRG00010">Prasad Shelke (Manager, Reporting Manager)</option>
+                  <option value="AIRG0001">Suyash Patil (Tech Lead / Reporting Manager)</option>
+                  <option value="AIRG00047">Atharva Durgavale (Tech Lead / Reporting Manager)</option>
+                  <option value="AIRG00052">Rajendra Khavale (Manager, Reporting Manager)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Dynamic Session Table Container -->
+            <div style="margin-bottom: 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                <label style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                  <span>📋 Today's Classroom Sessions Table</span>
+                  <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(Fill 1 row for each class/session taken today)</span>
+                </label>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addTrainerSessionRow()" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 6px 14px;">
+                  <span>➕ Add Another Session</span>
+                </button>
+              </div>
+
+              <div class="table-container" style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary);">
+                <table style="width: 100%; border-collapse: collapse; min-width: 800px;">
                   <thead>
-                    <tr>
-                      <th style="width: 120px;">Date</th>
-                      <th style="width: 150px;">Project</th>
-                      <th>Work Summary</th>
-                      <th id="reports-remarks-header" style="width: 180px;">HR Remarks</th>
+                    <tr style="background: var(--bg-tertiary); border-bottom: 2px solid var(--border-color); font-size: 0.8rem;">
+                      <th style="width: 45px; text-align: center; padding: 10px 8px;">#</th>
+                      <th style="width: 140px; padding: 10px 8px;">Class / Std <span style="color: var(--danger);">*</span></th>
+                      <th style="width: 160px; padding: 10px 8px;">Time / Duration <span style="color: var(--danger);">*</span></th>
+                      <th style="min-width: 180px; padding: 10px 8px;">Topic Covered <span style="color: var(--danger);">*</span></th>
+                      <th style="width: 210px; padding: 10px 8px;">Photo (Geotagged) <span style="color: var(--danger);">*</span></th>
+                      <th style="min-width: 150px; padding: 10px 8px;">Session Remark</th>
+                      <th style="width: 55px; text-align: center; padding: 10px 8px;">Action</th>
                     </tr>
                   </thead>
-                  <tbody id="emp-reports-tbody">
-                    <!-- Dynamically populated reports -->
+                  <tbody id="trainer-sessions-tbody">
+                    <!-- Populated dynamically via JS -->
                   </tbody>
                 </table>
               </div>
             </div>
+
+            <!-- Full Day Summary -->
+            <div class="form-group" style="margin-bottom: 20px;">
+              <label for="trainer-day-summary" style="font-weight: 700; font-size: 0.85rem; display: block; margin-bottom: 6px;">
+                📝 Full Day Work Summary <span style="color: var(--danger);">*</span>
+              </label>
+              <textarea id="trainer-day-summary" placeholder="Write overall summary of your full day work, achievements, attendance highlights, student responses, challenges, or plans for tomorrow..." required style="min-height: 90px; width: 100%; padding: 10px 12px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; resize: vertical; box-sizing: border-box;"></textarea>
+            </div>
+
+            <!-- Submit Button & Explanation -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+              <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: #3b82f6;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>Submitting will automatically compile all sessions + geotagged photos + summary into 1 single PDF and route it to your reporting manager.</span>
+              </div>
+              <button type="submit" id="btn-submit-trainer-report" class="btn btn-primary" style="padding: 10px 24px; font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 8px;">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                <span>Submit &amp; Generate PDF Report</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 3. My Submitted Trainer Reports History List Card (For Trainers) -->
+        <div id="trainer-reports-history-card" class="card" style="padding: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+            <h2 class="card-title" style="margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="stroke: var(--success);">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              My Submitted Trainer Daily Reports (Date-wise)
+            </h2>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <select id="trainer-filter-status" onchange="renderTrainerReportsHistory()" style="padding: 6px 12px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
+                <option value="all">All Statuses</option>
+                <option value="pending_manager">⏳ Pending Manager</option>
+                <option value="pending_hr">⏳ Pending HR</option>
+                <option value="pending_ceo">⏳ Pending CEO</option>
+                <option value="approved">✅ Approved</option>
+                <option value="rejected">❌ Rejected</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Date-wise cards container -->
+          <div id="trainer-reports-history-list" style="display: flex; flex-direction: column; gap: 20px;">
+            <!-- Populated dynamically via JS -->
           </div>
         </div>
+
       </div>
 
-      <div id="reports-hr-section" style="display: none; flex-direction: column; gap: 32px; width: 100%;">
-        <div class="card" style="padding: 24px;">
-          <h2 class="card-title" style="margin-bottom: 20px;">
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-              style="stroke: var(--warning);">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            Daily Reports Review Board
-          </h2>
-
-          <!-- Filters Bar -->
-          <div class="filter-bar"
-            style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;">
-            <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
-              <label for="filter-report-project"
-                style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Filter
-                by Project:</label>
-              <select id="filter-report-project"
-                style="padding: 10px 16px; font-size: 0.9rem; width: 100%; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
-                <option value="all">All Projects</option>
-              </select>
-            </div>
-            <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
-              <label for="filter-report-month"
-                style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Filter
-                by Month:</label>
-              <select id="filter-report-month"
-                style="padding: 10px 16px; font-size: 0.9rem; width: 100%; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
-                <option value="all">All Months</option>
-              </select>
-            </div>
-            <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
-              <label for="filter-report-employee"
-                style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; display: block;">Filter
-                by Employee:</label>
-              <select id="filter-report-employee"
-                style="padding: 10px 16px; font-size: 0.9rem; width: 100%; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
-                <option value="all">All Employees</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 120px;">Date</th>
-                  <th style="width: 150px;">Employee Name</th>
-                  <th style="width: 120px;">Department</th>
-                  <th style="width: 150px;">Project</th>
-                  <th>Work Details Summary</th>
-                  <th style="width: 180px;">Status</th>
-                </tr>
-              </thead>
-              <tbody id="hr-reports-tbody">
-                <!-- Dynamically populated reports -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- ================= PAYSLIPS HUB ================= -->
@@ -1441,6 +1646,14 @@
                     style="font-size: 0.85rem; width: 100%; color: var(--text-primary);">
                   <div id="reimbursement-files-preview"
                     style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;"></div>
+                  <div style="margin-top: 10px;">
+                    <label style="font-weight: 600; font-size: 0.8rem;">&#128206; Or Add Google Drive / Any Link</label>
+                    <div style="display: flex; gap: 8px; margin-top: 4px; align-items: center;">
+                      <input type="url" id="reimb-drive-link" placeholder="Paste Google Drive or any link here..." style="flex: 1; padding: 7px 10px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.82rem;">
+                      <button type="button" onclick="addReimbDriveLink()" style="padding: 7px 14px; background: var(--primary); color: #fff; border: none; border-radius: var(--border-radius-sm); cursor: pointer; font-size: 0.82rem; font-weight: 600; white-space: nowrap;">Add Link</button>
+                    </div>
+                    <div id="reimb-drive-links-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;"></div>
+                  </div>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Claim</button>
               </form>
@@ -1687,6 +1900,14 @@
                     style="font-size: 0.85rem; width: 100%; color: var(--text-primary);">
                   <div id="ticket-attachments-preview"
                     style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;"></div>
+                  <div style="margin-top: 10px;">
+                    <label style="font-weight: 600; font-size: 0.8rem;">&#128206; Or Add Google Drive / Any Link</label>
+                    <div style="display: flex; gap: 8px; margin-top: 4px; align-items: center;">
+                      <input type="url" id="ticket-drive-link" placeholder="Paste Google Drive or any link here..." style="flex: 1; padding: 7px 10px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; font-size: 0.82rem;">
+                      <button type="button" onclick="addTicketDriveLink()" style="padding: 7px 14px; background: var(--primary); color: #fff; border: none; border-radius: var(--border-radius-sm); cursor: pointer; font-size: 0.82rem; font-weight: 600; white-space: nowrap;">Add Link</button>
+                    </div>
+                    <div id="ticket-drive-links-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;"></div>
+                  </div>
                 </div>
               </div>
 
@@ -2987,7 +3208,10 @@
     </div>
   </div>
 
-  <script src="app.js?v=16"></script>
+  <!-- jsPDF & AutoTable for client-side Trainer Report PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="app.js?v=18"></script>
   <script src="mobile.js"></script>
   <script>
     // Failsafe inline mobile layout toggler
