@@ -350,6 +350,11 @@ function initSyncPolling() {
       const data = await res.json();
 
       if (data && data.state && !data.empty && !data.error && data.timestamp !== state.lastSyncedTimestamp) {
+        // RACE CONDITION FIX: If user performed an action while this fetch was in flight, abort!
+        if (isSyncingToServer || syncTimeout) {
+          console.warn('Sync poll: local changes pending. Aborting overwrite to prevent data loss.');
+          return;
+        }
         isSyncingToServer = true;
         state.activeUsers = data.activeUsers || state.activeUsers;
         const s = data.state;
