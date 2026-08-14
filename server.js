@@ -130,6 +130,12 @@ async function syncCollection(Model, array, keyField = 'id', isReviewer = false,
 
   const incomingIds = array.map(item => item[keyField]).filter(Boolean);
 
+  let existingRecordsMap = new Map();
+  if (['LeaveRequest', 'Ticket', 'Reimbursement', 'DailyReport', 'TrainerReport'].includes(Model.modelName)) {
+    const existingRecords = await Model.find({ [keyField]: { $in: incomingIds } }).lean();
+    existingRecordsMap = new Map(existingRecords.map(r => [r[keyField], r]));
+  }
+
   if (Model.modelName === 'Employee') {
     // For Employee model, permanently delete any employee marked as isDeleted: true
     const deletedEmployees = array.filter(item => item.isDeleted);
@@ -153,6 +159,32 @@ async function syncCollection(Model, array, keyField = 'id', isReviewer = false,
   // Construct bulk upserts
   const ops = array.map(item => {
     const { _id, __v, ...cleanItem } = item; // strip existing mongo ID fields if present to prevent conflicts
+
+    // === SMART MERGE AUTHORITY SYSTEM ===
+    // Prevent stale data from non-HR users from overwriting HR approvals
+    if (['LeaveRequest', 'Ticket', 'Reimbursement', 'DailyReport', 'TrainerReport'].includes(Model.modelName)) {
+      const existing = existingRecordsMap.get(cleanItem[keyField]);
+      if (existing && !isReviewer) {
+        if (['LeaveRequest', 'Ticket', 'Reimbursement'].includes(Model.modelName)) {
+          if (existing.status && existing.status.toLowerCase() !== 'pending') {
+            cleanItem.status = existing.status;
+            if (existing.comment) cleanItem.comment = existing.comment;
+          }
+        } else if (Model.modelName === 'DailyReport') {
+          if (existing.reviewedBy) cleanItem.reviewedBy = existing.reviewedBy;
+          if (existing.remarks) cleanItem.remarks = existing.remarks;
+          if (existing.reviewedAt) cleanItem.reviewedAt = existing.reviewedAt;
+          if (existing.starRating !== undefined) cleanItem.starRating = existing.starRating;
+        } else if (Model.modelName === 'TrainerReport') {
+          if (existing.status && existing.status !== 'pending_manager') {
+            cleanItem.status = existing.status;
+          }
+          if (existing.managerReview) cleanItem.managerReview = existing.managerReview;
+          if (existing.hrReview) cleanItem.hrReview = existing.hrReview;
+          if (existing.ceoReview) cleanItem.ceoReview = existing.ceoReview;
+        }
+      }
+    }
 
     // === TASK SMART-MERGE ===
     // PROBLEM: Multiple users are always POSTing their full local state.
