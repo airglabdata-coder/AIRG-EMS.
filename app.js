@@ -229,7 +229,7 @@ async function fetchCentralizedState() {
         state.tickets = s.tickets;
         safeOriginalSetItem('ems_tickets', JSON.stringify(s.tickets));
       }
-      if (s.trainerReports) {
+      if (Array.isArray(s.trainerReports)) {
         state.trainerReports = s.trainerReports;
         safeOriginalSetItem('ems_trainer_reports', JSON.stringify(s.trainerReports));
       }
@@ -411,7 +411,7 @@ function initSyncPolling() {
         } else if (currentView === 'tickets') {
           renderTickets();
         } else if (currentView === 'reports') {
-          renderDailyReports();
+          loadDailyReportsPage();
         } else if (currentView === 'school-management') {
           renderSchoolManagement();
         } else if (currentView === 'emp-details') {
@@ -3104,7 +3104,7 @@ function switchView(viewName) {
       if (leaveSubTabs) leaveSubTabs.style.display = 'none';
     }
 
-    renderDailyReports();
+    loadDailyReportsPage();
   } else if (viewName === 'payslips') {
     if (empContainer) empContainer.style.display = 'none';
     if (hrContainer) hrContainer.style.display = 'none';
@@ -7844,12 +7844,6 @@ function renderDailyReports() {
   if (!empSection || !hrSection) return;
 
   populateDailyReportDropdowns();
-  
-  if (!state.activeReportSubTab) {
-    state.activeReportSubTab = isUserTrainer(state.currentUser) ? 'trainer' : 'standard';
-  }
-  switchReportsSubTab(state.activeReportSubTab);
-  return;
 
   const isReportReviewer = (state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin' || state.currentRole === 'hr');
 
@@ -8694,6 +8688,17 @@ function isUserReportingManager(user = state.currentUser) {
   const isCEO = role.includes('admin') || isPratap(user);
   return isSchoolMgr || isHR || isCEO;
 }
+
+function loadDailyReportsPage() {
+  // Entry point when sidebar nav opens Daily Reports.
+  // Selects the correct sub-tab (trainer vs standard) once, then delegates.
+  // This CANNOT call renderDailyReports() directly to avoid recursion.
+  if (!state.activeReportSubTab) {
+    state.activeReportSubTab = isUserTrainer(state.currentUser) ? 'trainer' : 'standard';
+  }
+  switchReportsSubTab(state.activeReportSubTab);
+}
+window.loadDailyReportsPage = loadDailyReportsPage;
 
 function switchReportsSubTab(subTab) {
   state.activeReportSubTab = subTab;
