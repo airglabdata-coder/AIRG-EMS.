@@ -1157,6 +1157,7 @@ function hideImageViewerModal() {
 function safeSaveTasks() {
   try {
     localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_tasks to server
     return true;
   } catch (error) {
     console.error('Failed to save tasks to localStorage:', error);
@@ -1675,6 +1676,7 @@ async function init() {
   // Load or seed data
   if (!localStorage.getItem('ems_employees')) {
     localStorage.setItem('ems_employees', JSON.stringify(DEFAULT_EMPLOYEES));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
   } else {
     // Self-healing merge to make sure new default employees are seeded
     let stored = JSON.parse(localStorage.getItem('ems_employees'));
@@ -1740,14 +1742,17 @@ async function init() {
 
       if (updated) {
         localStorage.setItem('ems_employees', JSON.stringify(stored));
+        triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
       }
     }
   }
   if (!localStorage.getItem('ems_requests')) {
     localStorage.setItem('ems_requests', JSON.stringify(DEFAULT_REQUESTS));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_requests to server
   }
   if (!localStorage.getItem('ems_projects')) {
     localStorage.setItem('ems_projects', JSON.stringify(DEFAULT_PROJECTS));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
   } else {
     // Self-healing merge to make sure existing projects have a techLeadId
     let storedProjs = JSON.parse(localStorage.getItem('ems_projects'));
@@ -1785,24 +1790,31 @@ async function init() {
     });
     if (updatedProjs) {
       localStorage.setItem('ems_projects', JSON.stringify(storedProjs));
+      triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
     }
   }
   if (!localStorage.getItem('ems_tasks')) {
     localStorage.setItem('ems_tasks', JSON.stringify(DEFAULT_TASKS));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_tasks to server
   }
   // Self-healing migration to enforce only Engineering and EdTech
   localStorage.setItem('ems_departments', JSON.stringify(DEFAULT_DEPARTMENTS));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_departments to server
   if (!localStorage.getItem('ems_chats')) {
     localStorage.setItem('ems_chats', JSON.stringify(DEFAULT_CHATS));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_chats to server
   }
   if (!localStorage.getItem('ems_reports')) {
     localStorage.setItem('ems_reports', JSON.stringify(DEFAULT_REPORTS));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_reports to server
   }
   if (!localStorage.getItem('ems_announcements')) {
     localStorage.setItem('ems_announcements', JSON.stringify(DEFAULT_ANNOUNCEMENTS));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_announcements to server
   }
   if (!localStorage.getItem('ems_notices')) {
     localStorage.setItem('ems_notices', JSON.stringify(DEFAULT_NOTICES));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_notices to server
   }
   const storedHolidaysStr = localStorage.getItem('ems_national_holidays');
   let needToResetHolidays = false;
@@ -1870,20 +1882,24 @@ async function init() {
   });
   if (tasksUpdated) {
     localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_tasks to server
   }
 
   // Clean local bloated items
   let noticesUpdated = cleanBloatedAttachments(state.notices);
   if (noticesUpdated) {
     localStorage.setItem('ems_notices', JSON.stringify(state.notices));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_notices to server
   }
   let announcementsUpdated = cleanBloatedAttachments(state.announcements);
   if (announcementsUpdated) {
     localStorage.setItem('ems_announcements', JSON.stringify(state.announcements));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_announcements to server
   }
   let tasksBloatUpdated = cleanBloatedAttachments(state.tasks);
   if (tasksBloatUpdated) {
     localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_tasks to server
   }
 
   // notifications, nationalHolidays, celebrationDays are loaded in the wasStateFetchedFromServer block above
@@ -1902,6 +1918,7 @@ async function init() {
     let reimbursementsUpdated = cleanBloatedAttachments(state.reimbursements);
     if (reimbursementsUpdated) {
       localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
+      triggerBackendSync(); // [AUTO-ADDED] persist ems_reimbursements to server
     }
   }
   // One-time cleanup: remove old dummy seed reimbursements
@@ -1911,12 +1928,14 @@ async function init() {
     state.reimbursements = state.reimbursements.filter(r => !dummyIds.includes(r.id));
     if (state.reimbursements.length !== beforeLen) {
       localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
+      triggerBackendSync(); // [AUTO-ADDED] persist ems_reimbursements to server
     }
     localStorage.setItem('ems_dummy_reimbursements_cleaned', '1');
   }
   if (state.reimbursements.length === 0) {
     state.reimbursements = [];
     localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_reimbursements to server
   }
 
   // Ensure every employee has default salary settings
@@ -1940,6 +1959,7 @@ async function init() {
   });
   if (salaryUpdated) {
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
   }
 
   if (!wasStateFetchedFromServer) {
@@ -1967,6 +1987,7 @@ async function init() {
   });
   if (reportsUpdated) {
     localStorage.setItem('ems_reports', JSON.stringify(state.dailyReports));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_reports to server
   }
 
   // Load and seed Support Tickets
@@ -1982,10 +2003,12 @@ async function init() {
   if (state.tickets.length === 0) {
     state.tickets = DEFAULT_TICKETS;
     localStorage.setItem('ems_tickets', JSON.stringify(state.tickets));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_tickets to server
   } else {
     let ticketsUpdated = cleanBloatedAttachments(state.tickets);
     if (ticketsUpdated) {
       localStorage.setItem('ems_tickets', JSON.stringify(state.tickets));
+      triggerBackendSync(); // [AUTO-ADDED] persist ems_tickets to server
     }
   }
 
@@ -2012,6 +2035,7 @@ async function init() {
       });
     });
     localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_schools to server
   }
 
   // Self-heal employee roles on startup
@@ -2779,6 +2803,7 @@ function setRole(role) {
         };
         state.employees.push(leadEmp);
         localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+        triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
         populateEmployeeDropdown();
       }
       state.currentUser = leadEmp;
@@ -2815,6 +2840,7 @@ function setRole(role) {
           state.employees.push(managerEmp);
         }
         localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+        triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
         populateEmployeeDropdown();
       }
       state.currentUser = managerEmp;
@@ -2844,6 +2870,7 @@ function setRole(role) {
         };
         state.employees.push(adminEmp);
         localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+        triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
         populateEmployeeDropdown();
       }
       state.currentUser = adminEmp;
@@ -2873,6 +2900,7 @@ function setRole(role) {
         };
         state.employees.push(hrEmp);
         localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+        triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
         populateEmployeeDropdown();
       }
       state.currentUser = hrEmp;
@@ -3917,6 +3945,7 @@ function deleteEmployee(empId, event) {
   if (confirm(`Are you sure you want to delete employee "${emp.name}"?`)) {
     emp.isDeleted = true;
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
 
     populateEmployeeDropdown();
     populateTaskModalOptions();
@@ -4016,6 +4045,7 @@ function updateEmployeeRole(empId, event) {
   const oldRole = emp.role;
   emp.role = newRole;
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
 
   populateEmployeeDropdown();
   populateTaskModalOptions();
@@ -4075,6 +4105,7 @@ function handleLeaveFormSubmit(e) {
   // Update State
   state.requests.unshift(newReq);
   localStorage.setItem('ems_requests', JSON.stringify(state.requests));
+  triggerBackendSync(); // persist leave request to server
 
   // Trigger SMS notifications for HR and Admin users
   state.employees.forEach(emp => {
@@ -4153,8 +4184,9 @@ function handleHRDirectLeaveSubmit(e) {
 
   state.requests.unshift(newRequest);
 
-  // Save requests and update local storage
+  // Save requests and sync to server
   localStorage.setItem('ems_requests', JSON.stringify(state.requests));
+  triggerBackendSync(); // persist directly recorded leave to server
 
   // Trigger SMS notification
   if (targetEmp.phone) {
@@ -4375,9 +4407,10 @@ function processAction(requestId, action, comment) {
     showToast(`Leave request from ${req.employeeName} rejected.`, 'success'); // styled toast
   }
 
-  // Save changes to localStorage
+  // Save changes to localStorage AND sync to server immediately
   localStorage.setItem('ems_requests', JSON.stringify(state.requests));
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+  triggerBackendSync(); // ← CRITICAL: persist leave status change to MongoDB
 
   // Trigger SMS notification for the leave applicant
   const targetEmp = state.employees.find(emp => emp.id === req.employeeId);
@@ -5348,6 +5381,7 @@ function updateProjectProgress(projId, val) {
       proj.status = 'Active';
     }
     localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
     showToast(`Project "${proj.name}" progress updated to ${val}%`, 'success');
 
     // Refresh grids to update status badges and values
@@ -5368,6 +5402,7 @@ function saveProjectDescription(projId) {
   if (proj) {
     proj.description = newDesc;
     localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
     showToast('Project description saved successfully!', 'success');
     populateTaskModalOptions();
     if (state.currentRole === 'hr' || state.currentRole === 'admin') {
@@ -5395,6 +5430,7 @@ function uploadProjectFile(projId, input) {
           data: compressedDataUrl
         });
         localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+        triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
         showToast(`File "${file.name}" uploaded successfully!`, 'success');
         if (state.currentRole === 'hr' || state.currentRole === 'admin') {
           renderHRTasksAndProjects();
@@ -5415,6 +5451,7 @@ function deleteProjectFile(projId, fileIndex) {
       const fileName = proj.files[fileIndex].name;
       proj.files.splice(fileIndex, 1);
       localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+      triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
       showToast(`File "${fileName}" deleted!`, 'info');
       if (state.currentRole === 'hr' || state.currentRole === 'admin') {
         renderHRTasksAndProjects();
@@ -5438,10 +5475,12 @@ function deleteProject(projectId, event) {
     // Delete the project
     state.projects = state.projects.filter(p => p.id !== projectId);
     localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
 
     // Delete associated tasks
     state.tasks = state.tasks.filter(t => t.projectId !== projectId);
     localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_tasks to server
 
     // Refresh UI
     const activeMenuItem = document.querySelector('.menu-item.active');
@@ -5917,11 +5956,13 @@ async function handleProjectCreationSubmit(e) {
   if (chosenEmp && chosenEmp.role !== 'Tech Lead' && chosenEmp.role !== 'Admin') {
     chosenEmp.role = 'Tech Lead';
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
     showToast(`${chosenEmp.name} has been promoted to Tech Lead!`, 'info');
   }
 
   state.projects.push(newProj);
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
 
   // If department is "Lab Setup", create default todo tasks
   if (dept === 'Lab Setup') {
@@ -5992,10 +6033,12 @@ function changeProjectTechLead(projId, newTechLeadId) {
   if (chosenEmp && !chosenEmp.role.includes('Tech Lead') && chosenEmp.role !== 'Admin') {
     chosenEmp.role = chosenEmp.role ? `${chosenEmp.role}, Tech Lead` : 'Tech Lead';
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
     showToast(`${chosenEmp.name} has been promoted to Tech Lead!`, 'info');
   }
 
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
   showToast(`Tech Lead for project "${proj.name}" updated successfully!`, 'success');
   renderHRTasksAndProjects();
 }
@@ -6151,6 +6194,7 @@ function handleDeptCreationSubmit(e) {
 
   state.departments.push(name);
   localStorage.setItem('ems_departments', JSON.stringify(state.departments));
+  triggerBackendSync(); // persist department changes to server
 
   populateDepartmentDropdowns();
   hideDeptModal();
@@ -6297,6 +6341,7 @@ function handleEmployeeCreationSubmit(e) {
 
   state.employees.push(newEmp);
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+  triggerBackendSync(); // persist new employee to server
 
   // Reset photo upload state
   currentUploadedEmployeePhoto = null;
@@ -6318,6 +6363,7 @@ function handleEmployeeCreationSubmit(e) {
         proj.employeeIds.push(newEmp.id);
       }
       localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+      triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
     }
     autoAssignToProjectAfterCreate = null;
   }
@@ -6991,6 +7037,7 @@ function handleChatMessageSubmit(e) {
 
   state.chats.push(newMsg);
   localStorage.setItem('ems_chats', JSON.stringify(state.chats));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_chats to server
   triggerChatNotification(newMsg);
 
   input.value = '';
@@ -7021,6 +7068,7 @@ function handleChatFileSelected(input) {
 
       state.chats.push(newMsg);
       localStorage.setItem('ems_chats', JSON.stringify(state.chats));
+      triggerBackendSync(); // [AUTO-ADDED] persist ems_chats to server
       triggerChatNotification(newMsg);
       input.value = '';
       renderChatRoom();
@@ -7042,6 +7090,7 @@ function deleteChatMessage(msgId) {
   }
   state.chats.splice(idx, 1);
   localStorage.setItem('ems_chats', JSON.stringify(state.chats));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_chats to server
   renderChatRoom();
   showToast('Message deleted.', 'success');
 }
@@ -7057,6 +7106,7 @@ function deleteAnnouncement(annId) {
   }
   state.announcements.splice(idx, 1);
   localStorage.setItem('ems_announcements', JSON.stringify(state.announcements));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_announcements to server
   renderAnnouncements();
   showToast('Announcement deleted.', 'success');
 }
@@ -7072,6 +7122,7 @@ function deleteNotice(noticeId) {
   }
   state.notices.splice(idx, 1);
   localStorage.setItem('ems_notices', JSON.stringify(state.notices));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_notices to server
   renderNotices();
   showToast('Notice deleted.', 'success');
 }
@@ -7087,6 +7138,7 @@ function deleteLeaveRequest(reqId) {
   }
   state.requests.splice(idx, 1);
   localStorage.setItem('ems_requests', JSON.stringify(state.requests));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_requests to server
   renderEmployeeDashboard();
   showToast('Leave request deleted.', 'success');
 }
@@ -7114,6 +7166,7 @@ function deleteReimbursement(claimId) {
   }
   state.reimbursements.splice(idx, 1);
   localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
+  triggerBackendSync(); // persist reimbursement delete to server
   renderReimbursements();
   showToast('Reimbursement claim deleted.', 'success');
 }
@@ -7129,6 +7182,7 @@ function deleteTicket(ticketId) {
   }
   state.tickets.splice(idx, 1);
   localStorage.setItem('ems_tickets', JSON.stringify(state.tickets));
+  triggerBackendSync(); // persist ticket changes to server
   renderTickets();
   showToast('Ticket deleted.', 'success');
 }
@@ -7218,6 +7272,7 @@ function handleAnnouncementSubmit(e) {
 
   state.announcements.unshift(newAnn);
   localStorage.setItem('ems_announcements', JSON.stringify(state.announcements));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_announcements to server
 
   // Trigger SMS notifications for all employees (excluding sender)
   state.employees.forEach(emp => {
@@ -7371,6 +7426,7 @@ function handleNoticeSubmit(e) {
 
   state.notices.unshift(newNotice);
   localStorage.setItem('ems_notices', JSON.stringify(state.notices));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_notices to server
 
   // Trigger SMS notifications for target employees
   targetEmployeeIds.forEach(empId => {
@@ -7825,6 +7881,7 @@ function canUserStarReport(currentUserRole, reporterRole) {
 function safeSaveReports() {
   try {
     localStorage.setItem('ems_reports', JSON.stringify(state.dailyReports));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_reports to server
     return true;
   } catch (error) {
     console.error('Failed to save reports to localStorage:', error);
@@ -10339,6 +10396,7 @@ function handleSalaryConfigSubmit(e) {
   emp.salary = { ...salaryData, _lwpManualOverride: false }; // base template: auto-compute LWP
 
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
   showToast(`Salary details for ${emp.name} for ${selectedMonth} updated!`, 'success');
   renderPayslips();
 }
@@ -10370,6 +10428,7 @@ function updatePayslipNotes(value) {
   }
 
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
   showToast('Payslip notes updated successfully!', 'success');
   renderPayslips();
 }
@@ -10570,6 +10629,7 @@ function handleReimbursementSubmit(e) {
 
   try {
     localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_reimbursements to server
   } catch (err) {
     showToast('Storage quota exceeded! Attachments may be too large.', 'error');
     state.reimbursements.pop();
@@ -10701,6 +10761,7 @@ function approveReimbursement(id) {
   claim.status = 'approved';
   claim.comment = comment || 'Approved by HR';
   localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_reimbursements to server
 
   showToast(`Approved claim of ₹${claim.amount} for ${claim.employeeName}!`, 'success');
 
@@ -10720,6 +10781,7 @@ function rejectReimbursement(id) {
   claim.status = 'rejected';
   claim.comment = comment || 'Rejected by HR';
   localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_reimbursements to server
 
   showToast(`Rejected claim of ₹${claim.amount} for ${claim.employeeName}.`, 'success');
   renderReimbursements();
@@ -11307,6 +11369,7 @@ function handleTicketFormSubmit(e) {
 function safeSaveTickets() {
   try {
     localStorage.setItem('ems_tickets', JSON.stringify(state.tickets));
+    triggerBackendSync(); // [AUTO-ADDED] persist ems_tickets to server
     return true;
   } catch (error) {
     console.error('Failed to save tickets to localStorage:', error);
@@ -11534,6 +11597,7 @@ function triggerSMSNotification(phone, message, recipientName = '') {
   state.smsNotifications = state.smsNotifications || [];
   state.smsNotifications.unshift(newSMS);
   localStorage.setItem('ems_notifications', JSON.stringify(state.smsNotifications));
+  triggerBackendSync(); // persist notification to server
 }
 
 function renderSMSLogs() {
@@ -11588,6 +11652,7 @@ function renderSMSLogs() {
 function clearSMSLogs() {
   state.smsNotifications = [];
   localStorage.setItem('ems_notifications', JSON.stringify([]));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_notifications to server
   renderSMSLogs();
   showToast('SMS notification logs cleared.', 'success');
 }
@@ -12967,6 +13032,7 @@ async function handleSchoolDetailsSubmit(e) {
   sch.files = [...state.editingSchoolFiles];
 
   localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_schools to server
 
   if (problemsVal && problemsVal !== oldProblems) {
     const noticeId = `NTC${500 + state.notices.length + 1}`;
@@ -13005,6 +13071,7 @@ async function submitSchoolProblemOnly(e) {
 
   sch.problems = problemsVal;
   localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+  triggerBackendSync(); // [AUTO-ADDED] persist ems_schools to server
 
   if (problemsVal !== oldProblems) {
     const noticeId = `NTC${500 + state.notices.length + 1}`;
