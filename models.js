@@ -18,6 +18,8 @@ const EmployeeSchema = new mongoose.Schema({
   phone: { type: String },
   photo: { type: String },
   designation: { type: String },
+  dateOfBirth: { type: String },
+  joinDate: { type: String },
   salaries: { type: Map, of: mongoose.Schema.Types.Mixed },
   salary: { type: mongoose.Schema.Types.Mixed },
   resetToken: { type: String },

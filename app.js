@@ -281,6 +281,9 @@ async function fetchCentralizedState() {
       isSyncingToServer = false;
       wasStateFetchedFromServer = true;
       sanitizeEmployeeRoles();
+      if (typeof checkAndAnnounceGlobalMilestones === 'function') {
+        checkAndAnnounceGlobalMilestones();
+      }
     }
   } catch (err) {
     console.error('Failed to load state from database server:', err, '— keeping local state intact.');
@@ -6279,6 +6282,10 @@ function handleEmployeeCreationSubmit(e) {
   const balance = balanceEl ? parseInt(balanceEl.value) : 20;
   const designation = document.getElementById('new-emp-designation') ? document.getElementById('new-emp-designation').value.trim() : '';
   const phone = document.getElementById('new-emp-phone') ? document.getElementById('new-emp-phone').value.trim() : '';
+  const dobEl = document.getElementById('new-emp-dob');
+  const dob = dobEl ? dobEl.value : '';
+  const joinDateEl = document.getElementById('new-emp-joindate');
+  const joinDate = joinDateEl ? joinDateEl.value : '';
 
 
   const passwordEl = document.getElementById('new-emp-password');
@@ -6334,6 +6341,8 @@ function handleEmployeeCreationSubmit(e) {
     avatar: initials,
     designation: designation,
     phone: phone,
+    dateOfBirth: dob,
+    joinDate: joinDate,
     aadhar: '',
     pan: '',
     bankAcc: '',
@@ -7659,6 +7668,46 @@ function renderCalendar() {
       eventsContainer.appendChild(lEl);
     });
 
+    // D. Fetch Milestones
+    state.employees.forEach(emp => {
+      if (emp.isDeleted) return;
+      if (emp.status === 'pending_approval') return;
+      
+      const [cellY, cellM, cellD] = dateStr.split('-');
+      
+      // Birthdays
+      if (emp.dateOfBirth) {
+        const [dobY, dobM, dobD] = emp.dateOfBirth.split('-');
+        if (dobM === cellM && dobD === cellD) {
+          const mEl = document.createElement('div');
+          mEl.className = 'calendar-event';
+          mEl.style.backgroundColor = 'rgba(168, 85, 247, 0.15)'; 
+          mEl.style.color = '#a855f7';
+          mEl.style.borderLeft = '3px solid #a855f7';
+          mEl.title = `Birthday: ${emp.name}`;
+          mEl.textContent = `🎂 ${emp.name.split(' ')[0]}'s Bday`;
+          eventsContainer.appendChild(mEl);
+        }
+      }
+      
+      // Anniversaries
+      if (emp.joinDate) {
+        const [joinY, joinM, joinD] = emp.joinDate.split('-');
+        const diffYears = parseInt(cellY) - parseInt(joinY);
+        
+        if (joinM === cellM && joinD === cellD && diffYears > 0) {
+          const mEl = document.createElement('div');
+          mEl.className = 'calendar-event';
+          mEl.style.backgroundColor = 'rgba(234, 179, 8, 0.15)';
+          mEl.style.color = '#eab308';
+          mEl.style.borderLeft = '3px solid #eab308';
+          mEl.title = `Work Anniversary: ${emp.name} (${diffYears} years)`;
+          mEl.textContent = `🌟 ${emp.name.split(' ')[0]}'s Anniv`;
+          eventsContainer.appendChild(mEl);
+        }
+      }
+    });
+
     cell.appendChild(eventsContainer);
     gridEl.appendChild(cell);
   }
@@ -7809,6 +7858,46 @@ function renderInlineCalendar() {
         lEl.textContent = `Leave: ${req.type}`;
       }
       eventsContainer.appendChild(lEl);
+    });
+
+    // D. Fetch Milestones
+    state.employees.forEach(emp => {
+      if (emp.isDeleted) return;
+      if (emp.status === 'pending_approval') return;
+      
+      const [cellY, cellM, cellD] = dateStr.split('-');
+      
+      // Birthdays
+      if (emp.dateOfBirth) {
+        const [dobY, dobM, dobD] = emp.dateOfBirth.split('-');
+        if (dobM === cellM && dobD === cellD) {
+          const mEl = document.createElement('div');
+          mEl.className = 'calendar-event';
+          mEl.style.backgroundColor = 'rgba(168, 85, 247, 0.15)'; 
+          mEl.style.color = '#a855f7';
+          mEl.style.borderLeft = '3px solid #a855f7';
+          mEl.title = `Birthday: ${emp.name}`;
+          mEl.textContent = `🎂 ${emp.name.split(' ')[0]}`;
+          eventsContainer.appendChild(mEl);
+        }
+      }
+      
+      // Anniversaries
+      if (emp.joinDate) {
+        const [joinY, joinM, joinD] = emp.joinDate.split('-');
+        const diffYears = parseInt(cellY) - parseInt(joinY);
+        
+        if (joinM === cellM && joinD === cellD && diffYears > 0) {
+          const mEl = document.createElement('div');
+          mEl.className = 'calendar-event';
+          mEl.style.backgroundColor = 'rgba(234, 179, 8, 0.15)';
+          mEl.style.color = '#eab308';
+          mEl.style.borderLeft = '3px solid #eab308';
+          mEl.title = `Work Anniversary: ${emp.name} (${diffYears} years)`;
+          mEl.textContent = `🌟 ${emp.name.split(' ')[0]}`;
+          eventsContainer.appendChild(mEl);
+        }
+      }
     });
 
     cell.appendChild(eventsContainer);
@@ -13414,3 +13503,179 @@ async function handlePasswordResetSubmit(event) {
   }
 }
 window.handlePasswordResetSubmit = handlePasswordResetSubmit;
+
+// ==========================================
+// Milestone Celebration Logic
+// ==========================================
+
+function closeCelebrationModal() {
+  document.getElementById('celebration-modal-overlay').classList.remove('active');
+}
+
+function triggerCelebrationModal(type, name, years) {
+  const overlay = document.getElementById('celebration-modal-overlay');
+  const titleEl = document.getElementById('celebration-title');
+  const bodyEl = document.getElementById('celebration-body');
+  
+  if (type === 'birthday') {
+    titleEl.textContent = 'Happy Birthday, ' + name.split(' ')[0] + '! 🎂';
+    bodyEl.innerHTML = 'Wishing you a wonderful birthday filled with happiness, success, and memorable moments! 🌟<br><br>Thank you for being a valuable part of the AIR G International family. We wish you continued growth, success, and many more achievements in the year ahead.<br><br>Have a fantastic birthday! 🥳 🎈';
+  } else if (type === 'anniversary') {
+    titleEl.textContent = 'Happy Work Anniversary! 🎊';
+    bodyEl.innerHTML = 'Congratulations on completing ' + years + ' year(s) with AIR G International! 🌟<br><br>Your dedication, contribution, and commitment have been an important part of our journey. We truly appreciate your efforts and look forward to seeing you achieve many more milestones with us.<br><br>Cheers to another year of learning, growing, and achieving together! 🚀<br><br>— Team AIR G International';
+  }
+
+  overlay.classList.add('active');
+  startConfetti();
+}
+
+function checkAndTriggerMilestones(user) {
+  // Only trigger once per day per user
+  const today = new Date().toLocaleDateString();
+  const lastSeenStr = localStorage.getItem('ems_milestone_seen_' + user.id);
+  if (lastSeenStr === today) return; // Already seen today
+
+  const todaySplit = new Date().toISOString().split('T')[0].split('-');
+  const tM = todaySplit[1];
+  const tD = todaySplit[2];
+  const tY = todaySplit[0];
+
+  let triggered = false;
+
+  // Check Birthday
+  if (user.dateOfBirth) {
+    const [dobY, dobM, dobD] = user.dateOfBirth.split('-');
+    if (dobM === tM && dobD === tD) {
+      setTimeout(() => triggerCelebrationModal('birthday', user.name), 1000);
+      triggered = true;
+    }
+  }
+
+  // Check Anniversary
+  if (!triggered && user.joinDate) {
+    const [joinY, joinM, joinD] = user.joinDate.split('-');
+    const diffYears = parseInt(tY) - parseInt(joinY);
+    if (joinM === tM && joinD === tD && diffYears > 0) {
+      setTimeout(() => triggerCelebrationModal('anniversary', user.name, diffYears), 1000);
+      triggered = true;
+    }
+  }
+
+  if (triggered) {
+    localStorage.setItem('ems_milestone_seen_' + user.id, today);
+  }
+}
+
+// Simple Confetti Animation
+function startConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const pieces = [];
+  const colors = ['#a855f7', '#ec4899', '#eab308', '#3b82f6', '#22c55e'];
+  
+  for (let i = 0; i < 150; i++) {
+    pieces.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      w: Math.random() * 10 + 5,
+      h: Math.random() * 10 + 5,
+      c: colors[Math.floor(Math.random() * colors.length)],
+      dy: Math.random() * 3 + 2,
+      dx: Math.random() * 2 - 1,
+      rot: Math.random() * 360,
+      dRot: Math.random() * 5 - 2.5
+    });
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let active = false;
+    for (let p of pieces) {
+      if (p.y < canvas.height) active = true;
+      p.y += p.dy;
+      p.x += p.dx;
+      p.rot += p.dRot;
+      
+      ctx.save();
+      ctx.translate(p.x + p.w/2, p.y + p.h/2);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    }
+    if (active) requestAnimationFrame(render);
+  }
+  render();
+}
+
+// ==========================================
+// Global Chat Announcement Logic
+// ==========================================
+function checkAndAnnounceGlobalMilestones() {
+  if (!state.currentUser) return;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [tY, tM, tD] = todayStr.split('-');
+  
+  // Find milestones for today
+  state.employees.forEach(emp => {
+    if (emp.isDeleted || emp.status === 'pending_approval') return;
+    
+    // Check Birthday
+    let isBday = false;
+    if (emp.dateOfBirth) {
+      const [dobY, dobM, dobD] = emp.dateOfBirth.split('-');
+      if (dobM === tM && dobD === tD) {
+        isBday = true;
+      }
+    }
+    
+    let isAnniv = false;
+    let annivYears = 0;
+    if (emp.joinDate) {
+      const [joinY, joinM, joinD] = emp.joinDate.split('-');
+      const diffYears = parseInt(tY) - parseInt(joinY);
+      if (joinM === tM && joinD === tD && diffYears > 0) {
+        isAnniv = true;
+        annivYears = diffYears;
+      }
+    }
+
+    if (isBday || isAnniv) {
+      const storageKey = 'ems_global_announced_' + emp.id + '_' + todayStr;
+      const alreadyAnnounced = localStorage.getItem(storageKey);
+      
+      if (!alreadyAnnounced) {
+        // Double check if it's already in the chats state
+        const chatExists = state.chats.some(c => c.receiverId === 'group' && c.senderId === 'system' && c.timestamp.startsWith(todayStr) && c.text.includes(emp.name));
+        
+        if (!chatExists) {
+          // Send announcement! Only one client needs to send this, so we add a tiny random delay to prevent race conditions if multiple people log in exactly at the same millisecond
+          setTimeout(() => {
+            // Check again after timeout
+            const stillNotExists = !state.chats.some(c => c.receiverId === 'group' && c.senderId === 'system' && c.timestamp.startsWith(todayStr) && c.text.includes(emp.name));
+            if (stillNotExists) {
+              const msgText = isBday 
+                ? '🎉 Today is ' + emp.name + '\'s Birthday! Wish them a great day! 🎂'
+                : '🌟 Happy Work Anniversary to ' + emp.name + '! (' + annivYears + ' year' + (annivYears>1?'s':'') + ') 🚀';
+                
+              const newMsg = {
+                id: 'MSG_' + Date.now() + Math.floor(Math.random() * 1000),
+                senderId: 'system',
+                receiverId: 'group',
+                text: msgText,
+                timestamp: new Date().toISOString()
+              };
+              state.chats.push(newMsg);
+              triggerBackendSync();
+            }
+          }, Math.random() * 5000);
+        }
+        localStorage.setItem(storageKey, 'true');
+      }
+    }
+  });
+}
