@@ -4022,7 +4022,7 @@ function openRosterDocModal(url) {
   }
 }
 
-function deleteEmployee(empId, event) {
+async function deleteEmployee(empId, event) {
   if (event) event.stopPropagation();
 
   if (state.currentUser && state.currentUser.id === empId) {
