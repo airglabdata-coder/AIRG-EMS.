@@ -3342,11 +3342,68 @@ function switchView(viewName) {
 }
 
 // --- Render Employee Dashboard ---
+function getEmployeesOnLeaveToday() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const onLeaveEmpIds = new Set();
+  (state.requests || []).forEach(req => {
+    if (req.status === 'approved' && req.startDate && req.endDate) {
+      const start = new Date(req.startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(req.endDate);
+      end.setHours(23, 59, 59, 999);
+      if (today.getTime() >= start.getTime() && today.getTime() <= end.getTime()) {
+        onLeaveEmpIds.add(req.employeeId);
+      }
+    }
+  });
+
+  return Array.from(onLeaveEmpIds).map(id => state.employees.find(e => e.id === id)).filter(Boolean);
+}
+
+function renderOutOfOfficeBanner() {
+  const container = document.getElementById('out-of-office-container');
+  if (!container) return;
+  const onLeave = getEmployeesOnLeaveToday();
+  if (onLeave.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  let html = `<div style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: var(--border-radius-md); padding: 16px;">`;
+  html += `<h3 style="color: var(--warning); margin: 0 0 12px 0; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    </svg>
+    Out of Office Today
+  </h3>`;
+  html += `<div style="display: flex; flex-direction: column; gap: 8px;">`;
+  
+  const today = new Date().getTime();
+  onLeave.forEach(emp => {
+    const theirLeave = state.requests.find(r => 
+      r.employeeId === emp.id && 
+      r.status === 'approved' &&
+      new Date(r.startDate).setHours(0,0,0,0) <= today &&
+      new Date(r.endDate).setHours(23,59,59,999) >= today
+    );
+    const endStr = theirLeave ? new Date(theirLeave.endDate).toLocaleDateString() : 'Unknown';
+    html += `<div style="font-size: 0.9rem; color: var(--text-primary);">
+      <strong>${emp.name}</strong> is currently on leave until <strong>${endStr}</strong>. Please refrain from assigning tasks and only contact for urgent matters.
+    </div>`;
+  });
+  html += `</div></div>`;
+  container.innerHTML = html;
+}
+
 function renderEmployeeDashboard(viewName = 'tasks') {
   if (!state.currentUser) return;
   const userId = state.currentUser.id;
   const userRequests = state.requests.filter(req => req.employeeId === userId);
   const employeeData = state.employees.find(emp => emp.id === userId);
+
+  renderOutOfOfficeBanner();
 
   // Update Stats Cards
   const pendingRequests = userRequests.filter(req => req.status === 'pending');
@@ -3466,6 +3523,8 @@ function renderEmployeeDashboard(viewName = 'tasks') {
 function renderHRDashboard(viewName = 'dashboard') {
   // Inputs/Filters
   const searchQuery = (document.getElementById('hr-search').value || '').toLowerCase();
+  
+  renderOutOfOfficeBanner();
   const filterStatus = document.getElementById('filter-status').value;
   const filterType = document.getElementById('filter-type').value;
 
@@ -6453,13 +6512,16 @@ function handleAssignTaskProjectChange(e) {
       return a.localeCompare(b);
     });
 
+    const onLeaveList = typeof getEmployeesOnLeaveToday === 'function' ? getEmployeesOnLeaveToday() : [];
+
     depts.forEach(dept => {
       const group = document.createElement('optgroup');
       group.label = dept === project.dept ? `★ ${dept} (Project Dept)` : dept;
       grouped[dept].forEach(emp => {
         const opt = document.createElement('option');
         opt.value = emp.id;
-        opt.textContent = `${emp.name} (${emp.role})`;
+        const onLeaveText = onLeaveList.some(e => e.id === emp.id) ? ' ⚠️ (On Leave)' : '';
+        opt.textContent = `${emp.name} (${emp.role})${onLeaveText}`;
         group.appendChild(opt);
       });
       assigneeSelect.appendChild(group);
@@ -6855,6 +6917,8 @@ function renderCommSidebar() {
   if (!itemsBox) return;
 
   itemsBox.innerHTML = '';
+  
+  const onLeaveList = typeof getEmployeesOnLeaveToday === 'function' ? getEmployeesOnLeaveToday() : [];
 
   if (state.activeCommTab === 'chats') {
     titleEl.textContent = 'Conversations';
@@ -6918,7 +6982,10 @@ function renderCommSidebar() {
           ` : ''}
         </div>
         <div style="flex: 1;">
-          <div style="font-weight:600; font-size:0.85rem;">${emp.name}</div>
+          <div style="font-weight:600; font-size:0.85rem;">
+            ${emp.name}
+            ${onLeaveList.some(e => e.id === emp.id) ? `<span style="font-size: 0.65rem; background: var(--warning); color: #fff; padding: 2px 4px; border-radius: 4px; margin-left: 4px; font-weight: bold;">(On Leave)</span>` : ''}
+          </div>
           <div style="font-size:0.7rem; color:var(--text-muted);">${emp.dept}</div>
         </div>
         ${dmBadgeHtml}
@@ -6997,9 +7064,15 @@ function renderChatRoom() {
     const targetEmp = state.employees.find(e => e.id === state.activeChatTargetId);
     if (targetEmp) {
       const isActive = state.activeUsers && state.activeUsers.includes(targetEmp.id);
+      
+      const onLeaveList = getEmployeesOnLeaveToday();
+      const isTargetOnLeave = onLeaveList.some(e => e.id === targetEmp.id);
+      const onLeaveBadge = isTargetOnLeave ? 
+        `<span style="margin-left: 8px; font-size: 0.7rem; background: var(--warning); color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: bold;">(On Leave)</span>` : '';
+
       headerTitle.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span>Chat with ${targetEmp.name}</span>
+          <span>Chat with ${targetEmp.name} ${onLeaveBadge}</span>
           ${isActive ? `
             <span class="active-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; background-color: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; font-size: 0.7rem; font-weight: 700; line-height: 1;">
               <span style="width: 6px; height: 6px; background-color: #22c55e; border-radius: 50%;"></span>
@@ -7008,6 +7081,24 @@ function renderChatRoom() {
           ` : ''}
         </div>
       `;
+
+      if (isTargetOnLeave) {
+         const theirLeave = state.requests.find(r => 
+           r.employeeId === targetEmp.id && r.status === 'approved' &&
+           new Date(r.startDate).setHours(0,0,0,0) <= new Date().getTime() &&
+           new Date(r.endDate).setHours(23,59,59,999) >= new Date().getTime()
+         );
+         const endStr = theirLeave ? new Date(theirLeave.endDate).toLocaleDateString() : 'Unknown';
+         const banner = document.createElement('div');
+         banner.style.padding = '12px';
+         banner.style.background = 'rgba(234, 179, 8, 0.1)';
+         banner.style.borderBottom = '1px solid rgba(234, 179, 8, 0.3)';
+         banner.style.color = 'var(--warning)';
+         banner.style.fontSize = '0.85rem';
+         banner.style.textAlign = 'center';
+         banner.innerHTML = `⚠️ <strong>${targetEmp.name}</strong> is currently on leave until <strong>${endStr}</strong>. Please only contact for urgent matters.`;
+         messagesContainer.appendChild(banner);
+      }
     } else {
       headerTitle.textContent = 'Direct Message';
     }
