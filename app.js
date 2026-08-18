@@ -48,6 +48,30 @@ localStorage.setItem = function (key, value) {
   }
 };
 
+async function executeServerDelete(modelName, id) {
+  try {
+    const res = await fetch('/api/delete-record', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        modelName,
+        id,
+        employeeId: state.currentUser ? state.currentUser.id : null,
+        role: state.currentRole
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Deletion failed on server');
+    }
+    return true;
+  } catch (err) {
+    console.error('Server deletion error:', err);
+    showToast(err.message || 'Failed to delete on server. Please try again.', 'error');
+    return false;
+  }
+}
+
 function triggerBackendSync() {
   if (syncTimeout) clearTimeout(syncTimeout);
   isSyncingToServer = true;
@@ -3951,9 +3975,11 @@ function deleteEmployee(empId, event) {
   if (!emp) return;
 
   if (confirm(`Are you sure you want to delete employee "${emp.name}"?`)) {
+    if (!(await executeServerDelete('Employee', empId))) return;
+    
+    // Also mark as deleted locally for immediate visual removal
     emp.isDeleted = true;
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
-    triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
 
     populateEmployeeDropdown();
     populateTaskModalOptions();
@@ -5452,11 +5478,13 @@ function uploadProjectFile(projId, input) {
 }
 window.uploadProjectFile = uploadProjectFile;
 
-function deleteProjectFile(projId, fileIndex) {
+async function deleteProjectFile(projId, fileIndex) {
   const proj = state.projects.find(p => p.id === projId);
   if (proj) {
     if (proj.files && proj.files[fileIndex]) {
       const fileName = proj.files[fileIndex].name;
+      // We don't have a dedicated API for project files, it's part of the project object.
+      // So we just update the project locally and trigger sync, since project sync is upsert.
       proj.files.splice(fileIndex, 1);
       localStorage.setItem('ems_projects', JSON.stringify(state.projects));
       triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
@@ -5471,7 +5499,7 @@ function deleteProjectFile(projId, fileIndex) {
 }
 window.deleteProjectFile = deleteProjectFile;
 
-function deleteProject(projectId, event) {
+async function deleteProject(projectId, event) {
   if (event) {
     event.stopPropagation();
   }
@@ -5480,15 +5508,19 @@ function deleteProject(projectId, event) {
   if (!proj) return;
 
   if (confirm(`Are you sure you want to delete project "${proj.name}"? This will also delete all tasks associated with this project.`)) {
-    // Delete the project
+    if (!(await executeServerDelete('Project', projectId))) return;
+
+    // Delete the project locally
     state.projects = state.projects.filter(p => p.id !== projectId);
     localStorage.setItem('ems_projects', JSON.stringify(state.projects));
-    triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
 
     // Delete associated tasks
+    const tasksToDelete = state.tasks.filter(t => t.projectId === projectId);
+    for (const t of tasksToDelete) {
+      await executeServerDelete('Task', t.id);
+    }
     state.tasks = state.tasks.filter(t => t.projectId !== projectId);
     localStorage.setItem('ems_tasks', JSON.stringify(state.tasks));
-    triggerBackendSync(); // [AUTO-ADDED] persist ems_tasks to server
 
     // Refresh UI
     const activeMenuItem = document.querySelector('.menu-item.active');
@@ -6132,11 +6164,12 @@ function handleTaskAssignmentSubmit(e) {
   showToast(`Task assigned to ${employee.name}!`, 'success');
 }
 
-function deleteTask(taskId) {
+async function deleteTask(taskId) {
   const task = state.tasks.find(t => t.id === taskId);
   if (!task) return;
 
   if (confirm(`Are you sure you want to delete task "${task.desc}"?`)) {
+    if (!(await executeServerDelete('Task', taskId))) return;
     const prevTasks = [...state.tasks];
     state.tasks = state.tasks.filter(t => t.id !== taskId);
     if (!safeSaveTasks()) {
@@ -7131,107 +7164,107 @@ function handleChatFileSelected(input) {
 window.handleChatFileSelected = handleChatFileSelected;
 
 // ─── Delete Handlers ─────────────────────────────────────────────────────
-function deleteChatMessage(msgId) {
+async function deleteChatMessage(msgId) {
   if (!confirm('Delete this message? This cannot be undone.')) return;
   const idx = state.chats.findIndex(m => m.id === msgId);
   if (idx === -1) return;
-  // Only the sender can delete
   if (state.chats[idx].senderId !== state.currentUser.id) {
     showToast('You can only delete your own messages.', 'error');
     return;
   }
+  if (!(await executeServerDelete('Chat', msgId))) return;
   state.chats.splice(idx, 1);
   localStorage.setItem('ems_chats', JSON.stringify(state.chats));
-  triggerBackendSync(); // [AUTO-ADDED] persist ems_chats to server
   renderChatRoom();
   showToast('Message deleted.', 'success');
 }
 window.deleteChatMessage = deleteChatMessage;
 
-function deleteAnnouncement(annId) {
+async function deleteAnnouncement(annId) {
   if (!confirm('Delete this announcement permanently?')) return;
   const idx = state.announcements.findIndex(a => a.id === annId);
   if (idx === -1) return;
-  if (state.announcements[idx].senderName !== state.currentUser.name) {
+  if (state.announcements[idx].senderName !== state.currentUser.name && state.currentRole !== 'Admin') {
     showToast('You can only delete your own announcements.', 'error');
     return;
   }
+  if (!(await executeServerDelete('Announcement', annId))) return;
   state.announcements.splice(idx, 1);
   localStorage.setItem('ems_announcements', JSON.stringify(state.announcements));
-  triggerBackendSync(); // [AUTO-ADDED] persist ems_announcements to server
   renderAnnouncements();
   showToast('Announcement deleted.', 'success');
 }
 window.deleteAnnouncement = deleteAnnouncement;
 
-function deleteNotice(noticeId) {
+async function deleteNotice(noticeId) {
   if (!confirm('Delete this notice permanently?')) return;
   const idx = state.notices.findIndex(n => n.id === noticeId);
   if (idx === -1) return;
-  if (state.notices[idx].senderName !== state.currentUser.name) {
+  if (state.notices[idx].senderName !== state.currentUser.name && state.currentRole !== 'Admin') {
     showToast('You can only delete your own notices.', 'error');
     return;
   }
+  if (!(await executeServerDelete('Notice', noticeId))) return;
   state.notices.splice(idx, 1);
   localStorage.setItem('ems_notices', JSON.stringify(state.notices));
-  triggerBackendSync(); // [AUTO-ADDED] persist ems_notices to server
   renderNotices();
   showToast('Notice deleted.', 'success');
 }
 window.deleteNotice = deleteNotice;
 
-function deleteLeaveRequest(reqId) {
+async function deleteLeaveRequest(reqId) {
   if (!confirm('Withdraw and delete this leave request?')) return;
   const idx = state.requests.findIndex(r => r.id === reqId);
   if (idx === -1) return;
-  if (state.requests[idx].status !== 'pending') {
+  if (state.requests[idx].status !== 'pending' && state.currentRole !== 'Admin') {
     showToast('Only pending requests can be deleted.', 'error');
     return;
   }
+  if (!(await executeServerDelete('LeaveRequest', reqId))) return;
   state.requests.splice(idx, 1);
   localStorage.setItem('ems_requests', JSON.stringify(state.requests));
-  triggerBackendSync(); // [AUTO-ADDED] persist ems_requests to server
   renderEmployeeDashboard();
   showToast('Leave request deleted.', 'success');
 }
 window.deleteLeaveRequest = deleteLeaveRequest;
 
-function deleteDailyReport(reportId) {
+async function deleteDailyReport(reportId) {
   if (!confirm('Delete this daily report permanently?')) return;
   const idx = state.dailyReports.findIndex(r => r.id === reportId);
   if (idx === -1) return;
+  if (!(await executeServerDelete('DailyReport', reportId))) return;
   state.dailyReports.splice(idx, 1);
   localStorage.setItem('ems_reports', JSON.stringify(state.dailyReports));
-  syncStateNow();
   renderDailyReports();
   showToast('Report deleted.', 'success');
 }
 window.deleteDailyReport = deleteDailyReport;
 
-function deleteReimbursement(claimId) {
+async function deleteReimbursement(claimId) {
   if (!confirm('Withdraw and delete this reimbursement claim?')) return;
   const idx = state.reimbursements.findIndex(c => c.id === claimId);
   if (idx === -1) return;
-  if (state.reimbursements[idx].status !== 'pending') {
+  if (state.reimbursements[idx].status !== 'pending' && state.currentRole !== 'Admin') {
     showToast('Only pending claims can be deleted.', 'error');
     return;
   }
+  if (!(await executeServerDelete('Reimbursement', claimId))) return;
   state.reimbursements.splice(idx, 1);
   localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
-  triggerBackendSync(); // persist reimbursement delete to server
   renderReimbursements();
   showToast('Reimbursement claim deleted.', 'success');
 }
 window.deleteReimbursement = deleteReimbursement;
 
-function deleteTicket(ticketId) {
+async function deleteTicket(ticketId) {
   if (!confirm('Delete this support ticket?')) return;
   const idx = state.tickets.findIndex(t => t.id === ticketId);
   if (idx === -1) return;
-  if (state.tickets[idx].status !== 'Open') {
+  if (state.tickets[idx].status !== 'Open' && state.currentRole !== 'Admin') {
     showToast('Only open tickets can be deleted.', 'error');
     return;
   }
+  if (!(await executeServerDelete('Ticket', ticketId))) return;
   state.tickets.splice(idx, 1);
   localStorage.setItem('ems_tickets', JSON.stringify(state.tickets));
   triggerBackendSync(); // persist ticket changes to server

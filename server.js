@@ -145,15 +145,6 @@ async function syncCollection(Model, array, keyField = 'id', isReviewer = false,
     }
     // Filter them out so we don't upsert them
     array = array.filter(item => !item.isDeleted);
-  } else if (['Notice', 'Announcement', 'Task', 'Project'].includes(Model.modelName)) {
-    // Only allow Admin/HR to delete notices, announcements, tasks, and projects.
-    // If the syncing user is NOT an Admin/HR, we DO NOT delete anything!
-    if (isReviewer) {
-      await Model.deleteMany({ [keyField]: { $nin: incomingIds } });
-    }
-  } else {
-    // For Chat, DailyReport, LeaveRequest, Reimbursement, Ticket, etc.
-    // We NEVER delete documents missing from the client payload under any circumstances!
   }
 
   if (Model.modelName === 'Employee') {
@@ -370,35 +361,8 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
   }
   stateObj.schools = finalSchools;
 
-  // Handle owner/HR-based deletion for DailyReport, Ticket, LeaveRequest, Reimbursement
-  if (syncingEmployeeId) {
-    const incomingReportIds = (stateObj.dailyReports || []).map(r => r.id).filter(Boolean);
-    const incomingTicketIds = (stateObj.tickets || []).map(t => t.id).filter(Boolean);
-    const incomingRequestIds = (stateObj.requests || []).map(r => r.id).filter(Boolean);
-    const incomingReimbursementIds = (stateObj.reimbursements || []).map(r => r.id).filter(Boolean);
-
-    console.log(`[DELETION SYNC] syncingEmployeeId=${syncingEmployeeId}, incomingReportIdsCount=${incomingReportIds.length}`);
-
-    if (isReviewer) {
-      const repDel = await models.DailyReport.deleteMany({ id: { $nin: incomingReportIds } });
-      const tktDel = await models.Ticket.deleteMany({ id: { $nin: incomingTicketIds } });
-      const reqDel = await models.LeaveRequest.deleteMany({ id: { $nin: incomingRequestIds } });
-      const remDel = await models.Reimbursement.deleteMany({ id: { $nin: incomingReimbursementIds } });
-      console.log(`[DELETION SYNC ADMIN] deleted reports=${repDel.deletedCount}, tickets=${tktDel.deletedCount}`);
-    } else {
-      const repDel = await models.DailyReport.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingReportIds } });
-      const tktDel = await models.Ticket.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingTicketIds } });
-      const reqDel = await models.LeaveRequest.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingRequestIds } });
-      const remDel = await models.Reimbursement.deleteMany({ employeeId: syncingEmployeeId, id: { $nin: incomingReimbursementIds } });
-      console.log(`[DELETION SYNC OWNER] employeeId=${syncingEmployeeId}, deleted reports=${repDel.deletedCount}, tickets=${tktDel.deletedCount}`);
-    }
-
-    // Owner-based deletion for TrainerReports
-    const incomingTrainerReportIds = (stateObj.trainerReports || []).map(r => r.id).filter(Boolean);
-    if (!isReviewer && incomingTrainerReportIds.length > 0) {
-      await models.TrainerReport.deleteMany({ trainerId: syncingEmployeeId, id: { $nin: incomingTrainerReportIds } });
-    }
-  }
+  // Omission-based deletion block completely removed to prevent data loss.
+  // All deletions now happen exclusively through the explicit /api/delete-record endpoint.
 
   const syncOps = [
     syncCollection(models.Employee, stateObj.employees, 'id', isReviewer),
@@ -678,6 +642,56 @@ app.post('/api/sync', async (req, res) => {
   } catch (err) {
     console.error('❌ Failed to write to MongoDB Atlas:', err);
     return res.status(500).json({ error: 'Database write failed. Please try again.' });
+  }
+});
+
+// New Explicit Deletion API
+app.post('/api/delete-record', async (req, res) => {
+  const { modelName, id, employeeId, role } = req.body;
+  if (!modelName || !id || !employeeId) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const Model = models[modelName];
+  if (!Model) {
+    return res.status(400).json({ error: 'Invalid modelName' });
+  }
+
+  try {
+    const isReviewer = ['Admin', 'HR'].includes(role);
+    
+    // Admins and HR can delete anything (except maybe hard-deleting employees, but employee soft-delete is handled by POST /api/sync)
+    if (isReviewer) {
+      await Model.deleteMany({ id });
+      console.log(`[EXPLICIT DELETE] Admin ${employeeId} deleted ${modelName} ${id}`);
+      return res.json({ success: true });
+    }
+
+    // Regular users can only delete their own specific records
+    if (['LeaveRequest', 'Ticket', 'Reimbursement', 'DailyReport', 'TrainerReport'].includes(modelName)) {
+      const ownerField = modelName === 'TrainerReport' ? 'trainerId' : 'employeeId';
+      const result = await Model.deleteMany({ id, [ownerField]: employeeId });
+      if (result.deletedCount === 0) {
+        return res.status(403).json({ error: 'Unauthorized to delete this record' });
+      }
+      console.log(`[EXPLICIT DELETE] User ${employeeId} deleted own ${modelName} ${id}`);
+      return res.json({ success: true });
+    }
+    
+    if (modelName === 'Chat') {
+      const result = await Model.deleteMany({ id, senderId: employeeId });
+      if (result.deletedCount === 0) {
+        return res.status(403).json({ error: 'Unauthorized to delete this chat' });
+      }
+      console.log(`[EXPLICIT DELETE] User ${employeeId} deleted own ${modelName} ${id}`);
+      return res.json({ success: true });
+    }
+
+    // For all other models (Notice, Announcement, Project, Task, Employee), regular users cannot delete
+    return res.status(403).json({ error: 'Unauthorized to delete this record type' });
+  } catch (err) {
+    console.error(`[EXPLICIT DELETE] Failed:`, err);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
