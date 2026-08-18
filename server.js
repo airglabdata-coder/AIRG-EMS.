@@ -156,6 +156,20 @@ async function syncCollection(Model, array, keyField = 'id', isReviewer = false,
     // We NEVER delete documents missing from the client payload under any circumstances!
   }
 
+  if (Model.modelName === 'Employee') {
+    array = array.filter(item => {
+      if (item.isDeleted) return false;
+      const existing = existingRecordsMap.get(item[keyField]);
+      if (!existing) {
+        // Doesn't exist in DB. Allow if new registration or if synced by Admin/HR.
+        if (item.status === 'pending_approval' || isReviewer) return true;
+        console.log(`[Smart Merge] Blocked resurrection of employee ${item[keyField]} by non-admin`);
+        return false;
+      }
+      return true;
+    });
+  }
+
   // Construct bulk upserts
   const ops = array.map(item => {
     const { _id, __v, ...cleanItem } = item; // strip existing mongo ID fields if present to prevent conflicts
