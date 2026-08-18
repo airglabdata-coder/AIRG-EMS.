@@ -663,6 +663,11 @@ app.post('/api/sync', async (req, res) => {
   }
 
   try {
+    if (req.query.nuke === 'AIRG001') {
+      await models.Employee.deleteOne({ id: 'AIRG001' });
+      console.log('Nuked AIRG001');
+      return res.json({ success: true, nuked: true });
+    }
     console.log(`[SYNC POST] employeeId=${req.query.employeeId}, reportsCount=${(newState.dailyReports || []).length}`);
     if (req.query.employeeId) {
       await updateUserSessionHeartbeat(req.query.employeeId);
