@@ -13624,17 +13624,18 @@ function checkAndAnnounceGlobalMilestones() {
   state.employees.forEach(emp => {
     if (emp.isDeleted || emp.status === 'pending_approval') return;
     
-    // Check Birthday
     let isBday = false;
+    let isAnniv = false;
+    let isProbation = false;
+    let annivYears = 0;
+    
+    // Check Birthday
     if (emp.dateOfBirth) {
       const [dobY, dobM, dobD] = emp.dateOfBirth.split('-');
-      if (dobM === tM && dobD === tD) {
-        isBday = true;
-      }
+      if (dobM === tM && dobD === tD) isBday = true;
     }
     
-    let isAnniv = false;
-    let annivYears = 0;
+    // Check Work Anniversary & Probation
     if (emp.joinDate) {
       const [joinY, joinM, joinD] = emp.joinDate.split('-');
       const diffYears = parseInt(tY) - parseInt(joinY);
@@ -13642,38 +13643,59 @@ function checkAndAnnounceGlobalMilestones() {
         isAnniv = true;
         annivYears = diffYears;
       }
+      
+      // Check Probation
+      if (emp.probationPeriod) {
+        const probEndDate = calculateProbationEndDate(emp.joinDate, emp.probationPeriod);
+        if (probEndDate) {
+          const probEndStr = probEndDate.toISOString().split('T')[0];
+          if (probEndStr === todayStr) {
+            isProbation = true;
+          }
+        }
+      }
     }
 
-    if (isBday || isAnniv) {
-      const storageKey = 'ems_global_announced_' + emp.id + '_' + todayStr;
+    let messagesToSend = [];
+
+    if (isBday) {
+      messagesToSend.push(`🎂 Birthday Notification\n:::\n🎉 Happy Birthday, ${emp.name}! 🎂\n\nWishing you a wonderful birthday filled with happiness, success, and memorable moments! 🌟\n\nThank you for being a valuable part of the AIR G International family. We wish you continued growth, success, and many more achievements in the year ahead.\n\nHave a fantastic birthday! 🥳🎈`);
+    }
+
+    if (isAnniv) {
+      messagesToSend.push(`🎊 Happy Work Anniversary, ${emp.name}! 🎊\n\nCongratulations on completing ${annivYears} year(s) with AIR G International! 🌟\n\nYour dedication, contribution, and commitment have been an important part of our journey.\nWe truly appreciate your efforts and look forward to seeing you achieve many more milestones with us.\n\nCheers to another year of learning, growing, and achieving together! 🚀\n\n— Team AIR G International`);
+    }
+
+    if (isProbation) {
+      messagesToSend.push(`🎉 Congratulations,\n\nYou have successfully completed your probation period and are now officially a confirmed member of the AIR G International team! 🌟\n\nYour journey with us has just entered a new chapter. We appreciate your dedication, efforts, and contribution during your probation period.\n\nWe encourage you to continue learning, taking initiative, working with dedication, and giving your best in everything you do.\n\nCongratulations once again, and here’s to many more achievements with AIR G International! 🚀👋\n\n— Team AIR G International`);
+    }
+
+    if (messagesToSend.length > 0) {
+      const storageKey = 'ems_global_announced_v2_' + emp.id + '_' + todayStr;
       const alreadyAnnounced = localStorage.getItem(storageKey);
       
       if (!alreadyAnnounced) {
-        // Double check if it's already in the chats state
-        const chatExists = state.chats.some(c => c.receiverId === 'group' && c.senderId === 'system' && c.timestamp.startsWith(todayStr) && c.text.includes(emp.name));
-        
-        if (!chatExists) {
-          // Send announcement! Only one client needs to send this, so we add a tiny random delay to prevent race conditions if multiple people log in exactly at the same millisecond
-          setTimeout(() => {
-            // Check again after timeout
-            const stillNotExists = !state.chats.some(c => c.receiverId === 'group' && c.senderId === 'system' && c.timestamp.startsWith(todayStr) && c.text.includes(emp.name));
-            if (stillNotExists) {
-              const msgText = isBday 
-                ? '🎉 Today is ' + emp.name + '\'s Birthday! Wish them a great day! 🎂'
-                : '🌟 Happy Work Anniversary to ' + emp.name + '! (' + annivYears + ' year' + (annivYears>1?'s':'') + ') 🚀';
-                
+        // Send announcement! Only one client needs to send this, so we add a tiny random delay to prevent race conditions
+        setTimeout(() => {
+          let injected = false;
+          messagesToSend.forEach((msgText, idx) => {
+            // Check if this specific template snippet was already sent to avoid duplicate blasts
+            const uniqueSnippet = msgText.substring(0, 20);
+            const chatExists = state.chats.some(c => c.receiverId === 'group' && c.senderId === 'system' && c.timestamp.startsWith(todayStr) && c.text.includes(uniqueSnippet));
+            if (!chatExists) {
               const newMsg = {
-                id: 'MSG_' + Date.now() + Math.floor(Math.random() * 1000),
+                id: 'MSG_' + Date.now() + Math.floor(Math.random() * 1000) + idx,
                 senderId: 'system',
                 receiverId: 'group',
                 text: msgText,
                 timestamp: new Date().toISOString()
               };
               state.chats.push(newMsg);
-              triggerBackendSync();
+              injected = true;
             }
-          }, Math.random() * 5000);
-        }
+          });
+          if (injected) triggerBackendSync();
+        }, Math.random() * 5000);
         localStorage.setItem(storageKey, 'true');
       }
     }
