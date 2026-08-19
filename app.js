@@ -211,8 +211,16 @@ async function fetchCentralizedState() {
       }
       if (s.tasks) {
         cleanBloatedAttachments(s.tasks);
-        state.tasks = s.tasks;
-        safeOriginalSetItem('ems_tasks', JSON.stringify(s.tasks));
+        // Filter out private tasks that belong to other users
+        const serverTasks = s.tasks.filter(t => !t.isPrivate || t.ownerId === state.currentUser.id);
+        // Merge: keep locally-created tasks not yet on server
+        const localTasks = JSON.parse(localStorage.getItem('ems_tasks') || '[]');
+        const serverTaskIds = new Set(serverTasks.map(t => t.id));
+        const unsyncedLocal = localTasks.filter(t => !serverTaskIds.has(t.id) && !t.synced);
+        state.tasks = [...serverTasks, ...unsyncedLocal];
+        // Mark server tasks as synced
+        state.tasks.forEach(t => { if (serverTaskIds.has(t.id)) t.synced = true; });
+        safeOriginalSetItem('ems_tasks', JSON.stringify(state.tasks));
       }
       if (s.departments) {
         state.departments = ['AI', 'Electronics', 'Lab Setup', 'Instructor'];
@@ -388,7 +396,14 @@ function initSyncPolling() {
         state.employees = s.employees || state.employees;
         state.requests = s.requests || state.requests;
         state.projects = s.projects || state.projects;
-        state.tasks = s.tasks || state.tasks;
+        // Merge tasks safely — don't wipe unsynced local tasks, filter other users' private tasks
+        if (s.tasks) {
+          const serverTasks = s.tasks.filter(t => !t.isPrivate || t.ownerId === state.currentUser.id);
+          const localTasks = state.tasks || [];
+          const serverTaskIds = new Set(serverTasks.map(t => t.id));
+          const unsyncedLocal = localTasks.filter(t => !serverTaskIds.has(t.id) && !t.synced);
+          state.tasks = [...serverTasks, ...unsyncedLocal];
+        }
         state.departments = s.departments || state.departments;
         state.chats = s.chats || state.chats;
         state.dailyReports = s.dailyReports || state.dailyReports;
@@ -4687,8 +4702,8 @@ function renderEmployeeTasksAndProjects() {
     // Get all projects the current user is involved in (either is a member, or has a task)
     const myProjectIds = activeProjects.map(p => p.id);
 
-    // Also include personal tasks (no projectId)
-    const personalTasks = state.tasks.filter(t => t.assigneeId === user.id && !t.projectId);
+    // Also include personal tasks (private tasks created by this user)
+    const personalTasks = state.tasks.filter(t => t.isPrivate === true && t.ownerId === user.id);
 
     if (myProjectIds.length === 0 && personalTasks.length === 0) {
       tbody.innerHTML = `
@@ -5751,7 +5766,9 @@ function renderHRTasksAndProjects() {
   const personalTbody = document.getElementById('hr-personal-tasks-tbody');
   if (personalTbody) {
     personalTbody.innerHTML = '';
-    const personalTasks = state.tasks.filter(t => t.assigneeId === state.currentUser.id);
+    const personalTasks = state.tasks.filter(t => 
+      t.isPrivate === true && t.ownerId === state.currentUser.id
+    );
 
     if (personalTasks.length === 0) {
       personalTbody.innerHTML = `
@@ -6611,9 +6628,10 @@ function handleEmpTaskCreationSubmit(e) {
     if (proj) projectName = proj.name;
   }
 
+  const isPersonal = projId === 'personal';
   const newTask = {
-    id: `TSK${400 + state.tasks.length + 1}`,
-    projectId: projId === 'personal' ? '' : projId,
+    id: `PT_${state.currentUser.id}_${Date.now()}`,
+    projectId: isPersonal ? '' : projId,
     projectName: projectName,
     desc: desc,
     details: details,
@@ -6624,7 +6642,9 @@ function handleEmpTaskCreationSubmit(e) {
     dueDate: dueDate,
     priority: priority,
     status: 'Not Completed',
-    createdByEmployee: true
+    createdByEmployee: true,
+    isPrivate: isPersonal,
+    ownerId: isPersonal ? state.currentUser.id : null
   };
 
   state.tasks.push(newTask);
