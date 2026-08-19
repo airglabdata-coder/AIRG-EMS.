@@ -11155,38 +11155,38 @@ async function handleLoginSubmit(e) {
     loginBtn.textContent = 'Logging in... Please wait';
   }
 
-  // Fetch latest state from server first to make sure we have up-to-date approval status
-  await fetchCentralizedState();
-
   const emailInput = document.getElementById('login-email');
   const passwordInput = document.getElementById('login-password');
   if (!emailInput || !passwordInput) {
-    if (loginBtn) {
-      loginBtn.disabled = false;
-      loginBtn.textContent = 'Log In';
-    }
+    if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Log In'; }
     return;
   }
 
   const email = emailInput.value.trim().toLowerCase();
   const password = passwordInput.value.trim();
 
-  const found = state.employees.find(emp => emp.email.toLowerCase() === email);
+  // First try with local state (instant). If found, log in immediately.
+  // In parallel, refresh from server. If local is empty/stale, wait for server.
+  let found = state.employees.find(emp => emp.email.toLowerCase() === email);
+
+  if (!found || state.employees.length === 0) {
+    // No local data yet - we must wait for the server
+    await fetchCentralizedState();
+    found = state.employees.find(emp => emp.email.toLowerCase() === email);
+  } else {
+    // We have local data - login instantly, refresh server data in background
+    fetchCentralizedState().catch(() => {});
+  }
+
   if (found) {
     if (found.isDeleted) {
       showToast('This account has been deactivated.', 'error');
-      if (loginBtn) {
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'Log In';
-      }
+      if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Log In'; }
       return;
     }
     if (found.status === 'pending_approval') {
       showToast('Your registration is pending approval by HR / Pratap Sir.', 'warning');
-      if (loginBtn) {
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'Log In';
-      }
+      if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Log In'; }
       return;
     }
     const matchPassword = found.password || 'password123';
@@ -11194,18 +11194,12 @@ async function handleLoginSubmit(e) {
       localStorage.setItem('ems_logged_in_user', JSON.stringify(found));
       loginAsUser(found);
       showToast('Logged in successfully.', 'success');
-      if (loginBtn) {
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'Log In';
-      }
+      if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Log In'; }
       return;
     }
   }
   showToast('Invalid email or password.', 'error');
-  if (loginBtn) {
-    loginBtn.disabled = false;
-    loginBtn.textContent = 'Log In';
-  }
+  if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Log In'; }
 }
 
 function quickLogin(identifier) {

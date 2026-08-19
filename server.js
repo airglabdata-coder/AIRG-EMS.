@@ -36,9 +36,13 @@ if (!MONGODB_URI) {
   process.exit(1);
 }
 
-const mongooseOptions = process.env.VERCEL
-  ? { serverSelectionTimeoutMS: 10000, socketTimeoutMS: 45000 }
-  : { family: 4 };
+const mongooseOptions = {
+  serverSelectionTimeoutMS: 5000,  // Fail fast if DB is down (was 10s)
+  socketTimeoutMS: 20000,          // Shorter socket timeout (was 45s)
+  connectTimeoutMS: 5000,          // Connection attempt timeout
+  maxPoolSize: 10,                 // Connection pool for serverless
+  heartbeatFrequencyMS: 10000,     // Check connection health every 10s
+};
 
 // Implement connection caching for serverless environments (Vercel)
 let cached = global.mongoose;
