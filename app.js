@@ -329,7 +329,8 @@ async function fetchCentralizedState() {
 }
 
 function initSyncPolling() {
-  setInterval(async () => {
+  if (window.syncPollInterval) clearInterval(window.syncPollInterval);
+  window.syncPollInterval = setInterval(async () => {
     if (!state.currentUser) return;
     if (isSyncingToServer) return;
 
@@ -496,7 +497,7 @@ function initSyncPolling() {
     } catch (err) {
       console.error('Polling sync failed:', err);
     }
-  }, 1500);
+  }, 600);
 }
 
 
@@ -506,7 +507,7 @@ const DEFAULT_EMPLOYEES = [
     id: "AIRG00008",
     name: "Suyash Patil",
     dept: "AI, Electronics, Lab Setup",
-    email: "suyash@gurujiair.com",
+    email: "suyashpatil1224@gmail.com",
     role: "Tech Lead, Manager",
     balance: 20,
     absent: 0,
@@ -515,7 +516,7 @@ const DEFAULT_EMPLOYEES = [
     pan: "SUYAS1234P",
     bankAcc: "98765432101",
     bankIfsc: "HDFC0000123",
-    password: "suyash",
+    password: "Suyash$2412",
     phone: "+91 99752 59016"
   },
   {
