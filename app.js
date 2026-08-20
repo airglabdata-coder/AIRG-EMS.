@@ -227,8 +227,14 @@ async function fetchCentralizedState() {
         safeOriginalSetItem('ems_departments', JSON.stringify(state.departments));
       }
       if (s.chats) {
-        state.chats = s.chats;
-        safeOriginalSetItem('ems_chats', JSON.stringify(s.chats));
+        const localChats = JSON.parse(localStorage.getItem('ems_chats') || '[]');
+        const serverChatIds = new Set(s.chats.map(c => c.id));
+        const unsyncedChats = localChats.filter(c => !serverChatIds.has(c.id));
+        state.chats = [...s.chats, ...unsyncedChats];
+        safeOriginalSetItem('ems_chats', JSON.stringify(state.chats));
+        if (unsyncedChats.length > 0) {
+          triggerBackendSync();
+        }
       }
       if (s.dailyReports) {
         s.dailyReports.forEach(r => r.synced = true);
@@ -6947,74 +6953,93 @@ function renderCommSidebar() {
   if (state.activeCommTab === 'chats') {
     titleEl.textContent = 'Conversations';
 
-    // 1. Add Group Chat link
-    const isGroupActive = state.activeChatType === 'group';
-    const groupLink = document.createElement('div');
-    groupLink.className = `comm-item-link ${isGroupActive ? 'active' : ''}`;
-    groupLink.onclick = () => {
-      state.activeChatType = 'group';
-      state.activeChatTargetId = null;
-      renderCommunicationsHub();
-    };
-    const unreadGroup = getUnreadChatCount('group');
-    const badgeHtml = unreadGroup > 0 ? `<span class="menu-badge" style="display: inline-flex; margin-left: auto; background-color: var(--danger); font-size: 0.7rem; padding: 2px 6px;">${unreadGroup}</span>` : '';
-    groupLink.innerHTML = `
-      <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; background: var(--primary-gradient);">📢</div>
-      <div style="font-weight:600;">General Group Chat</div>
-      ${badgeHtml}
-    `;
-    itemsBox.appendChild(groupLink);
+    // Build unified conversations list for WhatsApp-style sorting (Group + Direct Messages)
+    const convList = [];
 
-    // 2. Add Direct Messages for all other employees
-    const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id && (isPratap(state.currentUser) || !isPratap(emp)) && !emp.isDeleted && emp.status !== 'pending_approval');
-    
-    // Sort employees by latest message timestamp
-    otherEmployees.sort((a, b) => {
-      const msgsA = state.chats.filter(c => (c.senderId === state.currentUser.id && c.receiverId === a.id) || (c.senderId === a.id && c.receiverId === state.currentUser.id));
-      const msgA = msgsA.length > 0 ? msgsA.reduce((latest, current) => new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest) : null;
-      const timeA = msgA ? new Date(msgA.timestamp).getTime() : 0;
-      
-      const msgsB = state.chats.filter(c => (c.senderId === state.currentUser.id && c.receiverId === b.id) || (c.senderId === b.id && c.receiverId === state.currentUser.id));
-      const msgB = msgsB.length > 0 ? msgsB.reduce((latest, current) => new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest) : null;
-      const timeB = msgB ? new Date(msgB.timestamp).getTime() : 0;
-      
-      return timeB - timeA;
+    // 1. Group Chat entry
+    const groupMsgs = (state.chats || []).filter(c => c.receiverId === 'group');
+    const lastGroupMsg = groupMsgs.length > 0 ? groupMsgs.reduce((latest, current) => new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest) : null;
+    const groupTime = lastGroupMsg ? new Date(lastGroupMsg.timestamp).getTime() : 0;
+    convList.push({
+      type: 'group',
+      id: 'group',
+      name: 'General Group Chat',
+      latestTime: groupTime
     });
 
+    // 2. Direct message entries for active employees
+    const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id && (isPratap(state.currentUser) || !isPratap(emp)) && !emp.isDeleted && emp.status !== 'pending_approval');
     otherEmployees.forEach(emp => {
-      const isDirectActive = state.activeChatType === 'direct' && state.activeChatTargetId === emp.id;
-      const empLink = document.createElement('div');
-      empLink.className = `comm-item-link ${isDirectActive ? 'active' : ''}`;
-      empLink.onclick = () => {
-        state.activeChatType = 'direct';
-        state.activeChatTargetId = emp.id;
-        renderCommunicationsHub();
-      };
-      const unreadDM = getUnreadChatCount(emp.id);
-      const dmBadgeHtml = unreadDM > 0 ? `<span class="menu-badge" style="display: inline-flex; margin-left: auto; background-color: var(--danger); font-size: 0.7rem; padding: 2px 6px;">${unreadDM}</span>` : '';
-      const avatarHTML = emp.photo
-        ? `<img src="${emp.photo}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`
-        : emp.avatar;
-      const avatarStyle = emp.photo ? 'border-radius: 50%; overflow: hidden; background: none; padding: 0;' : '';
-      const isActive = state.activeUsers && state.activeUsers.includes(emp.id);
+      const msgs = (state.chats || []).filter(c => (c.senderId === state.currentUser.id && c.receiverId === emp.id) || (c.senderId === emp.id && c.receiverId === state.currentUser.id));
+      const lastMsg = msgs.length > 0 ? msgs.reduce((latest, current) => new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest) : null;
+      const time = lastMsg ? new Date(lastMsg.timestamp).getTime() : 0;
+      convList.push({
+        type: 'direct',
+        id: emp.id,
+        emp: emp,
+        name: emp.name,
+        latestTime: time
+      });
+    });
 
-      empLink.innerHTML = `
-        <div style="position: relative; display: inline-block; flex-shrink: 0;">
-          <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; ${avatarStyle}">${avatarHTML}</div>
-          ${isActive ? `
-            <span class="active-dot" style="position: absolute; bottom: 0; right: 0; width: 8px; height: 8px; background-color: #22c55e; border: 1.5px solid var(--bg-secondary, #18181b); border-radius: 50%; z-index: 1;"></span>
-          ` : ''}
-        </div>
-        <div style="flex: 1;">
-          <div style="font-weight:600; font-size:0.85rem;">
-            ${emp.name}
-            ${onLeaveList.some(e => e.id === emp.id) ? `<span style="font-size: 0.65rem; background: var(--warning); color: #fff; padding: 2px 4px; border-radius: 4px; margin-left: 4px; font-weight: bold;">(On Leave)</span>` : ''}
+    // Sort ALL conversations strictly by latest message timestamp (newest on top, WhatsApp style)
+    convList.sort((a, b) => b.latestTime - a.latestTime);
+
+    // Render sorted list
+    convList.forEach(item => {
+      if (item.type === 'group') {
+        const isGroupActive = state.activeChatType === 'group';
+        const groupLink = document.createElement('div');
+        groupLink.className = `comm-item-link ${isGroupActive ? 'active' : ''}`;
+        groupLink.onclick = () => {
+          state.activeChatType = 'group';
+          state.activeChatTargetId = null;
+          renderCommunicationsHub();
+        };
+        const unreadGroup = getUnreadChatCount('group');
+        const badgeHtml = unreadGroup > 0 ? `<span class="menu-badge" style="display: inline-flex; margin-left: auto; background-color: var(--danger); font-size: 0.7rem; padding: 2px 6px;">${unreadGroup}</span>` : '';
+        groupLink.innerHTML = `
+          <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; background: var(--primary-gradient);">📢</div>
+          <div style="font-weight:600;">General Group Chat</div>
+          ${badgeHtml}
+        `;
+        itemsBox.appendChild(groupLink);
+      } else {
+        const emp = item.emp;
+        const isDirectActive = state.activeChatType === 'direct' && state.activeChatTargetId === emp.id;
+        const empLink = document.createElement('div');
+        empLink.className = `comm-item-link ${isDirectActive ? 'active' : ''}`;
+        empLink.onclick = () => {
+          state.activeChatType = 'direct';
+          state.activeChatTargetId = emp.id;
+          renderCommunicationsHub();
+        };
+        const unreadDM = getUnreadChatCount(emp.id);
+        const dmBadgeHtml = unreadDM > 0 ? `<span class="menu-badge" style="display: inline-flex; margin-left: auto; background-color: var(--danger); font-size: 0.7rem; padding: 2px 6px;">${unreadDM}</span>` : '';
+        const avatarHTML = emp.photo
+          ? `<img src="${emp.photo}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`
+          : emp.avatar;
+        const avatarStyle = emp.photo ? 'border-radius: 50%; overflow: hidden; background: none; padding: 0;' : '';
+        const isActive = state.activeUsers && state.activeUsers.includes(emp.id);
+
+        empLink.innerHTML = `
+          <div style="position: relative; display: inline-block; flex-shrink: 0;">
+            <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; ${avatarStyle}">${avatarHTML}</div>
+            ${isActive ? `
+              <span class="active-dot" style="position: absolute; bottom: 0; right: 0; width: 8px; height: 8px; background-color: #22c55e; border: 1.5px solid var(--bg-secondary, #18181b); border-radius: 50%; z-index: 1;"></span>
+            ` : ''}
           </div>
-          <div style="font-size:0.7rem; color:var(--text-muted);">${emp.dept}</div>
-        </div>
-        ${dmBadgeHtml}
-      `;
-      itemsBox.appendChild(empLink);
+          <div style="flex: 1;">
+            <div style="font-weight:600; font-size:0.85rem;">
+              ${emp.name}
+              ${onLeaveList.some(e => e.id === emp.id) ? `<span style="font-size: 0.65rem; background: var(--warning); color: #fff; padding: 2px 4px; border-radius: 4px; margin-left: 4px; font-weight: bold;">(On Leave)</span>` : ''}
+            </div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">${emp.dept}</div>
+          </div>
+          ${dmBadgeHtml}
+        `;
+        itemsBox.appendChild(empLink);
+      }
     });
 
   } else if (state.activeCommTab === 'announcements') {
@@ -7219,7 +7244,7 @@ function renderChatRoom() {
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-function handleChatMessageSubmit(e) {
+async function handleChatMessageSubmit(e) {
   e.preventDefault();
   const input = document.getElementById('chat-input-message');
   if (!input) return;
@@ -7227,7 +7252,7 @@ function handleChatMessageSubmit(e) {
   if (!content) return;
 
   const newMsg = {
-    id: `MSG${String(state.chats.length + 1).padStart(3, '0')}`,
+    id: `MSG_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`,
     senderId: state.currentUser.id,
     senderName: state.currentUser.name,
     receiverId: state.activeChatType === 'group' ? 'group' : state.activeChatTargetId,
@@ -7237,11 +7262,10 @@ function handleChatMessageSubmit(e) {
 
   state.chats.push(newMsg);
   localStorage.setItem('ems_chats', JSON.stringify(state.chats));
-  syncStateNow(); // Send instantly to server with 0ms delay
-  triggerChatNotification(newMsg);
-
   input.value = '';
   renderChatRoom();
+  triggerChatNotification(newMsg);
+  await syncStateNow(); // Await full commit to MongoDB server
 }
 
 function handleChatFileSelected(input) {
@@ -7251,9 +7275,9 @@ function handleChatFileSelected(input) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const base64Data = e.target.result;
-    compressImage(base64Data, 800, 800, 0.6, function (compressedDataUrl) {
+    compressImage(base64Data, 800, 800, 0.6, async function (compressedDataUrl) {
       const newMsg = {
-        id: `MSG${String(state.chats.length + 1).padStart(3, '0')}`,
+        id: `MSG_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`,
         senderId: state.currentUser.id,
         senderName: state.currentUser.name,
         receiverId: state.activeChatType === 'group' ? 'group' : state.activeChatTargetId,
@@ -7268,10 +7292,10 @@ function handleChatFileSelected(input) {
 
       state.chats.push(newMsg);
       localStorage.setItem('ems_chats', JSON.stringify(state.chats));
-      syncStateNow(); // Send instantly to server with 0ms delay
-      triggerChatNotification(newMsg);
       input.value = '';
       renderChatRoom();
+      triggerChatNotification(newMsg);
+      await syncStateNow(); // Await full commit to MongoDB server
     });
   };
   reader.readAsDataURL(file);
