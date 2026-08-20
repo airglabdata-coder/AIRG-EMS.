@@ -7109,10 +7109,24 @@ function renderChatRoom() {
   let filteredMessages = [];
   if (state.activeChatType === 'group') {
     headerTitle.textContent = 'General Group Chat';
-    filteredMessages = state.chats.filter(m => m.receiverId === 'group');
+    filteredMessages = (state.chats || []).filter(m => m.receiverId === 'group');
   } else {
-    const targetEmp = state.employees.find(e => e.id === state.activeChatTargetId);
+    let targetEmp = state.employees.find(e => e.id === state.activeChatTargetId || e.email === state.activeChatTargetId);
+    if (!targetEmp && state.employees.length > 0) {
+      targetEmp = state.employees.find(e => e.id !== state.currentUser.id && !e.isDeleted);
+      if (targetEmp) state.activeChatTargetId = targetEmp.id;
+    }
+
     if (targetEmp) {
+      const targetIds = new Set([targetEmp.id, targetEmp.email].filter(Boolean));
+      const userIds = new Set([state.currentUser.id, state.currentUser.email].filter(Boolean));
+
+      filteredMessages = (state.chats || []).filter(m => {
+        const isFromUserToTarget = userIds.has(m.senderId) && targetIds.has(m.receiverId);
+        const isFromTargetToUser = targetIds.has(m.senderId) && userIds.has(m.receiverId);
+        return isFromUserToTarget || isFromTargetToUser;
+      });
+
       const isActive = state.activeUsers && state.activeUsers.includes(targetEmp.id);
       
       const onLeaveList = getEmployeesOnLeaveToday();
@@ -7152,10 +7166,6 @@ function renderChatRoom() {
     } else {
       headerTitle.textContent = 'Direct Message';
     }
-    filteredMessages = state.chats.filter(m =>
-      (m.senderId === state.currentUser.id && m.receiverId === state.activeChatTargetId) ||
-      (m.senderId === state.activeChatTargetId && m.receiverId === state.currentUser.id)
-    );
   }
 
   if (filteredMessages.length === 0) {
