@@ -437,15 +437,19 @@ function initSyncPolling() {
         isSyncingToServer = false;
         sanitizeEmployeeRoles();
 
-        // If user is typing or viewing a modal, skip UI re-rendering to prevent disruption
-        if (isUserBusy) {
-          return;
-        }
-
         if (!state.currentUser) return;
 
         const activeMenuItem = document.querySelector('.menu-item.active');
         const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
+
+        // If user is typing or viewing a modal, skip full UI re-rendering except for live chat updates
+        if (isUserBusy) {
+          if (currentView === 'communications' && state.activeCommTab === 'chats') {
+            renderChatRoom();
+            updateCommMenuBadges();
+          }
+          return;
+        }
 
         if (currentView === 'communications') {
           renderCommunicationsHub();
@@ -7233,7 +7237,7 @@ function handleChatMessageSubmit(e) {
 
   state.chats.push(newMsg);
   localStorage.setItem('ems_chats', JSON.stringify(state.chats));
-  triggerBackendSync(); // [AUTO-ADDED] persist ems_chats to server
+  syncStateNow(); // Send instantly to server with 0ms delay
   triggerChatNotification(newMsg);
 
   input.value = '';
@@ -7264,7 +7268,7 @@ function handleChatFileSelected(input) {
 
       state.chats.push(newMsg);
       localStorage.setItem('ems_chats', JSON.stringify(state.chats));
-      triggerBackendSync(); // [AUTO-ADDED] persist ems_chats to server
+      syncStateNow(); // Send instantly to server with 0ms delay
       triggerChatNotification(newMsg);
       input.value = '';
       renderChatRoom();
