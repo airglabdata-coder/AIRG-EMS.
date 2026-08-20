@@ -317,7 +317,13 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
   const existingProjectsMap = new Map(existingProjects.map(p => [p.id, p]));
   const syncingUser = syncingEmployeeId ? existingMap.get(syncingEmployeeId) : null;
   const syncingUserRole = syncingUser ? (syncingUser.role || '').toLowerCase() : '';
-  const isHRorAdmin = syncingUserRole.includes('admin') || syncingUserRole.includes('hr');
+  const isHRorAdmin = (
+    syncingUserRole.includes('admin') ||
+    syncingUserRole.includes('hr') ||
+    syncingUserRole.includes('manager') ||
+    syncingUserRole.includes('tech lead') ||
+    syncingUserRole.includes('techlead')
+  );
 
   if (isHRorAdmin) {
     // Admin and HR can modify any projects

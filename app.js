@@ -4682,7 +4682,8 @@ function renderEmployeeTasksAndProjects() {
 
   const activeProjects = state.projects.filter(p => {
     const isDeptMember = user.dept && p.dept && user.dept.split(',').map(d => d.trim().toLowerCase()).includes(p.dept.toLowerCase());
-    return isDeptMember || p.techLeadId === user.id || userTaskProjectIds.includes(p.id) || (p.employeeIds && p.employeeIds.includes(user.id));
+    const isMember = p.employeeIds && (p.employeeIds.includes(user.id) || p.employeeIds.includes(user.email));
+    return isDeptMember || p.techLeadId === user.id || p.techLeadId === user.email || userTaskProjectIds.includes(p.id) || isMember;
   });
 
   // Render Projects (filtered by employee's department OR projects they are assigned tasks in)
@@ -5632,7 +5633,12 @@ function renderHRTasksAndProjects() {
         </div>
       `;
     } else if (state.currentRole === 'techlead' || state.currentRole === 'manager') {
-      const myProjects = state.projects.filter(p => p.techLeadId === state.currentUser.id);
+      const myProjects = state.projects.filter(p =>
+        p.techLeadId === state.currentUser.id ||
+        p.techLeadId === state.currentUser.email ||
+        (p.employeeIds && (p.employeeIds.includes(state.currentUser.id) || p.employeeIds.includes(state.currentUser.email))) ||
+        (p.dept && state.currentUser.dept && state.currentUser.dept.split(',').map(d => d.trim().toLowerCase()).includes(p.dept.toLowerCase()))
+      );
       if (myProjects.length === 0) {
         grid.innerHTML = `
           <div class="empty-state" style="grid-column: 1 / -1; padding: 24px;">
