@@ -682,7 +682,15 @@ app.post('/api/delete-record', async (req, res) => {
       const ownerField = modelName === 'TrainerReport' ? 'trainerId' : 'employeeId';
       const result = await Model.deleteMany({ id, [ownerField]: employeeId });
       if (result.deletedCount === 0) {
-        return res.status(403).json({ error: 'Unauthorized to delete this record' });
+        // Check if the record exists in MongoDB Atlas under a different user
+        const existingDoc = await Model.findOne({ id }).lean();
+        if (existingDoc) {
+          console.warn(`[EXPLICIT DELETE] Blocked unauthorized deletion attempt of ${modelName} ${id} by ${employeeId}`);
+          return res.status(403).json({ error: 'Unauthorized to delete this record' });
+        }
+        // If record is not in MongoDB Atlas at all (e.g. unsynced local duplicate), allow local cleanup
+        console.log(`[EXPLICIT DELETE] Record ${modelName} ${id} not found in DB. Permitting local cleanup for ${employeeId}.`);
+        return res.json({ success: true, localOnly: true });
       }
       console.log(`[EXPLICIT DELETE] User ${employeeId} deleted own ${modelName} ${id}`);
       return res.json({ success: true });

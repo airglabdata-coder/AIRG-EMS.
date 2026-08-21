@@ -8825,6 +8825,9 @@ async function handleDailyReportSubmit(e) {
 
   if (!reportDateInput || !reportDetailsInput) return;
 
+  const submitBtn = e.target.querySelector('button[type="submit"]') || document.querySelector('#daily-report-form button[type="submit"]');
+  const originalBtnHtml = submitBtn ? submitBtn.innerHTML : 'Submit Report';
+
   const dateVal = reportDateInput.value;
   const detailsVal = reportDetailsInput.value.trim();
   const projectIdVal = reportProjectSelect ? reportProjectSelect.value : '';
@@ -8835,86 +8838,109 @@ async function handleDailyReportSubmit(e) {
     return;
   }
 
-  const newReport = {
-    id: `REP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
-    employeeId: state.currentUser.id,
-    employeeName: state.currentUser.name,
-    employeeRole: state.currentUser.role,
-    dept: state.currentUser.dept,
-    projectId: projectIdVal,
-    projectName: projectNameVal,
-    date: dateVal,
-    details: detailsVal,
-    images: [...currentAttachedImagesReport],
-    remarks: '',
-    reviewedBy: '',
-    reviewedAt: '',
-    starRating: 0,
-    driveLinks: [...currentReportDriveLinks]
-  };
-
-  state.dailyReports.push(newReport);
-
-  if (!safeSaveReports()) {
-    state.dailyReports.pop();
-    return;
+  // Disable button immediately to prevent rapid multi-clicks
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.7';
+    submitBtn.style.cursor = 'not-allowed';
+    submitBtn.innerHTML = '<span class="submit-spinner" style="display: inline-flex; align-items: center; gap: 8px;"><svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="4" stroke-dasharray="32" stroke-dashoffset="10"></circle></svg> ⏳ Submitting Report... Please wait</span>';
   }
 
-  // Force an immediate server sync to avoid data loss on reload
-  await syncStateNow();
+  try {
+    const newReport = {
+      id: `REP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      employeeId: state.currentUser.id,
+      employeeName: state.currentUser.name,
+      employeeRole: state.currentUser.role,
+      dept: state.currentUser.dept,
+      projectId: projectIdVal,
+      projectName: projectNameVal,
+      date: dateVal,
+      details: detailsVal,
+      images: [...currentAttachedImagesReport],
+      remarks: '',
+      reviewedBy: '',
+      reviewedAt: '',
+      starRating: 0,
+      driveLinks: [...currentReportDriveLinks]
+    };
 
-  // Find project recipient for daily report routing
-  const proj = state.projects.find(p => p.id === projectIdVal);
-  let recipientIds = [];
+    state.dailyReports.push(newReport);
 
-  if (proj && proj.techLeadId) {
-    if (state.currentUser.id === proj.techLeadId) {
-      // Current user is the Tech Lead -> send to Admin
+    if (!safeSaveReports()) {
+      state.dailyReports.pop();
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+        submitBtn.innerHTML = originalBtnHtml;
+      }
+      return;
+    }
+
+    // Force an immediate server sync to avoid data loss on reload
+    await syncStateNow();
+
+    // Find project recipient for daily report routing
+    const proj = state.projects.find(p => p.id === projectIdVal);
+    let recipientIds = [];
+
+    if (proj && proj.techLeadId) {
+      if (state.currentUser.id === proj.techLeadId) {
+        state.employees.forEach(emp => {
+          const roleLower = (emp.role || '').toLowerCase();
+          if (roleLower.includes('admin') && emp.id !== state.currentUser.id) {
+            recipientIds.push(emp.id);
+          }
+        });
+      } else {
+        recipientIds.push(proj.techLeadId);
+      }
+    } else {
       state.employees.forEach(emp => {
         const roleLower = (emp.role || '').toLowerCase();
-        if (roleLower.includes('admin') && emp.id !== state.currentUser.id) {
+        if ((roleLower.includes('admin') || roleLower.includes('hr') || roleLower.includes('ceo') || roleLower.includes('tech lead') || roleLower.includes('manager')) && emp.id !== state.currentUser.id) {
           recipientIds.push(emp.id);
         }
       });
-    } else {
-      // Send ONLY to the Tech Lead of this project
-      recipientIds.push(proj.techLeadId);
     }
-  } else {
-    // Fallback: send to Admin, HR, CEO, and Tech Leads
+
+    // Trigger SMS notifications for only the recipients
     state.employees.forEach(emp => {
-      const roleLower = (emp.role || '').toLowerCase();
-      if ((roleLower.includes('admin') || roleLower.includes('hr') || roleLower.includes('ceo') || roleLower.includes('tech lead') || roleLower.includes('manager')) && emp.id !== state.currentUser.id) {
-        recipientIds.push(emp.id);
+      if (recipientIds.includes(emp.id)) {
+        if (emp.phone) {
+          triggerSMSNotification(
+            emp.phone,
+            `New Daily Report Submitted: ${state.currentUser.name} for project "${projectNameVal}" on ${dateVal}. Details: ${detailsVal.substring(0, 100)}${detailsVal.length > 100 ? '...' : ''}`,
+            emp.name
+          );
+        }
       }
     });
-  }
 
-  // Trigger SMS notifications for only the recipients
-  state.employees.forEach(emp => {
-    if (recipientIds.includes(emp.id)) {
-      if (emp.phone) {
-        triggerSMSNotification(
-          emp.phone,
-          `New Daily Report Submitted: ${state.currentUser.name} for project "${projectNameVal}" on ${dateVal}. Details: ${detailsVal.substring(0, 100)}${detailsVal.length > 100 ? '...' : ''}`,
-          emp.name
-        );
-      }
+    currentAttachedImagesReport.length = 0;
+    const preview = document.getElementById('report-images-preview');
+    if (preview) preview.innerHTML = '';
+    currentReportDriveLinks.length = 0;
+    const drivePreview = document.getElementById('report-drive-links-preview');
+    if (drivePreview) drivePreview.innerHTML = '';
+
+    document.getElementById('daily-report-form').reset();
+    setTodayReportDate();
+
+    renderDailyReports();
+    showToast('Daily report submitted successfully!', 'success');
+  } catch (err) {
+    console.error('Error submitting daily report:', err);
+    showToast('Failed to submit report. Please try again.', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.style.cursor = 'pointer';
+      submitBtn.innerHTML = originalBtnHtml;
     }
-  });
-
-  currentAttachedImagesReport.length = 0;
-  const preview = document.getElementById('report-images-preview');
-  if (preview) preview.innerHTML = '';
-  currentReportDriveLinks.length = 0;
-  const drivePreview = document.getElementById('report-drive-links-preview');
-  if (drivePreview) drivePreview.innerHTML = '';
-
-  document.getElementById('daily-report-form').reset();
-  setTodayReportDate();
-
-  renderDailyReports();
-  showToast('Daily report submitted successfully!', 'success');
+  }
 }
 
 function toggleReportDetailsExpand(reportId, event) {
