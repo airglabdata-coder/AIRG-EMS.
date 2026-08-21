@@ -774,21 +774,26 @@ app.post('/api/activity-log', async (req, res) => {
     }
 
     if (type === 'login') {
-      // Close any existing active sessions
-      dayEntry.sessions.forEach(s => {
-        if (s.explicitLogout !== true) {
-          s.explicitLogout = true;
+      // Find existing active session (not explicitly logged out and active recently)
+      const existingSession = [...dayEntry.sessions].reverse().find(s => s.explicitLogout !== true);
+      if (existingSession) {
+        // Keep existing active session open and update heartbeat
+        existingSession.logoutMs = nowMs;
+        existingSession.logout = formattedTime;
+        if (existingSession.loginMs) {
+          existingSession.durationMinutes = Math.round((nowMs - existingSession.loginMs) / 60000);
         }
-      });
-      // Start a new session
-      dayEntry.sessions.push({
-        login: formattedTime,
-        logout: formattedTime,
-        loginMs: nowMs,
-        logoutMs: nowMs,
-        durationMinutes: 0,
-        explicitLogout: false
-      });
+      } else {
+        // Start a new session only if no active session exists
+        dayEntry.sessions.push({
+          login: formattedTime,
+          logout: formattedTime,
+          loginMs: nowMs,
+          logoutMs: nowMs,
+          durationMinutes: 0,
+          explicitLogout: false
+        });
+      }
     } else if (type === 'logout') {
       // Close the most recent open session (no explicit logout yet)
       const openSession = [...dayEntry.sessions].reverse().find(s => s.explicitLogout !== true);

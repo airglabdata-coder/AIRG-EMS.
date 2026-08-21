@@ -333,10 +333,10 @@ function initSyncPolling() {
   if (window.chatPollInterval) clearInterval(window.chatPollInterval);
 
   // ────────────────────────────────────────────────────────────────────────────
-  // CHAT-ONLY FAST POLL (every 1500ms) — NEVER blocked by isUserBusy
+  // CHAT-ONLY FAST POLL (every 600ms) — NEVER blocked by isUserBusy
   // This ensures new messages appear instantly on recipient screen without refresh
   // ────────────────────────────────────────────────────────────────────────────
-  let lastChatTimestamp = null;
+  let lastChatSignature = '';
   window.chatPollInterval = setInterval(async () => {
     if (!state.currentUser) return;
     try {
@@ -345,34 +345,27 @@ function initSyncPolling() {
       const chatData = await chatRes.json();
       if (!chatData || !chatData.chats) return;
 
-      const newTimestamp = chatData.timestamp;
-      if (lastChatTimestamp === newTimestamp) return; // Nothing changed
-      lastChatTimestamp = newTimestamp;
+      // Signature of current chat messages
+      const newSignature = chatData.chats.map(m => m.id).join(',');
 
-      // Update active users always
+      // Update active users list always
       if (chatData.activeUsers) state.activeUsers = chatData.activeUsers;
 
-      // Merge new chats — only add messages not already in state
-      const existingChatIds = new Set((state.chats || []).map(m => m.id));
-      const incomingNew = chatData.chats.filter(m => !existingChatIds.has(m.id));
-
-      if (incomingNew.length > 0 || chatData.chats.length !== (state.chats || []).length) {
-        // Fully replace chats from server (authoritative source)
+      if (lastChatSignature !== newSignature || chatData.chats.length !== (state.chats || []).length) {
+        lastChatSignature = newSignature;
         state.chats = chatData.chats;
         safeOriginalSetItem('ems_chats', JSON.stringify(state.chats));
 
-        // Re-render chat UI if currently viewing communications
+        // Re-render chat UI immediately if currently viewing communications
         const activeMenuItem = document.querySelector('.menu-item.active');
         const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : '';
         if (currentView === 'communications' && state.activeCommTab === 'chats') {
           renderChatRoom();
           renderCommSidebar();
         }
-        // Always update badge count regardless of which page is active
         updateAllMenuBadges();
       }
 
-      // Merge announcements & notices if changed
       if (chatData.announcements) {
         state.announcements = chatData.announcements;
         safeOriginalSetItem('ems_announcements', JSON.stringify(state.announcements));
@@ -384,7 +377,7 @@ function initSyncPolling() {
     } catch (err) {
       // Silent fail — chat poll errors shouldn't disrupt the user
     }
-  }, 1500);
+  }, 600);
 
   // ────────────────────────────────────────────────────────────────────────────
   // GENERAL STATE POLL (every 600ms) — for all other data updates
