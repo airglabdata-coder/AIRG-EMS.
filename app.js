@@ -7332,7 +7332,8 @@ async function handleChatMessageSubmit(e) {
   input.value = '';
   renderChatRoom();
   triggerChatNotification(newMsg);
-  await syncStateNow(); // Await full commit to MongoDB server
+  // Non-blocking background sync so fast typing never lags
+  syncStateNow().catch(() => {});
 }
 
 function handleChatFileSelected(input) {
@@ -7342,7 +7343,7 @@ function handleChatFileSelected(input) {
   const reader = new FileReader();
   reader.onload = function (e) {
     const base64Data = e.target.result;
-    compressImage(base64Data, 800, 800, 0.6, async function (compressedDataUrl) {
+    compressImage(base64Data, 800, 800, 0.6, function (compressedDataUrl) {
       const newMsg = {
         id: `MSG_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`,
         senderId: state.currentUser.id,
@@ -7362,7 +7363,7 @@ function handleChatFileSelected(input) {
       input.value = '';
       renderChatRoom();
       triggerChatNotification(newMsg);
-      await syncStateNow(); // Await full commit to MongoDB server
+      syncStateNow().catch(() => {});
     });
   };
   reader.readAsDataURL(file);
