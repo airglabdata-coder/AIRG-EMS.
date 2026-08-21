@@ -345,15 +345,20 @@ function initSyncPolling() {
       const chatData = await chatRes.json();
       if (!chatData || !chatData.chats) return;
 
-      // Signature of current chat messages
-      const newSignature = chatData.chats.map(m => m.id).join(',');
+      // Merge incoming server chats with local chats (so freshly typed messages never disappear)
+      const serverChatIds = new Set(chatData.chats.map(m => m.id));
+      const unsyncedLocalChats = (state.chats || []).filter(m => !serverChatIds.has(m.id));
+      const mergedChats = [...chatData.chats, ...unsyncedLocalChats];
+
+      // Signature of merged chat messages
+      const newSignature = mergedChats.map(m => m.id).join(',');
 
       // Update active users list always
       if (chatData.activeUsers) state.activeUsers = chatData.activeUsers;
 
-      if (lastChatSignature !== newSignature || chatData.chats.length !== (state.chats || []).length) {
+      if (lastChatSignature !== newSignature) {
         lastChatSignature = newSignature;
-        state.chats = chatData.chats;
+        state.chats = mergedChats;
         safeOriginalSetItem('ems_chats', JSON.stringify(state.chats));
 
         // Re-render chat UI immediately if currently viewing communications
@@ -7332,8 +7337,12 @@ async function handleChatMessageSubmit(e) {
   input.value = '';
   renderChatRoom();
   triggerChatNotification(newMsg);
-  // Non-blocking background sync so fast typing never lags
-  syncStateNow().catch(() => {});
+  // Lightweight <30ms chat save to MongoDB Atlas
+  fetch('/api/chats-only', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat: newMsg })
+  }).catch(() => {});
 }
 
 function handleChatFileSelected(input) {
@@ -7363,7 +7372,11 @@ function handleChatFileSelected(input) {
       input.value = '';
       renderChatRoom();
       triggerChatNotification(newMsg);
-      syncStateNow().catch(() => {});
+      fetch('/api/chats-only', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat: newMsg })
+      }).catch(() => {});
     });
   };
   reader.readAsDataURL(file);

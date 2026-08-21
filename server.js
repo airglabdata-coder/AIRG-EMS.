@@ -648,6 +648,33 @@ app.get('/api/chats-only', async (req, res) => {
   }
 });
 
+// Lightweight POST endpoint for saving single chat messages in <30ms
+app.post('/api/chats-only', async (req, res) => {
+  const { chat } = req.body;
+  if (!chat || !chat.id) {
+    return res.status(400).json({ error: 'Missing chat object' });
+  }
+
+  try {
+    await connectDB();
+    await models.Chat.findOneAndUpdate(
+      { id: chat.id },
+      { $set: chat },
+      { upsert: true, new: true }
+    );
+    const timestamp = Date.now();
+    await models.SystemMetadata.findOneAndUpdate(
+      { key: 'lastUpdated' },
+      { timestamp },
+      { upsert: true }
+    );
+    return res.json({ success: true, timestamp });
+  } catch (err) {
+    console.error('❌ Failed to save chat message:', err.message);
+    return res.status(500).json({ error: 'Database write failed.' });
+  }
+});
+
 // Endpoint to overwrite/sync centralized state
 app.post('/api/sync', async (req, res) => {
   const newState = req.body;
