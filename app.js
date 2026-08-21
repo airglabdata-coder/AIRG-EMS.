@@ -4132,14 +4132,14 @@ async function deleteEmployee(empId, event) {
   }
 }
 
-function approveRegistration(empId) {
+async function approveRegistration(empId) {
   const emp = state.employees.find(e => e.id === empId);
   if (!emp) return;
   
-  if (confirm(`Are you sure you want to approve registration for "${emp.name}"?`)) {
-    emp.status = 'active'; // Overwrite pending_approval status
+  if (confirm(`Are you sure you want to approve registration for "${emp.name}" (${emp.id})?`)) {
+    emp.status = 'approved'; // Set approved status
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
-    triggerBackendSync();
+    await syncStateNow();
     
     // Refresh dropdowns and UI
     populateEmployeeDropdown();
@@ -4156,27 +4156,20 @@ function approveRegistration(empId) {
   }
 }
 
-function rejectRegistration(empId) {
+async function rejectRegistration(empId) {
   const emp = state.employees.find(e => e.id === empId);
   if (!emp) return;
   
-  if (confirm(`Are you sure you want to reject and delete registration for "${emp.name}"?`)) {
+  if (confirm(`Are you sure you want to reject and delete registration for "${emp.name}" (${emp.id})?`)) {
     state.employees = state.employees.filter(e => e.id !== empId);
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
-    triggerBackendSync();
-    
-    // Refresh dropdowns and UI
-    populateEmployeeDropdown();
-    populateTaskModalOptions();
-    renderEmployeeRoster();
-    if (typeof renderEmployeeDetails === 'function') {
-      renderEmployeeDetails();
-    }
+    await syncStateNow();
+
     const activeMenuItem = document.querySelector('.menu-item.active');
     const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
     switchView(currentView);
-    
-    showToast(`Registration rejected and deleted for "${emp.name}".`, 'success');
+
+    showToast(`Registration rejected for "${emp.name}".`, 'info');
   }
 }
 
