@@ -732,7 +732,8 @@ const DEFAULT_EMPLOYEES = [
     bankAcc: "98765432111",
     bankIfsc: "HDFC0000123",
     password: "aditya",
-    phone: "+91 93805 75065"
+    phone: "+91 93805 75065",
+    status: "pending_approval"
   },
   {
     id: "AIRG00001",
