@@ -629,6 +629,25 @@ app.get('/api/sync-timestamp', async (req, res) => {
   }
 });
 
+// Lightweight chat-only endpoint for instant real-time chat updates without full state sync
+app.get('/api/chats-only', async (req, res) => {
+  try {
+    await connectDB();
+    const [chats, announcements, notices] = await Promise.all([
+      models.Chat.find({}).lean(),
+      models.Announcement.find({}).lean(),
+      models.Notice.find({}).lean()
+    ]);
+    let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' });
+    const timestamp = meta ? meta.timestamp : Date.now();
+    const activeUsers = trackAndGetActiveUsers(req.query.employeeId, null);
+    return res.json({ chats, announcements, notices, timestamp, activeUsers });
+  } catch (err) {
+    console.error('❌ Failed to read chats-only:', err.message);
+    return res.status(500).json({ error: 'Database read failed.' });
+  }
+});
+
 // Endpoint to overwrite/sync centralized state
 app.post('/api/sync', async (req, res) => {
   const newState = req.body;

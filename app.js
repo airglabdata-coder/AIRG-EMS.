@@ -330,6 +330,65 @@ async function fetchCentralizedState() {
 
 function initSyncPolling() {
   if (window.syncPollInterval) clearInterval(window.syncPollInterval);
+  if (window.chatPollInterval) clearInterval(window.chatPollInterval);
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // CHAT-ONLY FAST POLL (every 1500ms) — NEVER blocked by isUserBusy
+  // This ensures new messages appear instantly on recipient screen without refresh
+  // ────────────────────────────────────────────────────────────────────────────
+  let lastChatTimestamp = null;
+  window.chatPollInterval = setInterval(async () => {
+    if (!state.currentUser) return;
+    try {
+      const chatRes = await fetch(`/api/chats-only?employeeId=${state.currentUser.id}`);
+      if (!chatRes.ok) return;
+      const chatData = await chatRes.json();
+      if (!chatData || !chatData.chats) return;
+
+      const newTimestamp = chatData.timestamp;
+      if (lastChatTimestamp === newTimestamp) return; // Nothing changed
+      lastChatTimestamp = newTimestamp;
+
+      // Update active users always
+      if (chatData.activeUsers) state.activeUsers = chatData.activeUsers;
+
+      // Merge new chats — only add messages not already in state
+      const existingChatIds = new Set((state.chats || []).map(m => m.id));
+      const incomingNew = chatData.chats.filter(m => !existingChatIds.has(m.id));
+
+      if (incomingNew.length > 0 || chatData.chats.length !== (state.chats || []).length) {
+        // Fully replace chats from server (authoritative source)
+        state.chats = chatData.chats;
+        safeOriginalSetItem('ems_chats', JSON.stringify(state.chats));
+
+        // Re-render chat UI if currently viewing communications
+        const activeMenuItem = document.querySelector('.menu-item.active');
+        const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : '';
+        if (currentView === 'communications' && state.activeCommTab === 'chats') {
+          renderChatRoom();
+          renderCommSidebar();
+        }
+        // Always update badge count regardless of which page is active
+        updateAllMenuBadges();
+      }
+
+      // Merge announcements & notices if changed
+      if (chatData.announcements) {
+        state.announcements = chatData.announcements;
+        safeOriginalSetItem('ems_announcements', JSON.stringify(state.announcements));
+      }
+      if (chatData.notices) {
+        state.notices = chatData.notices;
+        safeOriginalSetItem('ems_notices', JSON.stringify(state.notices));
+      }
+    } catch (err) {
+      // Silent fail — chat poll errors shouldn't disrupt the user
+    }
+  }, 1500);
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // GENERAL STATE POLL (every 600ms) — for all other data updates
+  // ────────────────────────────────────────────────────────────────────────────
   window.syncPollInterval = setInterval(async () => {
     if (!state.currentUser) return;
     if (isSyncingToServer) return;
@@ -338,6 +397,8 @@ function initSyncPolling() {
     const isUserBusy = (() => {
       const activeEl = document.activeElement;
       if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        // Exception: chat input should not count as "busy" for general sync
+        if (activeEl.id === 'chat-input-message') return false;
         return true;
       }
       const openModals = document.querySelectorAll('.modal-overlay.active');
@@ -380,7 +441,10 @@ function initSyncPolling() {
         return;
       }
 
-      // 4. Perform full sync since state has updated on the server
+      // 4. Skip full re-render if user is busy (chat updates come from chatPollInterval)
+      if (isUserBusy) return;
+
+      // 5. Perform full sync since state has updated on the server
       const url = `/api/sync?employeeId=${state.currentUser.id}`;
       const res = await fetch(url);
 
@@ -449,15 +513,6 @@ function initSyncPolling() {
         const activeMenuItem = document.querySelector('.menu-item.active');
         const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
 
-        // If user is typing or viewing a modal, skip full UI re-rendering except for live chat updates
-        if (isUserBusy) {
-          if (currentView === 'communications' && state.activeCommTab === 'chats') {
-            renderChatRoom();
-            updateCommMenuBadges();
-          }
-          return;
-        }
-
         if (currentView === 'communications') {
           renderCommunicationsHub();
         } else if (currentView === 'calendar') {
@@ -499,6 +554,8 @@ function initSyncPolling() {
     }
   }, 600);
 }
+
+
 
 
 // --- Constants & Seed Data ---
