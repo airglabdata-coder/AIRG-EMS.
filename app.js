@@ -5488,7 +5488,7 @@ async function assignEmployeeToProject(projId) {
   }
 
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
-  syncStateNow();
+  await syncStateNow();
 
   // Refresh views
   const activeMenuItem = document.querySelector('.menu-item.active');
@@ -5522,7 +5522,7 @@ async function removeEmployeeFromProject(projId, empId) {
   }
 
   localStorage.setItem('ems_projects', JSON.stringify(state.projects));
-  syncStateNow();
+  await syncStateNow();
 
   // Refresh views
   const activeMenuItem = document.querySelector('.menu-item.active');
@@ -11269,12 +11269,27 @@ window.sanitizeEmployeeRoles = sanitizeEmployeeRoles;
 
 function checkAuthSession() {
   const loggedInStr = localStorage.getItem('ems_logged_in_user');
+
+  // Detect if this is a page RELOAD (sessionStorage key survives reloads but not real closes)
+  const isReload = sessionStorage.getItem('ems_is_reload') === 'true';
+  const reloadView = sessionStorage.getItem('ems_reload_last_view');
+  const reloadUserId = sessionStorage.getItem('ems_reload_user_id');
+
+  // Clear the reload flag immediately
+  sessionStorage.removeItem('ems_is_reload');
+  sessionStorage.removeItem('ems_reload_last_view');
+  sessionStorage.removeItem('ems_reload_user_id');
+
   if (loggedInStr) {
     try {
       const storedUser = JSON.parse(loggedInStr);
       const found = state.employees.find(emp => emp.id === storedUser.id);
       if (found) {
-        loginAsUser(found);
+        loginAsUser(found, isReload); // Pass isReload flag to skip activity-log
+        // If it was a reload, restore the last active view instead of going to dashboard
+        if (isReload && reloadView && reloadView !== 'tasks') {
+          setTimeout(() => switchView(reloadView), 150);
+        }
         return;
       }
     } catch (e) {
@@ -11369,16 +11384,19 @@ function quickLogin(identifier) {
   }
 }
 
-function loginAsUser(user) {
+function loginAsUser(user, isReload = false) {
   state.currentUser = user;
   document.body.classList.remove('auth-view');
 
-  // Log session login event
-  fetch('/api/activity-log', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ employeeId: user.id, type: 'login' })
-  }).catch(err => console.error('Failed to log login:', err));
+  // Only log session start for actual logins, NOT page reloads
+  // A reload fires beforeunload (which ends the heartbeat) and then init again - we don't want a new session
+  if (!isReload) {
+    fetch('/api/activity-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: user.id, type: 'login' })
+    }).catch(err => console.error('Failed to log login:', err));
+  }
 
   // Update Profile Widget
   updateHeaderAvatar(user);
@@ -13608,8 +13626,16 @@ window.populateManagerDropdowns = populateManagerDropdowns;
 window.addEventListener('DOMContentLoaded', init);
 
 // Clean up active status on window close or tab navigation
+// We use sessionStorage to differentiate a RELOAD (page stays in session) from a TRUE TAB CLOSE
 window.addEventListener('beforeunload', () => {
   if (state.currentUser) {
+    // Mark that we are about to reload/navigate — sessionStorage survives page reloads
+    sessionStorage.setItem('ems_is_reload', 'true');
+    sessionStorage.setItem('ems_reload_user_id', state.currentUser.id);
+    sessionStorage.setItem('ems_reload_last_view', (() => {
+      const activeMenuItem = document.querySelector('.menu-item.active');
+      return activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
+    })());
     const userId = state.currentUser.id;
     fetch(`/api/sync?employeeId=${userId}&active=false`, { keepalive: true }).catch(() => {});
   }
