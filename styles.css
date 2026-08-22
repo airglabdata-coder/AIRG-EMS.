@@ -2544,6 +2544,45 @@ body:not(.auth-view) .employee-select-container {
     overflow-x: hidden !important;
   }
 
+  /* --- Mobile Filter Bar & Search Stack --- */
+  .filter-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 10px !important;
+    box-sizing: border-box !important;
+    margin-bottom: 12px !important;
+  }
+
+  .search-input-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .search-input-wrapper input {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .filter-selects {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 8px !important;
+    box-sizing: border-box !important;
+  }
+
+  .filter-selects select {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
   /* --- Mobile Project Grid & Card Layout --- */
   .project-grid {
     display: flex !important;
