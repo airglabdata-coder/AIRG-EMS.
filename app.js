@@ -4983,7 +4983,7 @@ function renderEmployeeTasksAndProjects() {
                 ⏱ Total: ${formatDuration(totalMins)}
               </span>
             </div>
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+            <table class="session-logs-table" style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
               <thead>
                 <tr style="background: rgba(255,255,255,0.03); color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase;">
                   <th style="padding: 6px 12px; font-weight: 600; text-align: left;">Session</th>

@@ -3216,44 +3216,6 @@
   <script src="app.js?v=25"></script>
   <script src="mobile.js"></script>
   <script>
-    // Failsafe inline mobile layout toggler
-    (function () {
-      const closeSidebar = () => {
-        const sidebar = document.getElementById('sidebar');
-        const hamburger = document.getElementById('mobile-hamburger');
-        const overlay = document.getElementById('sidebar-overlay');
-        if (sidebar) sidebar.classList.remove('open');
-        if (hamburger) hamburger.classList.remove('open');
-        if (overlay) overlay.classList.remove('open');
-      };
-      const openSidebar = () => {
-        const sidebar = document.getElementById('sidebar');
-        const hamburger = document.getElementById('mobile-hamburger');
-        const overlay = document.getElementById('sidebar-overlay');
-        if (sidebar) sidebar.classList.add('open');
-        if (hamburger) hamburger.classList.add('open');
-        if (overlay) overlay.classList.add('open');
-      };
-
-      // Failsafe click handler on body
-      document.body.addEventListener('click', function (e) {
-        const hb = e.target.closest('#mobile-hamburger');
-        if (hb) {
-          e.stopPropagation();
-          const sidebar = document.getElementById('sidebar');
-          if (sidebar && sidebar.classList.contains('open')) {
-            closeSidebar();
-          } else {
-            openSidebar();
-          }
-          return;
-        }
-        if (e.target.closest('#sidebar-overlay') || e.target.closest('.menu-item')) {
-          closeSidebar();
-        }
-      });
-    })();
-
     // Password Visibility Toggle Logic
     function togglePasswordVisibility() {
       const passwordInput = document.getElementById('login-password');

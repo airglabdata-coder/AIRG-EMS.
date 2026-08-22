@@ -2363,12 +2363,16 @@ body:not(.auth-view) .employee-select-container {
   #sidebar {
     transform: translateX(-100%);
     width: 280px;
-    z-index: 100;
+    z-index: 99999 !important;
   }
   
   #sidebar.open {
     transform: translateX(0);
-    box-shadow: 5px 0 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 5px 0 25px rgba(0, 0, 0, 0.4);
+  }
+
+  #sidebar-overlay {
+    z-index: 99998 !important;
   }
 
   /* Hamburger close button transform */
@@ -2577,16 +2581,71 @@ body:not(.auth-view) .employee-select-container {
   td::before {
     content: attr(data-label) !important;
     position: absolute !important;
-    left: 0 !important;
-    width: 38% !important;
+    left: 10px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 36% !important;
     font-weight: 700 !important;
     color: var(--text-muted) !important;
-    font-size: 0.75rem !important;
+    font-size: 0.72rem !important;
     text-transform: uppercase !important;
     text-align: left !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+  }
+
+  /* Section Header & Month Summary Rows in Tables (Full Width, No Data Label Overlay) */
+  tr.month-header-row td,
+  tr.month-group-header-row td,
+  td[colspan] {
+    padding: 10px 12px !important;
+    text-align: left !important;
+    display: block !important;
+    width: 100% !important;
+    background-color: var(--bg-tertiary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+  }
+
+  tr.month-header-row td::before,
+  tr.month-group-header-row td::before,
+  td[colspan]::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  /* Compact Session Activity Logs Table on Mobile (Clean 4-column layout, no cutoff) */
+  .session-logs-table {
+    display: table !important;
+    width: 100% !important;
+  }
+  .session-logs-table thead {
+    display: table-header-group !important;
+  }
+  .session-logs-table tbody {
+    display: table-row-group !important;
+  }
+  .session-logs-table tr {
+    display: table-row !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  .session-logs-table th,
+  .session-logs-table td {
+    display: table-cell !important;
+    padding: 6px 8px !important;
+    text-align: left !important;
+    font-size: 0.78rem !important;
+    border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+    width: auto !important;
+    min-height: 0 !important;
+  }
+  .session-logs-table td::before {
+    display: none !important;
+    content: none !important;
   }
 
   /* Special td layout for actions/buttons */

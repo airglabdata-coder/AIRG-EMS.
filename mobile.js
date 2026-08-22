@@ -46,12 +46,24 @@ const initMobileUI = () => {
   // --- Table Cell Labels for Responsive Card Layout ---
   function updateTableLabels() {
     document.querySelectorAll('table').forEach(table => {
+      // Bypasses session logs table or special compact tables
+      if (table.classList.contains('session-logs-table')) {
+        table.querySelectorAll('td').forEach(td => td.removeAttribute('data-label'));
+        return;
+      }
+
       // Find headers
       const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
       if (headers.length === 0) return;
 
       // Map headers to cells
       table.querySelectorAll('tbody tr').forEach(tr => {
+        // Skip section header / month summary rows or full-width colspan cells
+        if (tr.classList.contains('month-header-row') || tr.classList.contains('month-group-header-row') || tr.querySelector('td[colspan]')) {
+          tr.querySelectorAll('td').forEach(td => td.removeAttribute('data-label'));
+          return;
+        }
+
         tr.querySelectorAll('td').forEach((td, idx) => {
           if (headers[idx] && !td.getAttribute('data-label')) {
             td.setAttribute('data-label', headers[idx]);
