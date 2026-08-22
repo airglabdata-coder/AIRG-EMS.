@@ -2113,20 +2113,252 @@ body:not(.auth-view) .employee-select-container {
   transition: opacity var(--transition-normal);
 }
 
+}
+#reimbursement-files-preview div:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Month Group Header Row in Tables */
+.month-header-row td {
+  background-color: var(--bg-tertiary) !important;
+  font-weight: 700 !important;
+  color: var(--primary) !important;
+  font-size: 0.85rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  padding: 10px 16px !important;
+  border-bottom: 2px solid var(--border-color) !important;
+  text-align: left !important;
+}
+
+/* Custom styling for the transparent range input thumb overlaying the progress bar */
+.project-slider-overlay {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  height: 16px !important;
+}
+
+.project-slider-overlay::-webkit-slider-runnable-track {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.project-slider-overlay::-moz-range-track {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.project-slider-overlay::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  background: var(--primary) !important;
+  border: 2px solid #fff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+  cursor: pointer !important;
+  margin-top: -3px !important; /* Align correctly */
+}
+
+.project-slider-overlay::-moz-range-thumb {
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  background: var(--primary) !important;
+  border: 2px solid #fff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+  cursor: pointer !important;
+}
+
+/* Unread Badges styling */
+.menu-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--danger);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  padding: 0 4px;
+  margin-left: auto;
+  line-height: 1;
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--danger);
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  padding: 0 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+/* Document Preview Cards in Profile Modal */
+.doc-preview-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.doc-image-container {
+  position: relative;
+  width: 100%;
+  height: 110px;
+  border-radius: var(--border-radius-sm);
+  border: 1px dashed var(--border-color);
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.doc-image-container:hover {
+  border-color: var(--primary);
+  box-shadow: var(--glow);
+}
+
+.doc-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.doc-image-container img:hover {
+  transform: scale(1.05);
+}
+
+/* Profile Photo Edit Badge overlay */
+.profile-photo-edit-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: var(--primary);
+  border: 2px solid var(--bg-secondary);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.profile-photo-edit-badge:hover {
+  background: var(--primary-hover);
+  transform: scale(1.1);
+}
+
+[data-theme="dark"] .profile-photo-edit-badge {
+  border-color: var(--bg-secondary);
+}
+
+/* ==========================================================================
+   MOBILE & RESPONSIVE LAYOUT OVERRIDES (EMS PORTAL)
+   ========================================================================== */
+
+/* Responsive project cards grid minmax fix */
+.project-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 550px), 1fr)) !important;
+}
+
+/* Sidebar Overlay Backdrop styles */
+#sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 99;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+}
+
 #sidebar-overlay.open {
   opacity: 1;
   pointer-events: auto;
 }
 
 @media (max-width: 1024px) {
-  /* Let comm-layout scroll and size nicely */
   .comm-layout {
     flex-direction: column;
     min-height: calc(100vh - 180px);
   }
+  
+  .calendar-events-container {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 3px !important;
+  }
+
+  .calendar-event {
+    text-indent: -9999px !important;
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    margin: 1px !important;
+    min-height: 8px !important;
+    max-height: 8px !important;
+    display: inline-block !important;
+    border: none !important;
+    overflow: hidden !important;
+  }
+
+  .calendar-legend {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .balance-ring-container {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 12px !important;
+  }
 }
 
 @media (max-width: 768px) {
+  html, body {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
   /* --- Sidebar Navigation Overlay Toggle --- */
   #sidebar {
     transform: translateX(-100%);
@@ -2153,17 +2385,19 @@ body:not(.auth-view) .employee-select-container {
   /* --- Main Content Shell Adjustments --- */
   #main-content {
     margin-left: 0 !important;
-    width: 100%;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
   }
 
   /* --- Responsive Header Stack --- */
   header {
     height: auto !important;
-    min-height: 80px;
-    padding: 16px !important;
+    min-height: 70px;
+    padding: 12px 14px !important;
     display: grid !important;
     grid-template-columns: 1fr auto !important;
-    gap: 16px !important;
+    gap: 12px !important;
     align-items: center;
   }
 
@@ -2172,7 +2406,7 @@ body:not(.auth-view) .employee-select-container {
     grid-row: 1;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
 
   .header-controls {
@@ -2181,8 +2415,8 @@ body:not(.auth-view) .employee-select-container {
     width: 100%;
     justify-content: space-between !important;
     flex-wrap: wrap;
-    gap: 12px;
-    padding-top: 12px;
+    gap: 10px;
+    padding-top: 10px;
     border-top: 1px solid var(--border-color);
   }
 
@@ -2201,12 +2435,13 @@ body:not(.auth-view) .employee-select-container {
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
     display: flex;
-    gap: 4px;
-    padding: 4px;
+    gap: 6px;
+    padding: 4px 2px;
   }
   .role-btn {
     flex: 1 0 auto;
     padding: 8px 12px;
+    font-size: 0.8rem;
     text-align: center;
   }
 
@@ -2217,27 +2452,30 @@ body:not(.auth-view) .employee-select-container {
   }
   #active-employee-select {
     flex: 1;
-    max-width: calc(100% - 100px);
+    width: 100%;
+    max-width: 100%;
   }
 
   /* --- Layout & Stats Grid spacing --- */
   .container {
-    padding: 16px !important;
-    gap: 20px !important;
+    padding: 12px !important;
+    gap: 16px !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
   }
 
   .stats-grid {
     grid-template-columns: 1fr !important;
-    gap: 16px !important;
+    gap: 12px !important;
   }
 
   .stats-card {
-    padding: 16px !important;
+    padding: 14px !important;
   }
 
   .dashboard-row {
     grid-template-columns: 1fr !important;
-    gap: 20px !important;
+    gap: 16px !important;
   }
 
   /* Form layouts formatting */
@@ -2249,13 +2487,54 @@ body:not(.auth-view) .employee-select-container {
     grid-column: span 1 !important;
   }
 
+  /* --- Mobile Project Grid & Card Layout --- */
+  .project-grid {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    gap: 16px !important;
+  }
+
+  .project-card {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 14px !important;
+    box-sizing: border-box !important;
+  }
+
+  .project-card > div[style*="border-left"] {
+    border-left: none !important;
+    padding-left: 0 !important;
+    border-top: 1px dashed var(--border-color) !important;
+    padding-top: 12px !important;
+    height: auto !important;
+    width: 100% !important;
+  }
+
+  .project-members-section > div {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .project-members-section > div > div {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+
   /* --- Card-Based Responsive Tables --- */
   .table-container {
     border: none !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
   }
 
   table, thead, tbody, th, td, tr {
     display: block !important;
+    width: 100% !important;
   }
 
   thead {
@@ -2265,8 +2544,8 @@ body:not(.auth-view) .employee-select-container {
   tbody tr {
     border: 1px solid var(--border-color) !important;
     border-radius: var(--border-radius-sm) !important;
-    padding: 16px !important;
-    margin-bottom: 16px !important;
+    padding: 14px !important;
+    margin-bottom: 12px !important;
     background-color: var(--bg-secondary) !important;
     box-shadow: var(--card-shadow) !important;
   }
@@ -2279,14 +2558,15 @@ body:not(.auth-view) .employee-select-container {
     border: none !important;
     border-bottom: 1px dashed var(--border-color) !important;
     position: relative !important;
-    padding: 10px 0 10px 45% !important;
+    padding: 10px 0 10px 40% !important;
     text-align: right !important;
     min-height: 44px !important;
     display: flex !important;
     align-items: center;
     justify-content: flex-end;
-    gap: 8px;
+    gap: 6px;
     word-break: break-word !important;
+    box-sizing: border-box !important;
   }
 
   td:last-child {
@@ -2298,7 +2578,7 @@ body:not(.auth-view) .employee-select-container {
     content: attr(data-label) !important;
     position: absolute !important;
     left: 0 !important;
-    width: 40% !important;
+    width: 38% !important;
     font-weight: 700 !important;
     color: var(--text-muted) !important;
     font-size: 0.75rem !important;
@@ -2316,11 +2596,16 @@ body:not(.auth-view) .employee-select-container {
     gap: 8px;
   }
 
+  /* Mobile Touch Target Sizes */
+  .btn, button {
+    touch-action: manipulation;
+  }
+
   /* --- Mobile Navigation for Communications Hub --- */
   .comm-layout {
     position: relative;
     overflow: hidden;
-    height: calc(100vh - 180px) !important;
+    height: calc(100vh - 160px) !important;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
   }
@@ -2366,11 +2651,11 @@ body:not(.auth-view) .employee-select-container {
 
   /* --- Interactive Calendar view --- */
   .calendar-container {
-    padding: 16px !important;
+    padding: 12px !important;
   }
 
   .calendar-day-cell, .calendar-padding-cell {
-    min-height: 70px !important;
+    min-height: 60px !important;
     padding: 4px !important;
   }
 
@@ -2381,7 +2666,9 @@ body:not(.auth-view) .employee-select-container {
   /* --- Modals Overlay adjustments --- */
   .modal {
     width: 95% !important;
-    max-height: 95vh !important;
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    box-sizing: border-box !important;
   }
 }
 
