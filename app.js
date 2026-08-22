@@ -5079,6 +5079,7 @@ function toggleTaskCompletion(taskId) {
   showToast(`Task marked as ${task.status.toLowerCase()}`, 'success');
 
   if (task.status === 'Completed') {
+    state.lastCompletedTaskId = taskId;
     openDailyReportReminder();
   }
 }
@@ -13164,8 +13165,26 @@ function closeDailyReportReminder() {
   if (overlay) overlay.classList.remove('active');
 }
 
+function undoLastTaskCompletion() {
+  closeDailyReportReminder();
+  if (state.lastCompletedTaskId) {
+    const task = state.tasks.find(t => t.id === state.lastCompletedTaskId);
+    if (task) {
+      task.status = 'Not Completed';
+      safeSaveTasks();
+      if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
+        renderHRTasksAndProjects();
+      } else {
+        renderEmployeeTasksAndProjects();
+      }
+      showToast('Task completion cancelled/undone.', 'warning');
+    }
+  }
+}
+
 window.openDailyReportReminder = openDailyReportReminder;
 window.closeDailyReportReminder = closeDailyReportReminder;
+window.undoLastTaskCompletion = undoLastTaskCompletion;
 
 function openAssignRoleModal() {
   if (state.currentRole !== 'hr' && state.currentRole !== 'admin') {
