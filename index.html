@@ -191,14 +191,54 @@
 
     <!-- Top Header -->
     <header>
-      <div style="display: flex; align-items: center; gap: 16px;">
-        <button id="mobile-hamburger" class="hamburger" aria-label="Toggle Sidebar" onclick="toggleMobileSidebar(event)">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-        <div class="header-title">
-          <h1 id="page-title-label">Leave Dashboard</h1>
+      <div class="header-top-bar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button id="mobile-hamburger" class="hamburger" aria-label="Toggle Sidebar" onclick="toggleMobileSidebar(event)">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <div class="header-title">
+            <h1 id="page-title-label">Leave Dashboard</h1>
+          </div>
+        </div>
+
+        <div class="header-action-icons">
+          <!-- Theme Toggle -->
+          <button id="theme-toggle" class="icon-btn" title="Toggle Dark/Light Mode">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          </button>
+
+          <!-- Push Notifications Bell -->
+          <button id="notification-toggle-btn" class="icon-btn" title="Enable Notifications" style="position: relative;">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <span id="notification-badge-dot"
+              style="position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background-color: var(--danger); display: none;"></span>
+          </button>
+
+          <!-- Logout Button -->
+          <button id="header-logout-btn" class="icon-btn" title="Sign Out" onclick="logout()"
+            style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2); background-color: rgba(239, 68, 68, 0.05);">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
+
+          <!-- User Profile Widget -->
+          <div class="profile-widget">
+            <div id="header-avatar" class="avatar">SJ</div>
+            <div class="profile-info">
+              <div id="header-name" class="profile-name">Sarah Jenkins</div>
+              <div id="header-role" class="profile-role">Human Resources</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -221,42 +261,6 @@
             style="padding: 6px 12px; font-size: 0.85rem; width: auto; font-weight: 600; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
             <!-- Options populated dynamically in app.js -->
           </select>
-        </div>
-
-        <!-- Theme Toggle -->
-        <button id="theme-toggle" class="icon-btn" title="Toggle Dark/Light Mode">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
-        </button>
-
-        <!-- Push Notifications Bell -->
-        <button id="notification-toggle-btn" class="icon-btn" title="Enable Notifications" style="position: relative;">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px;">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-          <span id="notification-badge-dot"
-            style="position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background-color: var(--danger); display: none;"></span>
-        </button>
-
-        <!-- Logout Button -->
-        <button id="header-logout-btn" class="icon-btn" title="Sign Out" onclick="logout()"
-          style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2); background-color: rgba(239, 68, 68, 0.05);">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px;">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-        </button>
-
-        <!-- User Profile Widget -->
-        <div class="profile-widget">
-          <div id="header-avatar" class="avatar">SJ</div>
-          <div class="profile-info">
-            <div id="header-name" class="profile-name">Sarah Jenkins</div>
-            <div id="header-role" class="profile-role">Human Resources</div>
-          </div>
         </div>
       </div>
     </header>

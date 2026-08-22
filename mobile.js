@@ -58,7 +58,7 @@ const initMobileUI = () => {
   function updateTableLabels() {
     document.querySelectorAll('table').forEach(table => {
       // Bypasses session logs table or special compact tables
-      if (table.classList.contains('session-logs-table')) {
+      if (table.classList.contains('session-logs-table') || table.classList.contains('daily-report-sessions-table')) {
         table.querySelectorAll('td').forEach(td => td.removeAttribute('data-label'));
         return;
       }

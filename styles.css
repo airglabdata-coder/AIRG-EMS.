@@ -258,6 +258,18 @@ header {
   letter-spacing: -0.5px;
 }
 
+.header-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-action-icons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .header-controls {
   display: flex;
   align-items: center;
@@ -2397,31 +2409,39 @@ body:not(.auth-view) .employee-select-container {
   /* --- Responsive Header Stack --- */
   header {
     height: auto !important;
-    min-height: 70px;
-    padding: 12px 14px !important;
-    display: grid !important;
-    grid-template-columns: 1fr auto !important;
-    gap: 12px !important;
-    align-items: center;
+    min-height: 56px !important;
+    padding: 10px 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 90 !important;
+    background-color: var(--bg-secondary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
   }
 
-  header > div:first-child {
-    grid-column: 1;
-    grid-row: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+  .header-top-bar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+
+  .header-action-icons {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
   }
 
   .header-controls {
-    grid-column: 1 / span 2;
-    grid-row: 2;
-    width: 100%;
-    justify-content: space-between !important;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border-color);
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 6px !important;
+    padding-top: 0 !important;
+    border-top: none !important;
   }
 
   /* Hide profile text details on small headers, show only avatar */
@@ -2434,19 +2454,23 @@ body:not(.auth-view) .employee-select-container {
 
   /* Role switcher layout wrap */
   .role-switcher-container {
-    width: 100%;
-    overflow-x: auto;
-    white-space: nowrap;
+    width: 100% !important;
+    display: flex !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
     -webkit-overflow-scrolling: touch;
-    display: flex;
-    gap: 6px;
-    padding: 4px 2px;
+    gap: 4px !important;
+    padding: 4px !important;
+    background-color: var(--bg-tertiary) !important;
+    border-radius: var(--border-radius-sm) !important;
+    border: 1px solid var(--border-color) !important;
+    box-sizing: border-box !important;
   }
   .role-btn {
-    flex: 1 0 auto;
-    padding: 8px 12px;
-    font-size: 0.8rem;
-    text-align: center;
+    flex: 1 0 auto !important;
+    padding: 6px 10px !important;
+    font-size: 0.78rem !important;
+    text-align: center !important;
   }
 
   /* "Acting As" Dropdown adjustments */
@@ -2818,6 +2842,68 @@ body:not(.auth-view) .employee-select-container {
     padding: 12px 16px !important;
     width: 100% !important;
     box-sizing: border-box !important;
+  }
+
+  /* --- Mobile Employee Roster Card Layout --- */
+  .roster-item {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 14px !important;
+  }
+
+  .roster-item > div:first-child {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .roster-stat {
+    text-align: left !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    border-top: 1px dashed var(--border-color) !important;
+    padding-top: 8px !important;
+    margin-top: 4px !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+
+  /* --- Daily Report Sessions Table on Mobile --- */
+  .daily-report-sessions-table {
+    display: table !important;
+    width: 100% !important;
+    min-width: 550px !important;
+  }
+  .daily-report-sessions-table thead {
+    display: table-header-group !important;
+  }
+  .daily-report-sessions-table tbody {
+    display: table-row-group !important;
+  }
+  .daily-report-sessions-table tr {
+    display: table-row !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  .daily-report-sessions-table th,
+  .daily-report-sessions-table td {
+    display: table-cell !important;
+    padding: 8px 10px !important;
+    text-align: left !important;
+    font-size: 0.78rem !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    width: auto !important;
+    min-height: 0 !important;
+  }
+  .daily-report-sessions-table td::before {
+    display: none !important;
+    content: none !important;
   }
 }
 

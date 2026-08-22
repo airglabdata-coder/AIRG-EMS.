@@ -9885,7 +9885,7 @@ function renderTrainerReportsHistory() {
 
       <!-- Full Session Table View on UI -->
       <div class="table-container" style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary);">
-        <table style="width: 100%; border-collapse: collapse; min-width: 650px;">
+        <table class="daily-report-sessions-table" style="width: 100%; border-collapse: collapse; min-width: 650px;">
           <thead>
             <tr style="background: var(--bg-primary); border-bottom: 1px solid var(--border-color); font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted);">
               <th style="width: 35px; text-align: center; padding: 8px;">#</th>
@@ -10097,7 +10097,7 @@ function renderTrainerReportsReviewList() {
 
       <!-- Interactive Sessions Table on UI -->
       <div class="table-container" style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-primary);">
-        <table style="width: 100%; border-collapse: collapse; min-width: 650px;">
+        <table class="daily-report-sessions-table" style="width: 100%; border-collapse: collapse; min-width: 650px;">
           <thead>
             <tr style="background: var(--bg-tertiary); border-bottom: 1px solid var(--border-color); font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted);">
               <th style="width: 35px; text-align: center; padding: 8px;">#</th>
