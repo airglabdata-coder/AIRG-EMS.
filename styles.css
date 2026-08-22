@@ -2516,6 +2516,34 @@ body:not(.auth-view) .employee-select-container {
     grid-column: span 1 !important;
   }
 
+  /* Mobile Card Header Stack & Card Containers */
+  .card-header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .card-header .card-title {
+    width: 100% !important;
+    font-size: 1.05rem !important;
+    word-break: break-word !important;
+  }
+
+  .card-header .btn {
+    align-self: flex-start !important;
+  }
+
+  .card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 14px !important;
+    overflow-x: hidden !important;
+  }
+
   /* --- Mobile Project Grid & Card Layout --- */
   .project-grid {
     display: flex !important;
