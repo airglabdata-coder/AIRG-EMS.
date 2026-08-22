@@ -2723,11 +2723,33 @@ body:not(.auth-view) .employee-select-container {
   }
 
   /* --- Modals Overlay adjustments --- */
+  .modal-overlay {
+    z-index: 999999 !important;
+    padding: 12px !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
   .modal {
-    width: 95% !important;
-    max-width: 95vw !important;
-    max-height: 90vh !important;
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: 85vh !important;
+    margin: 0 auto !important;
+    border-radius: 14px !important;
     box-sizing: border-box !important;
+  }
+
+  .modal-header {
+    padding: 14px 16px !important;
+  }
+
+  .modal-body {
+    padding: 14px 16px !important;
+    gap: 12px !important;
+  }
+
+  .modal-footer {
+    padding: 12px 16px !important;
   }
 }
 

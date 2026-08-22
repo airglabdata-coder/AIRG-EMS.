@@ -1,45 +1,56 @@
 // Mobile Interactivity Helper for EMS Portal
 
+window.toggleMobileSidebar = function(e) {
+  if (e) {
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.preventDefault) e.preventDefault();
+  }
+  const sidebar = document.getElementById('sidebar');
+  const hamburger = document.getElementById('mobile-hamburger');
+  const overlay = document.getElementById('sidebar-overlay');
+
+  if (sidebar && sidebar.classList.contains('open')) {
+    sidebar.classList.remove('open');
+    if (hamburger) hamburger.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+  } else {
+    if (sidebar) sidebar.classList.add('open');
+    if (hamburger) hamburger.classList.add('open');
+    if (overlay) overlay.classList.add('open');
+  }
+};
+
+window.closeMobileSidebar = function() {
+  const sidebar = document.getElementById('sidebar');
+  const hamburger = document.getElementById('mobile-hamburger');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (sidebar) sidebar.classList.remove('open');
+  if (hamburger) hamburger.classList.remove('open');
+  if (overlay) overlay.classList.remove('open');
+};
+
 const initMobileUI = () => {
   console.log("EMS Mobile Interactivity Initialized.");
   
   // --- Sidebar Mobile Navigation ---
   const mobileHamburger = document.getElementById('mobile-hamburger');
-  const sidebar = document.getElementById('sidebar');
   const sidebarOverlay = document.getElementById('sidebar-overlay');
 
-  function closeSidebar() {
-    if (sidebar) sidebar.classList.remove('open');
-    if (mobileHamburger) mobileHamburger.classList.remove('open');
-    if (sidebarOverlay) sidebarOverlay.classList.remove('open');
-  }
-
-  function openSidebar() {
-    if (sidebar) sidebar.classList.add('open');
-    if (mobileHamburger) mobileHamburger.classList.add('open');
-    if (sidebarOverlay) sidebarOverlay.classList.add('open');
-  }
-
   if (mobileHamburger) {
-    mobileHamburger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (sidebar && sidebar.classList.contains('open')) {
-        closeSidebar();
-      } else {   
-        openSidebar();
-      }
-    });
+    mobileHamburger.addEventListener('click', window.toggleMobileSidebar);
+    mobileHamburger.addEventListener('touchstart', window.toggleMobileSidebar, { passive: false });
   }
 
   if (sidebarOverlay) {
-    sidebarOverlay.addEventListener('click', closeSidebar);
+    sidebarOverlay.addEventListener('click', window.closeMobileSidebar);
+    sidebarOverlay.addEventListener('touchstart', window.closeMobileSidebar, { passive: false });
   }
 
   // Auto-close sidebar on mobile when a menu item is clicked
   document.addEventListener('click', (e) => {
     const menuItem = e.target.closest('.menu-item');
     if (menuItem) {
-      closeSidebar();
+      window.closeMobileSidebar();
     }
   });
 

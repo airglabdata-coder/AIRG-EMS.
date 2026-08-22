@@ -3157,6 +3157,11 @@ function switchView(viewName) {
     }
   }
 
+  // Auto-close mobile sidebar when switching views
+  if (window.innerWidth <= 768 && typeof window.closeMobileSidebar === 'function') {
+    window.closeMobileSidebar();
+  }
+
   // Update menu item highlight
   document.querySelectorAll('.menu-item').forEach(item => {
     if (item.getAttribute('data-view') === viewName) {
