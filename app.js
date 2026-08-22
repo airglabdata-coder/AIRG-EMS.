@@ -3248,20 +3248,8 @@ function switchView(viewName) {
 
     loadDailyReportsPage();
   } else if (viewName === 'payslips') {
-    if (empContainer) empContainer.style.display = 'none';
-    if (hrContainer) hrContainer.style.display = 'none';
-    if (commContainer) commContainer.style.display = 'none';
-    if (calendarContainer) calendarContainer.style.display = 'none';
-    if (reportsContainer) reportsContainer.style.display = 'none';
-    if (reimbursementsContainer) reimbursementsContainer.style.display = 'none';
-    if (ticketsContainer) ticketsContainer.style.display = 'none';
-    if (payslipsContainer) payslipsContainer.style.display = 'block';
-
-    // Update Page Header Label
-    const titleLabel = document.getElementById('page-title-label');
-    if (titleLabel) titleLabel.textContent = 'Payslips';
-
-    renderPayslips();
+    switchView('tasks');
+    return;
   } else if (viewName === 'reimbursements') {
     if (empContainer) empContainer.style.display = 'none';
     if (hrContainer) hrContainer.style.display = 'none';
