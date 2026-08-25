@@ -2636,27 +2636,55 @@ body:not(.auth-view) .employee-select-container {
     word-break: break-word !important;
   }
 
-  .project-members-section > div {
+  .project-members-section {
+    grid-column: 1 / -1 !important;
+    border-top: 1px solid var(--border-color) !important;
+    padding-top: 14px !important;
+    margin-top: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .project-members-section > div:first-child {
+    display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  .project-members-section > div > div {
+  .project-members-section > div:first-child > h4 {
     width: 100% !important;
+  }
+
+  .project-members-section > div:first-child > div {
+    display: flex !important;
     flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .project-members-section > div:first-child > div .btn {
+    flex: 1 0 auto !important;
+    font-size: 0.75rem !important;
+    padding: 6px 10px !important;
   }
 
   /* --- Card-Based Responsive Tables --- */
   .table-container {
     border: none !important;
     width: 100% !important;
+    max-width: 100% !important;
     overflow-x: hidden !important;
+    box-sizing: border-box !important;
   }
 
   table, thead, tbody, th, td, tr {
     display: block !important;
     width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   thead {
@@ -2670,6 +2698,9 @@ body:not(.auth-view) .employee-select-container {
     margin-bottom: 12px !important;
     background-color: var(--bg-secondary) !important;
     box-shadow: var(--card-shadow) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   tbody tr:hover td {
@@ -2680,13 +2711,14 @@ body:not(.auth-view) .employee-select-container {
     border: none !important;
     border-bottom: 1px dashed var(--border-color) !important;
     position: relative !important;
-    padding: 8px 10px !important;
-    text-align: right !important;
+    padding: 8px 6px !important;
+    text-align: left !important;
     min-height: 38px !important;
     display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 8px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    gap: 4px !important;
     word-break: break-word !important;
     box-sizing: border-box !important;
     width: 100% !important;
@@ -2702,11 +2734,11 @@ body:not(.auth-view) .employee-select-container {
     content: attr(data-label) !important;
     position: static !important;
     transform: none !important;
-    width: auto !important;
-    max-width: 45% !important;
+    width: 100% !important;
+    max-width: 100% !important;
     font-weight: 700 !important;
     color: var(--text-muted) !important;
-    font-size: 0.72rem !important;
+    font-size: 0.7rem !important;
     text-transform: uppercase !important;
     text-align: left !important;
     white-space: normal !important;
