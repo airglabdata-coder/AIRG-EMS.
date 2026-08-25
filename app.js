@@ -372,9 +372,15 @@ function initSyncPolling() {
         // Re-render chat UI immediately if currently viewing communications
         const activeMenuItem = document.querySelector('.menu-item.active');
         const activeView = state.currentView || (activeMenuItem ? activeMenuItem.getAttribute('data-view') : '');
-        if ((activeView === 'communications' || state.currentView === 'communications') && state.activeCommTab === 'chats') {
-          renderChatRoom();
-          renderCommSidebar();
+        if (activeView === 'communications' || state.currentView === 'communications') {
+          if (state.activeCommTab === 'chats') {
+            renderChatRoom();
+            renderCommSidebar();
+          } else if (state.activeCommTab === 'notices') {
+            renderNotices();
+          } else if (state.activeCommTab === 'announcements') {
+            renderAnnouncements();
+          }
         }
         updateAllMenuBadges();
       }
@@ -404,7 +410,7 @@ function initSyncPolling() {
       const activeEl = document.activeElement;
       if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
         // Exception: chat input should not count as "busy" for general sync
-        if (activeEl.id === 'chat-input-message') return false;
+        if (activeEl.id === 'chat-message-input' || activeEl.id === 'chat-input-message') return false;
         return true;
       }
       const openModals = document.querySelectorAll('.modal-overlay.active');

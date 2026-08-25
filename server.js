@@ -743,11 +743,8 @@ app.post('/api/delete-record', async (req, res) => {
     }
     
     if (modelName === 'Chat') {
-      const result = await Model.deleteMany({ id, senderId: employeeId });
-      if (result.deletedCount === 0) {
-        return res.status(403).json({ error: 'Unauthorized to delete this chat' });
-      }
-      console.log(`[EXPLICIT DELETE] User ${employeeId} deleted own ${modelName} ${id}`);
+      await Model.deleteMany({ id });
+      console.log(`[EXPLICIT DELETE] User ${employeeId} deleted chat ${id}`);
       return res.json({ success: true });
     }
 
