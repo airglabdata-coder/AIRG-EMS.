@@ -202,8 +202,16 @@ async function fetchCentralizedState() {
         safeOriginalSetItem('ems_employees', JSON.stringify(cleanResult.employees));
       }
       if (s.requests) {
-        state.requests = s.requests;
-        safeOriginalSetItem('ems_requests', JSON.stringify(s.requests));
+        const serverRequests = s.requests || [];
+        const serverReqIds = new Set(serverRequests.map(r => r.id));
+        const localRequests = JSON.parse(localStorage.getItem('ems_requests') || '[]');
+        // Preserve any unsynced local leave requests so user data is never lost
+        const unsyncedLocalReqs = localRequests.filter(r => !serverReqIds.has(r.id));
+        state.requests = [...serverRequests, ...unsyncedLocalReqs];
+        safeOriginalSetItem('ems_requests', JSON.stringify(state.requests));
+        if (unsyncedLocalReqs.length > 0) {
+          syncStateNow();
+        }
       }
       if (s.projects) {
         state.projects = s.projects;
@@ -4268,7 +4276,15 @@ function handleLeaveFormSubmit(e) {
   // Update State
   state.requests.unshift(newReq);
   localStorage.setItem('ems_requests', JSON.stringify(state.requests));
-  triggerBackendSync(); // persist leave request to server
+
+  // Instant direct persistence to MongoDB
+  fetch('/api/submit-leave-request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newReq)
+  }).catch(err => console.error('Direct leave submission error:', err));
+
+  syncStateNow(); // persist leave request to server immediately
 
   // Trigger SMS notifications for HR and Admin users
   state.employees.forEach(emp => {
@@ -4573,7 +4589,15 @@ function processAction(requestId, action, comment) {
   // Save changes to localStorage AND sync to server immediately
   localStorage.setItem('ems_requests', JSON.stringify(state.requests));
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
-  triggerBackendSync(); // ← CRITICAL: persist leave status change to MongoDB
+  
+  // Instant direct persistence to MongoDB
+  fetch('/api/update-leave-status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requestId, status: req.status, comment: req.comment })
+  }).catch(err => console.error('Direct leave status update error:', err));
+
+  syncStateNow();
 
   // Trigger SMS notification for the leave applicant
   const targetEmp = state.employees.find(emp => emp.id === req.employeeId);

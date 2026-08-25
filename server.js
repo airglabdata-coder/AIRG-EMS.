@@ -1173,9 +1173,46 @@ app.post('/api/super-admin-recovery', async (req, res) => {
   } catch (err) {
     console.error('Error in super-admin-recovery:', err);
     res.status(500).json({ error: 'Internal server error' });
+// Atomic Leave Request Endpoints (Direct Instant Server Persistence)
+app.post('/api/submit-leave-request', async (req, res) => {
+  try {
+    await connectDB();
+    const leaveReq = req.body;
+    if (!leaveReq || !leaveReq.id || !leaveReq.employeeId) {
+      return res.status(400).json({ error: 'Invalid leave request payload' });
+    }
+    const updated = await models.LeaveRequest.findOneAndUpdate(
+      { id: leaveReq.id },
+      leaveReq,
+      { upsert: true, new: true }
+    );
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+    return res.json({ success: true, request: updated.toJSON() });
+  } catch (err) {
+    console.error('Error submitting leave request directly:', err);
+    return res.status(500).json({ error: err.message });
   }
 });
 
+app.post('/api/update-leave-status', async (req, res) => {
+  try {
+    await connectDB();
+    const { requestId, status, comment } = req.body;
+    if (!requestId || !status) {
+      return res.status(400).json({ error: 'Missing requestId or status' });
+    }
+    const updated = await models.LeaveRequest.findOneAndUpdate(
+      { id: requestId },
+      { status, comment: comment || '' },
+      { new: true }
+    );
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+    return res.json({ success: true, request: updated ? updated.toJSON() : null });
+  } catch (err) {
+    console.error('Error updating leave status directly:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
 
 // Export the app for Vercel Serverless
 module.exports = app;
