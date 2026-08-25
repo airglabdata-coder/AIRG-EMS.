@@ -7141,12 +7141,12 @@ function switchCommTab(tabName) {
 }
 
 function renderCommSidebar() {
-  const titleEl = document.getElementById('comm-sidebar-title');
-  const itemsBox = document.getElementById('comm-items-box');
+  const titleEl = document.getElementById('comm-list-title-label') || document.getElementById('comm-sidebar-title');
+  const itemsBox = document.getElementById('comm-list-items-box') || document.getElementById('comm-items-box');
   if (!itemsBox) return;
 
   itemsBox.innerHTML = '';
-  const onLeaveList = getEmployeesOnLeaveToday();
+  const onLeaveList = typeof getEmployeesOnLeaveToday === 'function' ? getEmployeesOnLeaveToday() : [];
 
   if (state.activeCommTab === 'chats') {
     if (titleEl) titleEl.textContent = 'Conversations';
