@@ -371,8 +371,8 @@ function initSyncPolling() {
 
         // Re-render chat UI immediately if currently viewing communications
         const activeMenuItem = document.querySelector('.menu-item.active');
-        const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : '';
-        if (currentView === 'communications' && state.activeCommTab === 'chats') {
+        const activeView = state.currentView || (activeMenuItem ? activeMenuItem.getAttribute('data-view') : '');
+        if ((activeView === 'communications' || state.currentView === 'communications') && state.activeCommTab === 'chats') {
           renderChatRoom();
           renderCommSidebar();
         }
@@ -7351,12 +7351,15 @@ async function handleChatMessageSubmit(e) {
   input.value = '';
   renderChatRoom();
   triggerChatNotification(newMsg);
-  // Lightweight <30ms chat save to MongoDB Atlas
+
+  // Lightweight <30ms chat save to MongoDB Atlas & instant full state sync
   fetch('/api/chats-only', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat: newMsg })
-  }).catch(() => {});
+  }).catch(err => console.error('Direct chat save error:', err));
+
+  syncStateNow();
 }
 
 function handleChatFileSelected(input) {
@@ -7386,11 +7389,14 @@ function handleChatFileSelected(input) {
       input.value = '';
       renderChatRoom();
       triggerChatNotification(newMsg);
+
       fetch('/api/chats-only', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat: newMsg })
-      }).catch(() => {});
+      }).catch(err => console.error('Direct chat file save error:', err));
+
+      syncStateNow();
     });
   };
   reader.readAsDataURL(file);
