@@ -2918,18 +2918,45 @@ body:not(.auth-view) .employee-select-container {
     align-items: center;
   }
 
-  /* --- Interactive Calendar view --- */
+  /* --- Interactive Calendar View 7-Column Fit --- */
   .calendar-container {
-    padding: 12px !important;
+    padding: 12px 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .calendar-grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    gap: 1px !important;
+    overflow-x: hidden !important;
+  }
+
+  .calendar-day-header {
+    padding: 6px 2px !important;
+    font-size: 0.65rem !important;
+    letter-spacing: 0 !important;
+    text-align: center !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   .calendar-day-cell, .calendar-padding-cell {
-    min-height: 60px !important;
-    padding: 4px !important;
+    min-height: 58px !important;
+    padding: 2px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
   }
 
   .calendar-day-number {
-    font-size: 0.75rem !important;
+    font-size: 0.72rem !important;
   }
 
   /* --- Task Title & Details Pane (First td in Task Rows) - Full Width --- */

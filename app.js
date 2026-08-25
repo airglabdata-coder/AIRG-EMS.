@@ -8241,28 +8241,50 @@ function changeInlineCalendarMonth(offset, event) {
 }
 
 function showCalendarDayEventsModal(dateTitle, eventsList) {
+  let modalOverlay = document.getElementById('calendar-events-modal-overlay');
+  if (!modalOverlay) {
+    modalOverlay = document.createElement('div');
+    modalOverlay.id = 'calendar-events-modal-overlay';
+    modalOverlay.className = 'modal-overlay';
+    modalOverlay.style.zIndex = '999999';
+    document.body.appendChild(modalOverlay);
+  }
+
   const eventsHtml = eventsList.map(item => `
     <div style="padding: 10px 14px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
       ${item}
     </div>
   `).join('');
 
-  showCustomModal(`
-    <div style="padding: 4px;">
-      <h3 style="margin-top: 0; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-        📅 Events for ${dateTitle}
-      </h3>
-      <div style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
+  modalOverlay.innerHTML = `
+    <div class="modal" style="max-width: 440px; width: 92%; padding: 20px; box-sizing: border-box;">
+      <div class="modal-header" style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 1.05rem; color: var(--text-primary); font-weight: 700;">
+          📅 Events for ${dateTitle}
+        </h3>
+        <button type="button" onclick="closeCalendarEventsModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; line-height: 1;">&times;</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; padding-right: 4px;">
         ${eventsHtml}
       </div>
       <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
-        <button class="btn btn-secondary btn-sm" onclick="hideModal()">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeCalendarEventsModal()">Close</button>
       </div>
     </div>
-  `);
+  `;
+
+  modalOverlay.classList.add('active');
+}
+
+function closeCalendarEventsModal() {
+  const modalOverlay = document.getElementById('calendar-events-modal-overlay');
+  if (modalOverlay) {
+    modalOverlay.classList.remove('active');
+  }
 }
 
 window.showCalendarDayEventsModal = showCalendarDayEventsModal;
+window.closeCalendarEventsModal = closeCalendarEventsModal;
 
 // --- Daily Reports Functions ---
 function setTodayReportDate() {
