@@ -11449,57 +11449,33 @@ async function handleLoginSubmit(e) {
   const inputVal = emailInput.value.trim().toLowerCase();
   const password = passwordInput.value.trim();
 
-  // Smart matching helper function (matches by Email, Employee ID, Name, or Phone)
-  const findMatchingEmp = (employees) => {
-    return (employees || []).find(emp => {
-      if (!emp) return false;
-      const eEmail = (emp.email || '').toLowerCase();
-      const eId = (emp.id || '').toLowerCase();
-      const ePhone = (emp.phone || '').replace(/\D/g, '');
-      const cleanInput = inputVal.replace(/\D/g, '');
-
-      return (
-        eEmail === inputVal ||
-        eId === inputVal ||
-        (inputVal.includes('atharva') && (eEmail.includes('atharva') || (emp.name && emp.name.toLowerCase().includes('atharva')))) ||
-        (cleanInput.length >= 10 && ePhone.length >= 10 && ePhone.endsWith(cleanInput))
-      );
-    });
-  };
-
-  // 1. Try local match first
-  let found = findMatchingEmp(state.employees);
-
-  // 2. Fetch fresh state from MongoDB Atlas to ensure latest credentials
+  // 1. ALWAYS fetch fresh state from MongoDB Atlas first on login
+  // This guarantees that all real employee accounts and updated passwords are loaded
   try {
     await fetchCentralizedState();
-    const serverMatch = findMatchingEmp(state.employees);
-    if (serverMatch) found = serverMatch;
   } catch (err) {
-    console.error('Server sync error during login:', err);
+    console.error('Server fetch error during login:', err);
   }
 
+  // 2. Exact match by Email or Employee ID (case-insensitive)
+  const found = (state.employees || []).find(emp => {
+    if (!emp || emp.isDeleted) return false;
+    const empEmail = (emp.email || '').trim().toLowerCase();
+    const empId = (emp.id || '').trim().toLowerCase();
+    return empEmail === inputVal || empId === inputVal;
+  });
+
   if (found) {
-    if (found.isDeleted) {
-      showToast('This account has been deactivated.', 'error');
-      if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Log In'; }
-      return;
-    }
     if (found.status === 'pending_approval') {
       showToast('Your registration is pending approval by HR / Pratap Sir.', 'warning');
       if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Log In'; }
       return;
     }
 
-    const matchPassword = found.password || 'password123';
-    if (password === matchPassword || password === 'Appleusoea@182' || password === 'atharva') {
-      // Sync latest credentials if password matched fallback
-      if (password === 'Appleusoea@182' || found.email.includes('gurujiair')) {
-        found.email = 'atharvarnahire182@gmail.com';
-        found.password = 'Appleusoea@182';
-        localStorage.setItem('ems_employees', JSON.stringify(state.employees));
-        syncStateNow();
-      }
+    const expectedPassword = found.password || 'password123';
+    
+    // Check entered password against employee's real password
+    if (password === expectedPassword) {
       localStorage.setItem('ems_logged_in_user', JSON.stringify(found));
       loginAsUser(found);
       showToast('Logged in successfully.', 'success');
