@@ -587,8 +587,11 @@ async function updateUserSessionHeartbeat(employeeId) {
 
 
 
-// Ensure DB connection for all API routes
+// Ensure DB connection & disable caching for all API routes
 app.use('/api', async (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   try {
     await connectDB();
     next();

@@ -348,7 +348,7 @@ function initSyncPolling() {
   window.chatPollInterval = setInterval(async () => {
     if (!state.currentUser) return;
     try {
-      const chatRes = await fetch(`/api/chats-only?employeeId=${state.currentUser.id}`);
+      const chatRes = await fetch(`/api/chats-only?employeeId=${state.currentUser.id}&_t=${Date.now()}`);
       if (!chatRes.ok) return;
       const chatData = await chatRes.json();
       if (!chatData || !chatData.chats) return;
@@ -358,8 +358,8 @@ function initSyncPolling() {
       const unsyncedLocalChats = (state.chats || []).filter(m => !serverChatIds.has(m.id));
       const mergedChats = [...chatData.chats, ...unsyncedLocalChats];
 
-      // Signature of merged chat messages
-      const newSignature = mergedChats.map(m => m.id).join(',');
+      // Signature of merged chat messages (includes IDs and timestamps for instant change detection)
+      const newSignature = mergedChats.map(m => `${m.id}_${m.timestamp || ''}`).join('|');
 
       // Update active users list always
       if (chatData.activeUsers) state.activeUsers = chatData.activeUsers;
@@ -422,7 +422,7 @@ function initSyncPolling() {
 
     try {
       // 1. Fetch lightweight timestamp and active users list
-      const timestampUrl = `/api/sync-timestamp?employeeId=${state.currentUser.id}`;
+      const timestampUrl = `/api/sync-timestamp?employeeId=${state.currentUser.id}&_t=${Date.now()}`;
       const timestampRes = await fetch(timestampUrl);
       if (!timestampRes.ok) {
         console.warn('Sync poll timestamp: server returned error status', timestampRes.status);
