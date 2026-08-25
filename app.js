@@ -6994,12 +6994,9 @@ function renderCommunicationsHub() {
       if (state.currentRole === 'hr') {
         visibleNotices = state.notices;
       } else {
-        visibleNotices = state.notices.filter(n => n.targetEmployeeIds.includes(state.currentUser.id));
-      }
       visibleNotices.forEach(n => {
         if (!readNotices.includes(n.id)) {
           readNotices.push(n.id);
-          updated = true;
         }
       });
       if (updated) {
@@ -7035,43 +7032,155 @@ function renderCommunicationsHub() {
   renderCommMainContent();
 }
 
+function getEmployeeAllIdentifiers(emp) {
+  const set = new Set();
+  if (!emp) return set;
+  if (emp.id) {
+    set.add(emp.id);
+    set.add(emp.id.toLowerCase());
+  }
+  if (emp.email) {
+    set.add(emp.email);
+    set.add(emp.email.toLowerCase());
+  }
+  if (emp.name) {
+    const cleanName = emp.name.toLowerCase().trim();
+    set.add(cleanName);
+    if (cleanName.includes('atharva')) {
+      set.add('AIRG00041');
+      set.add('AIRGO000182');
+      set.add('airg00041');
+      set.add('airgo000182');
+      set.add('atharva@gurujiair.com');
+      set.add('atharvarnahire182@gmail.com');
+    }
+    if (cleanName.includes('shravani') && !cleanName.includes('bhilare')) {
+      set.add('AIRG00042');
+      set.add('airg00042');
+      set.add('shravani@gurujiair.com');
+      set.add('shravanikhanvilkar251@gmail.com');
+    }
+    if (cleanName.includes('aniket')) {
+      set.add('AIRG00040');
+      set.add('airg00040');
+      set.add('aniket@gurujiair.com');
+      set.add('aniketshrungare1251@gmail.com');
+    }
+    if (cleanName.includes('suyash')) {
+      set.add('AIRG00044');
+      set.add('airg00044');
+      set.add('suyash@gurujiair.com');
+      set.add('suyashpatil0722@gmail.com');
+    }
+    if (cleanName.includes('rohan')) {
+      set.add('AIRG00045');
+      set.add('airg00045');
+      set.add('rohan@gurujiair.com');
+      set.add('rohanpatil1120@gmail.com');
+    }
+  }
+  return set;
+}
+
+function getUnreadChatCount(key) {
+  if (!state.currentUser || !state.chats) return 0;
+  const readChats = JSON.parse(localStorage.getItem(`ems_read_chats_${state.currentUser.id}`) || '{}');
+  const lastReadTime = readChats[key];
+
+  const userSet = getEmployeeAllIdentifiers(state.currentUser);
+
+  let messages = [];
+  if (key === 'group') {
+    messages = state.chats.filter(m => 
+      (m.receiverId === 'group' || m.receiverId === 'all' || m.receiverId === 'general') && 
+      !userSet.has((m.senderId || '').toLowerCase())
+    );
+  } else {
+    const targetEmp = state.employees.find(e => e.id === key || e.email === key);
+    const targetSet = getEmployeeAllIdentifiers(targetEmp || { id: key });
+
+    messages = state.chats.filter(m => 
+      targetSet.has((m.senderId || '').toLowerCase()) && 
+      userSet.has((m.receiverId || '').toLowerCase())
+    );
+  }
+
+  if (!lastReadTime) {
+    return messages.length;
+  }
+  return messages.filter(m => new Date(m.timestamp) > new Date(lastReadTime)).length;
+}
+
+function getUnreadChatsCount() {
+  if (!state.currentUser || !state.chats) return { group: 0, direct: 0, total: 0 };
+
+  // 1. Group chat count
+  let unreadGroup = getUnreadChatCount('group');
+
+  // 2. Direct chat count
+  let unreadDirect = 0;
+  state.employees.forEach(emp => {
+    if (emp.id !== state.currentUser.id && !emp.isDeleted) {
+      unreadDirect += getUnreadChatCount(emp.id);
+    }
+  });
+
+  return {
+    group: unreadGroup,
+    direct: unreadDirect,
+    total: unreadGroup + unreadDirect
+  };
+}
+
 function switchCommTab(tabName) {
   state.activeCommTab = tabName;
   renderCommunicationsHub();
 }
 
 function renderCommSidebar() {
-  const titleEl = document.getElementById('comm-list-title-label');
-  const itemsBox = document.getElementById('comm-list-items-box');
+  const titleEl = document.getElementById('comm-sidebar-title');
+  const itemsBox = document.getElementById('comm-items-box');
   if (!itemsBox) return;
 
   itemsBox.innerHTML = '';
-  
-  const onLeaveList = typeof getEmployeesOnLeaveToday === 'function' ? getEmployeesOnLeaveToday() : [];
+  const onLeaveList = getEmployeesOnLeaveToday();
 
   if (state.activeCommTab === 'chats') {
-    titleEl.textContent = 'Conversations';
+    if (titleEl) titleEl.textContent = 'Conversations';
 
-    // Build unified conversations list for WhatsApp-style sorting (Group + Direct Messages)
+    // WhatsApp style conversation list
     const convList = [];
 
-    // 1. Group Chat entry
-    const groupMsgs = (state.chats || []).filter(c => c.receiverId === 'group');
-    const lastGroupMsg = groupMsgs.length > 0 ? groupMsgs.reduce((latest, current) => new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest) : null;
-    const groupTime = lastGroupMsg ? new Date(lastGroupMsg.timestamp).getTime() : 0;
-    convList.push({
-      type: 'group',
-      id: 'group',
-      name: 'General Group Chat',
-      latestTime: groupTime
-    });
+    // 1. General Group Chat
+    let groupTime = 0;
+    const groupMsgs = (state.chats || []).filter(c => c.receiverId === 'group' || c.receiverId === 'all' || c.receiverId === 'general');
+    if (groupMsgs.length > 0) {
+      const lastGroupMsg = groupMsgs.reduce((latest, current) =>
+        new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest, groupMsgs[0]);
+      groupTime = new Date(lastGroupMsg.timestamp).getTime();
+    }
+    convList.push({ type: 'group', latestTime: groupTime });
 
-    // 2. Direct message entries for active employees
-    const otherEmployees = state.employees.filter(emp => emp.id !== state.currentUser.id && (isPratap(state.currentUser) || !isPratap(emp)) && !emp.isDeleted && emp.status !== 'pending_approval');
-    otherEmployees.forEach(emp => {
-      const msgs = (state.chats || []).filter(c => (c.senderId === state.currentUser.id && c.receiverId === emp.id) || (c.senderId === emp.id && c.receiverId === state.currentUser.id));
-      const lastMsg = msgs.length > 0 ? msgs.reduce((latest, current) => new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest) : null;
-      const time = lastMsg ? new Date(lastMsg.timestamp).getTime() : 0;
+    // 2. Direct Messages for all employees
+    const userSet = getEmployeeAllIdentifiers(state.currentUser);
+
+    (state.employees || []).forEach(emp => {
+      if (emp.id === state.currentUser.id || emp.isDeleted) return;
+
+      const targetSet = getEmployeeAllIdentifiers(emp);
+      const dmMsgs = (state.chats || []).filter(m => {
+        const sId = (m.senderId || '').toLowerCase();
+        const rId = (m.receiverId || '').toLowerCase();
+        return (userSet.has(sId) && targetSet.has(rId)) || (targetSet.has(sId) && userSet.has(rId));
+      });
+
+      let time = 0;
+      if (dmMsgs.length > 0) {
+        const lastMsg = dmMsgs.reduce((latest, current) =>
+          new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest, dmMsgs[0]);
+        time = new Date(lastMsg.timestamp).getTime();
+      }
+
       convList.push({
         type: 'direct',
         id: emp.id,
@@ -7081,7 +7190,7 @@ function renderCommSidebar() {
       });
     });
 
-    // Sort ALL conversations strictly by latest message timestamp (newest on top, WhatsApp style)
+    // Sort ALL conversations strictly by latest message timestamp (newest on top)
     convList.sort((a, b) => b.latestTime - a.latestTime);
 
     // Render sorted list
@@ -7119,7 +7228,9 @@ function renderCommSidebar() {
           ? `<img src="${emp.photo}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`
           : emp.avatar;
         const avatarStyle = emp.photo ? 'border-radius: 50%; overflow: hidden; background: none; padding: 0;' : '';
-        const isActive = state.activeUsers && state.activeUsers.includes(emp.id);
+
+        const targetSet = getEmployeeAllIdentifiers(emp);
+        const isActive = state.activeUsers && state.activeUsers.some(u => targetSet.has(u.toLowerCase()));
 
         empLink.innerHTML = `
           <div style="position: relative; display: inline-block; flex-shrink: 0;">
@@ -7211,7 +7322,7 @@ function renderChatRoom() {
   let filteredMessages = [];
   if (state.activeChatType === 'group') {
     headerTitle.textContent = 'General Group Chat';
-    filteredMessages = (state.chats || []).filter(m => m.receiverId === 'group');
+    filteredMessages = (state.chats || []).filter(m => m.receiverId === 'group' || m.receiverId === 'all' || m.receiverId === 'general');
   } else {
     let targetEmp = state.employees.find(e => e.id === state.activeChatTargetId || e.email === state.activeChatTargetId);
     if (!targetEmp && state.employees.length > 0) {
@@ -7220,30 +7331,18 @@ function renderChatRoom() {
     }
 
     if (targetEmp) {
-      const targetIds = new Set([targetEmp.id, targetEmp.email].filter(Boolean));
-      const userIds = new Set([state.currentUser.id, state.currentUser.email].filter(Boolean));
-
-      if (targetEmp.id === 'AIRG00041' || targetEmp.id === 'AIRGO000182' || (targetEmp.email && targetEmp.email.includes('atharva'))) {
-        targetIds.add('AIRG00041');
-        targetIds.add('AIRGO000182');
-        targetIds.add('atharva@gurujiair.com');
-        targetIds.add('atharvarnahire182@gmail.com');
-      }
-
-      if (state.currentUser.id === 'AIRG00041' || state.currentUser.id === 'AIRGO000182' || (state.currentUser.email && state.currentUser.email.includes('atharva'))) {
-        userIds.add('AIRG00041');
-        userIds.add('AIRGO000182');
-        userIds.add('atharva@gurujiair.com');
-        userIds.add('atharvarnahire182@gmail.com');
-      }
+      const targetSet = getEmployeeAllIdentifiers(targetEmp);
+      const userSet = getEmployeeAllIdentifiers(state.currentUser);
 
       filteredMessages = (state.chats || []).filter(m => {
-        const isFromUserToTarget = userIds.has(m.senderId) && targetIds.has(m.receiverId);
-        const isFromTargetToUser = targetIds.has(m.senderId) && userIds.has(m.receiverId);
+        const sId = (m.senderId || '').toLowerCase();
+        const rId = (m.receiverId || '').toLowerCase();
+        const isFromUserToTarget = userSet.has(sId) && targetSet.has(rId);
+        const isFromTargetToUser = targetSet.has(sId) && userSet.has(rId);
         return isFromUserToTarget || isFromTargetToUser;
       });
 
-      const isActive = state.activeUsers && state.activeUsers.includes(targetEmp.id);
+      const isActive = state.activeUsers && state.activeUsers.some(u => targetSet.has(u.toLowerCase()));
       
       const onLeaveList = getEmployeesOnLeaveToday();
       const isTargetOnLeave = onLeaveList.some(e => e.id === targetEmp.id);
