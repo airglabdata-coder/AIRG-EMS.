@@ -2582,8 +2582,23 @@ body:not(.auth-view) .employee-select-container {
     box-sizing: border-box !important;
   }
 
+  /* --- Strict Container & Card Width Constraints for Mobile --- */
+  #hr-tasks-card,
+  #emp-tasks-card,
+  #hr-tasks-card > div,
+  #emp-tasks-card > div,
+  #hr-tasks-card > div > div,
+  #emp-tasks-card > div > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
   /* --- Mobile Project Grid & Card Layout --- */
-  .project-grid {
+  .project-grid,
+  #hr-projects-grid,
+  #emp-projects-grid {
     display: flex !important;
     flex-direction: column !important;
     grid-template-columns: 1fr !important;
@@ -2593,7 +2608,9 @@ body:not(.auth-view) .employee-select-container {
     box-sizing: border-box !important;
   }
 
-  .project-card {
+  .project-card,
+  #hr-projects-grid .project-card,
+  #emp-projects-grid .project-card {
     display: flex !important;
     flex-direction: column !important;
     width: 100% !important;
@@ -2601,6 +2618,7 @@ body:not(.auth-view) .employee-select-container {
     padding: 12px !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
+    margin: 0 !important;
   }
 
   .project-card * {
