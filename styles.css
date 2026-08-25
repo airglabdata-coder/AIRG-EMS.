@@ -2658,6 +2658,24 @@ body:not(.auth-view) .employee-select-container {
     max-width: 100% !important;
   }
 
+  /* --- Mobile Project Files Pill Width Fit --- */
+  .project-card div:has(> a[download]) {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    flex-shrink: 1 !important;
+  }
+
+  .project-card a[download] {
+    max-width: calc(100% - 24px) !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    flex-shrink: 1 !important;
+  }
+
   .project-members-section {
     grid-column: 1 / -1 !important;
     border-top: 1px solid var(--border-color) !important;

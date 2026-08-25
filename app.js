@@ -5323,12 +5323,12 @@ function createProjectCard(proj, isMyProject) {
             `;
       } else {
         return `
-              <div style="position: relative; display: flex; align-items: center; gap: 4px; background-color: var(--bg-secondary); padding: 4px 6px; border-radius: 6px; border: 1px solid var(--border-color); max-width: 100%; overflow: hidden; box-sizing: border-box; flex-shrink: 0;">
-                <a href="${fileData}" download="${fileName}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.68rem; color: var(--primary); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; max-width: calc(100% - 14px);" title="Download ${fileName}">
+              <div style="position: relative; display: flex; align-items: center; gap: 4px; background-color: var(--bg-secondary); padding: 4px 6px; border-radius: 6px; border: 1px solid var(--border-color); max-width: 100%; min-width: 0; overflow: hidden; box-sizing: border-box; flex-shrink: 1;">
+                <a href="${fileData}" download="${fileName}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.68rem; color: var(--primary); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; max-width: calc(100% - 14px); flex-shrink: 1; min-width: 0;" title="Download ${fileName}">
                   <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="flex-shrink:0;">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${fileName}</span>
+                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;">${fileName}</span>
                 </a>
                 ${isEditable ? `
                   <button type="button" onclick="deleteProjectFile('${proj.id}', ${idx})" style="background: none; border: none; color: var(--danger); font-size: 0.9rem; line-height: 1; cursor: pointer; padding: 0; font-weight: bold; flex-shrink:0;" title="Delete file">&times;</button>
