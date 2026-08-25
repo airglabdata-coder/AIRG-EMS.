@@ -3121,34 +3121,53 @@ body:not(.auth-view) .employee-select-container {
 }
 
 @media (max-width: 480px) {
-  /* --- Calendar View Dots Optimization --- */
+  /* --- Mobile Responsive Calendar & Event Badges --- */
   .calendar-day-cell, .calendar-padding-cell {
-    min-height: 55px !important;
+    min-height: 60px !important;
+    padding: 3px 2px !important;
+    box-sizing: border-box !important;
   }
   
-  .calendar-events-container {
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    align-items: center !important;
-    gap: 3px !important;
+  .calendar-day-number {
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    margin-bottom: 2px !important;
   }
 
-  .calendar-event {
-    text-indent: -9999px !important;
-    width: 8px !important;
-    height: 8px !important;
-    border-radius: 50% !important;
-    padding: 0 !important;
-    margin: 1px !important;
-    min-height: 8px !important;
-    max-height: 8px !important;
-    display: inline-block !important;
-    border: none !important;
+  .calendar-events-container {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    gap: 2px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
     overflow: hidden !important;
   }
 
+  .calendar-event {
+    text-indent: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 14px !important;
+    max-height: none !important;
+    border-radius: 4px !important;
+    padding: 2px 3px !important;
+    margin: 1px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    font-size: 0.6rem !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    box-sizing: border-box !important;
+  }
+
   .calendar-legend {
+    display: flex !important;
     flex-wrap: wrap !important;
     gap: 8px !important;
   }

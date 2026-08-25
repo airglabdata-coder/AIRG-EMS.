@@ -8127,7 +8127,14 @@ function renderInlineCalendar() {
       eventsContainer.appendChild(lEl);
     });
 
-    // D. Fetch Milestones
+    // D. Fetch Milestones (Birthdays, Work Anniversaries, Probation Confirmation)
+    const dayEventsList = [];
+
+    // Collect holidays & celebrations into dayEventsList for click popup
+    holidays.forEach(h => dayEventsList.push(`🎉 National Holiday: ${h.name}`));
+    celebrations.forEach(c => dayEventsList.push(`✨ Celebration Day: ${c.name}`));
+    leaves.forEach(req => dayEventsList.push(`📅 Leave: ${req.employeeName} - ${req.type} (${req.reason || 'No reason'})`));
+
     state.employees.forEach(emp => {
       if (emp.isDeleted) return;
       if (emp.status === 'pending_approval') return;
@@ -8139,13 +8146,14 @@ function renderInlineCalendar() {
         const [dobY, dobM, dobD] = emp.dateOfBirth.split('-');
         if (dobM === cellM && dobD === cellD) {
           const mEl = document.createElement('div');
-          mEl.className = 'calendar-event';
+          mEl.className = 'calendar-event event-birthday';
           mEl.style.backgroundColor = 'rgba(168, 85, 247, 0.15)'; 
           mEl.style.color = '#a855f7';
           mEl.style.borderLeft = '3px solid #a855f7';
           mEl.title = `Birthday: ${emp.name}`;
           mEl.textContent = `🎂 ${emp.name.split(' ')[0]}`;
           eventsContainer.appendChild(mEl);
+          dayEventsList.push(`🎂 Birthday: ${emp.name} (${emp.dept || 'Employee'})`);
         }
       }
       
@@ -8156,16 +8164,49 @@ function renderInlineCalendar() {
         
         if (joinM === cellM && joinD === cellD && diffYears > 0) {
           const mEl = document.createElement('div');
-          mEl.className = 'calendar-event';
+          mEl.className = 'calendar-event event-anniversary';
           mEl.style.backgroundColor = 'rgba(234, 179, 8, 0.15)';
           mEl.style.color = '#eab308';
           mEl.style.borderLeft = '3px solid #eab308';
-          mEl.title = `Work Anniversary: ${emp.name} (${diffYears} years)`;
-          mEl.textContent = `🌟 ${emp.name.split(' ')[0]}`;
+          mEl.title = `Work Anniversary: ${emp.name} (${diffYears} year${diffYears > 1 ? 's' : ''})`;
+          mEl.textContent = `🌟 ${emp.name.split(' ')[0]} (${diffYears}y)`;
           eventsContainer.appendChild(mEl);
+          dayEventsList.push(`🌟 Work Anniversary: ${emp.name} (${diffYears} year${diffYears > 1 ? 's' : ''})`);
+        }
+
+        // Probation Completion Alert
+        if (emp.probationPeriod) {
+          const months = parseInt(emp.probationPeriod) || 3;
+          const jDate = new Date(parseInt(joinY), parseInt(joinM) - 1, parseInt(joinD));
+          jDate.setMonth(jDate.getMonth() + months);
+          const pY = jDate.getFullYear();
+          const pM = String(jDate.getMonth() + 1).padStart(2, '0');
+          const pD = String(jDate.getDate()).padStart(2, '0');
+
+          if (pY === parseInt(cellY) && pM === cellM && pD === cellD) {
+            const pEl = document.createElement('div');
+            pEl.className = 'calendar-event event-probation';
+            pEl.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+            pEl.style.color = '#3b82f6';
+            pEl.style.borderLeft = '3px solid #3b82f6';
+            pEl.title = `Probation Period Completed: ${emp.name} (Confirmed Member)`;
+            pEl.textContent = `🚀 ${emp.name.split(' ')[0]} (Confirmed)`;
+            eventsContainer.appendChild(pEl);
+            dayEventsList.push(`🚀 Probation Period Completed: ${emp.name} (Confirmed Member)`);
+          }
         }
       }
     });
+
+    // Tap/Click handler for mobile & desktop to view day details
+    if (dayEventsList.length > 0) {
+      cell.style.cursor = 'pointer';
+      cell.onclick = (e) => {
+        e.stopPropagation();
+        const formattedDateTitle = new Date(year, month, day).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+        showCalendarDayEventsModal(formattedDateTitle, dayEventsList);
+      };
+    }
 
     cell.appendChild(eventsContainer);
     gridEl.appendChild(cell);
@@ -8198,6 +8239,30 @@ function changeInlineCalendarMonth(offset, event) {
   state.calendarYear = year;
   renderInlineCalendar();
 }
+
+function showCalendarDayEventsModal(dateTitle, eventsList) {
+  const eventsHtml = eventsList.map(item => `
+    <div style="padding: 10px 14px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+      ${item}
+    </div>
+  `).join('');
+
+  showCustomModal(`
+    <div style="padding: 4px;">
+      <h3 style="margin-top: 0; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        📅 Events for ${dateTitle}
+      </h3>
+      <div style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
+        ${eventsHtml}
+      </div>
+      <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+        <button class="btn btn-secondary btn-sm" onclick="hideModal()">Close</button>
+      </div>
+    </div>
+  `);
+}
+
+window.showCalendarDayEventsModal = showCalendarDayEventsModal;
 
 // --- Daily Reports Functions ---
 function setTodayReportDate() {
