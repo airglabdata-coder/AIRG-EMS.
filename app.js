@@ -2894,7 +2894,9 @@ function setRole(role) {
     }
 
     if (empSelectorWrapper) {
-      empSelectorWrapper.style.display = 'flex';
+      const uRole = (state.currentUser && state.currentUser.role ? state.currentUser.role : '').toLowerCase();
+      const canSwitchEmp = uRole.includes('admin') || uRole.includes('hr');
+      empSelectorWrapper.style.display = canSwitchEmp ? 'flex' : 'none';
     }
   } else if (role === 'techlead') {
     if (leadBtn) leadBtn.classList.add('active');
@@ -11411,18 +11413,19 @@ function loginAsUser(user, isReload = false) {
 
   const switcherContainer = document.querySelector('.role-switcher-container');
   if (switcherContainer) {
+    const btnEmp = document.getElementById('btn-role-employee');
+    const btnLead = document.getElementById('btn-role-techlead');
+    const btnHR = document.getElementById('btn-role-hr');
+    const btnAdmin = document.getElementById('btn-role-admin');
+    if (btnEmp) btnEmp.style.display = assignedRoles.includes('employee') ? 'inline-block' : 'none';
+    if (btnLead) btnLead.style.display = assignedRoles.includes('techlead') ? 'inline-block' : 'none';
+    if (btnHR) btnHR.style.display = assignedRoles.includes('hr') ? 'inline-block' : 'none';
+    if (btnAdmin) btnAdmin.style.display = assignedRoles.includes('admin') ? 'inline-block' : 'none';
+
     if (assignedRoles.length > 1) {
-      switcherContainer.style.display = 'flex';
-      const btnEmp = document.getElementById('btn-role-employee');
-      const btnLead = document.getElementById('btn-role-techlead');
-      const btnHR = document.getElementById('btn-role-hr');
-      const btnAdmin = document.getElementById('btn-role-admin');
-      if (btnEmp) btnEmp.style.display = assignedRoles.includes('employee') ? 'inline-block' : 'none';
-      if (btnLead) btnLead.style.display = assignedRoles.includes('techlead') ? 'inline-block' : 'none';
-      if (btnHR) btnHR.style.display = assignedRoles.includes('hr') ? 'inline-block' : 'none';
-      if (btnAdmin) btnAdmin.style.display = assignedRoles.includes('admin') ? 'inline-block' : 'none';
+      switcherContainer.style.setProperty('display', 'flex', 'important');
     } else {
-      switcherContainer.style.display = 'none';
+      switcherContainer.style.setProperty('display', 'none', 'important');
     }
   }
 
