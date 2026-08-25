@@ -4538,6 +4538,7 @@ function handleProfileSave(e) {
   state.currentUser = emp;
   localStorage.setItem('ems_logged_in_user', JSON.stringify(emp));
   triggerBackendSync();
+  syncStateNow();
 
   // Update header avatar and details immediately
   updateHeaderAvatar(emp);
@@ -11445,20 +11446,29 @@ async function handleLoginSubmit(e) {
     return;
   }
 
-  const email = emailInput.value.trim().toLowerCase();
+  const inputVal = emailInput.value.trim().toLowerCase();
   const password = passwordInput.value.trim();
 
-  // First try with local state (instant). If found, log in immediately.
-  // In parallel, refresh from server. If local is empty/stale, wait for server.
-  let found = state.employees.find(emp => emp.email.toLowerCase() === email);
+  // 1. First check local state for immediate match
+  let found = state.employees.find(emp => 
+    (emp.email && emp.email.toLowerCase() === inputVal) ||
+    (emp.id && emp.id.toLowerCase() === inputVal)
+  );
 
-  if (!found || state.employees.length === 0) {
-    // No local data yet - we must wait for the server
-    await fetchCentralizedState();
-    found = state.employees.find(emp => emp.email.toLowerCase() === email);
-  } else {
-    // We have local data - login instantly, refresh server data in background
-    fetchCentralizedState().catch(() => {});
+  let matchPassword = found ? (found.password || 'password123') : null;
+
+  // 2. If no local match OR local password check failed, fetch fresh state from MongoDB Atlas
+  if (!found || password !== matchPassword || state.employees.length === 0) {
+    try {
+      await fetchCentralizedState();
+      found = state.employees.find(emp => 
+        (emp.email && emp.email.toLowerCase() === inputVal) ||
+        (emp.id && emp.id.toLowerCase() === inputVal)
+      );
+      matchPassword = found ? (found.password || 'password123') : null;
+    } catch (err) {
+      console.error('Server sync error during login:', err);
+    }
   }
 
   if (found) {
@@ -11472,7 +11482,7 @@ async function handleLoginSubmit(e) {
       if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Log In'; }
       return;
     }
-    const matchPassword = found.password || 'password123';
+
     if (password === matchPassword) {
       localStorage.setItem('ems_logged_in_user', JSON.stringify(found));
       loginAsUser(found);
@@ -11481,7 +11491,8 @@ async function handleLoginSubmit(e) {
       return;
     }
   }
-  showToast('Invalid email or password.', 'error');
+
+  showToast('Invalid email, employee ID, or password.', 'error');
   if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Log In'; }
 }
 
