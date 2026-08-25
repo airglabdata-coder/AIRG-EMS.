@@ -486,14 +486,25 @@ async function clearAndSeedMongoDB() {
   }
 }
 
-// Helper to track and clean active users
+// Helper to track and clean active users with full identifier alias matching
 function trackAndGetActiveUsers(employeeId, isActiveParam) {
   if (employeeId) {
-    if (isActiveParam === 'false') {
-      delete activeUsers[employeeId];
-    } else {
-      activeUsers[employeeId] = Date.now();
+    const keysToTrack = new Set([employeeId, employeeId.toLowerCase()]);
+    // Alias mapping for employee ID & email variations
+    if (employeeId === 'AIRG00041' || employeeId === 'AIRGO000182' || employeeId.includes('atharva')) {
+      keysToTrack.add('AIRG00041');
+      keysToTrack.add('AIRGO000182');
+      keysToTrack.add('atharva@gurujiair.com');
+      keysToTrack.add('atharvarnahire182@gmail.com');
     }
+
+    keysToTrack.forEach(key => {
+      if (isActiveParam === 'false') {
+        delete activeUsers[key];
+      } else {
+        activeUsers[key] = Date.now();
+      }
+    });
   }
 
   // Clean up inactive users (older than 15 seconds)

@@ -6762,9 +6762,25 @@ function getUnreadChatCount(key) {
 
   let messages = [];
   if (key === 'group') {
-    messages = state.chats.filter(m => m.receiverId === 'group' && m.senderId !== state.currentUser.id);
+    messages = state.chats.filter(m => m.receiverId === 'group' && m.senderId !== state.currentUser.id && m.senderId !== state.currentUser.email);
   } else {
-    messages = state.chats.filter(m => m.senderId === key && m.receiverId === state.currentUser.id);
+    const userIds = new Set([state.currentUser.id, state.currentUser.email].filter(Boolean));
+    if (state.currentUser.id === 'AIRG00041' || state.currentUser.id === 'AIRGO000182' || (state.currentUser.email && state.currentUser.email.includes('atharva'))) {
+      userIds.add('AIRG00041');
+      userIds.add('AIRGO000182');
+      userIds.add('atharva@gurujiair.com');
+      userIds.add('atharvarnahire182@gmail.com');
+    }
+
+    const senderIds = new Set([key]);
+    if (key === 'AIRG00041' || key === 'AIRGO000182') {
+      senderIds.add('AIRG00041');
+      senderIds.add('AIRGO000182');
+      senderIds.add('atharva@gurujiair.com');
+      senderIds.add('atharvarnahire182@gmail.com');
+    }
+
+    messages = state.chats.filter(m => senderIds.has(m.senderId) && userIds.has(m.receiverId));
   }
 
   if (!lastReadTime) {
@@ -7135,15 +7151,17 @@ function renderCommSidebar() {
     `;
     itemsBox.appendChild(link);
 
-  } else if (state.activeCommTab === 'notices') {
-    titleEl.textContent = 'Feeds';
-    const link = document.createElement('div');
-    link.className = 'comm-item-link active';
-    link.innerHTML = `
-      <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; background: var(--danger);">🔔</div>
-      <div style="font-weight:600;">HR Notices</div>
+    itemsBox.innerHTML = `
+      <div style="padding: 16px; color: var(--text-muted); text-align: center; font-size: 0.85rem;">
+        View all company-wide announcements in the main panel.
+      </div>
     `;
-    itemsBox.appendChild(link);
+  } else if (state.activeCommTab === 'notices') {
+    itemsBox.innerHTML = `
+      <div style="padding: 16px; color: var(--text-muted); text-align: center; font-size: 0.85rem;">
+        View all important policy notices in the main panel.
+      </div>
+    `;
   }
 }
 
@@ -7174,6 +7192,8 @@ function renderCommMainContent() {
 
 function renderChatRoom() {
   const headerTitle = document.getElementById('chat-header-title');
+  if (!headerTitle) return;
+
   const messagesContainer = document.getElementById('chat-messages-container');
   if (!messagesContainer) return;
 
@@ -7202,6 +7222,20 @@ function renderChatRoom() {
     if (targetEmp) {
       const targetIds = new Set([targetEmp.id, targetEmp.email].filter(Boolean));
       const userIds = new Set([state.currentUser.id, state.currentUser.email].filter(Boolean));
+
+      if (targetEmp.id === 'AIRG00041' || targetEmp.id === 'AIRGO000182' || (targetEmp.email && targetEmp.email.includes('atharva'))) {
+        targetIds.add('AIRG00041');
+        targetIds.add('AIRGO000182');
+        targetIds.add('atharva@gurujiair.com');
+        targetIds.add('atharvarnahire182@gmail.com');
+      }
+
+      if (state.currentUser.id === 'AIRG00041' || state.currentUser.id === 'AIRGO000182' || (state.currentUser.email && state.currentUser.email.includes('atharva'))) {
+        userIds.add('AIRG00041');
+        userIds.add('AIRGO000182');
+        userIds.add('atharva@gurujiair.com');
+        userIds.add('atharvarnahire182@gmail.com');
+      }
 
       filteredMessages = (state.chats || []).filter(m => {
         const isFromUserToTarget = userIds.has(m.senderId) && targetIds.has(m.receiverId);
