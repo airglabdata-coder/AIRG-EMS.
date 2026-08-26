@@ -14363,10 +14363,47 @@ function switchProjDashTab(tab) {
   renderProjDashTabContent();
 }
 
+function getProjectTeamDetails(proj) {
+  if (!proj) return { leadName: 'Unassigned', teamMembers: [] };
+
+  const leadEmp = state.employees.find(e => e.id === proj.techLeadId || e.name === proj.techLeadName);
+  const leadName = proj.techLeadName || (leadEmp ? leadEmp.name : 'Unassigned');
+
+  const taskAssigneeIds = (state.tasks || []).filter(t => t.projectId === proj.id).map(t => t.assigneeId);
+
+  const allEmps = (state.employees || []).filter(e => {
+    if (e.isDeleted || e.status === 'pending_approval') return false;
+    const isTechLead = (e.id === proj.techLeadId || e.name === proj.techLeadName || e.name === leadName);
+    const inEmployeeIds = proj.employeeIds && (proj.employeeIds.includes(e.id) || proj.employeeIds.includes(e.email));
+    const inTeamMembers = proj.teamMembers && proj.teamMembers.some(m => typeof m === 'object' ? (m.id === e.id || m.name === e.name) : m === e.name);
+    const inTasks = taskAssigneeIds.includes(e.id);
+    return isTechLead || inEmployeeIds || inTeamMembers || inTasks;
+  });
+
+  const uniqueEmps = [];
+  const seen = new Set();
+  allEmps.forEach(e => {
+    if (!seen.has(e.id)) {
+      seen.add(e.id);
+      uniqueEmps.push(e);
+    }
+  });
+
+  uniqueEmps.sort((a, b) => {
+    if (a.id === proj.techLeadId || a.name === leadName) return -1;
+    if (b.id === proj.techLeadId || b.name === leadName) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  return { leadName, teamMembers: uniqueEmps };
+}
+
 function renderProjDashTabContent() {
   const proj = state.projects.find(p => p.id === activeDashProjectId);
   const container = document.getElementById('proj-dash-content');
   if (!proj || !container) return;
+
+  const teamInfo = getProjectTeamDetails(proj);
 
   // Pending count for Approvals tab
   const pendingUpdates = (proj.dailyWorkUpdates || []).filter(u => u.status === 'Pending');
@@ -14393,7 +14430,7 @@ function renderProjDashTabContent() {
     state.currentRole === 'hr' ||
     state.currentRole === 'admin' ||
     isPratap(state.currentUser) ||
-    (state.currentUser && (state.currentUser.id === proj.techLeadId || state.currentUser.name === proj.techLeadName || state.currentUser.id === proj.createdById))
+    (state.currentUser && (state.currentUser.id === proj.techLeadId || state.currentUser.name === teamInfo.leadName || state.currentUser.id === proj.createdById))
   );
 
   switch (activeDashTab) {
@@ -14407,7 +14444,7 @@ function renderProjDashTabContent() {
               <tr><td style="color: var(--text-muted); padding: 6px 0;">Department:</td><td><span class="badge" style="background: var(--primary-gradient); color: white;">${proj.dept || 'AI'}</span></td></tr>
               <tr><td style="color: var(--text-muted); padding: 6px 0;">Project Type:</td><td>${proj.projectType || 'R&D / Implementation'}</td></tr>
               <tr><td style="color: var(--text-muted); padding: 6px 0;">Priority:</td><td><span class="badge ${getPriorityBadgeClass(proj.priority || 'Medium')}">${proj.priority || 'Medium'}</span></td></tr>
-              <tr><td style="color: var(--text-muted); padding: 6px 0;">Tech Lead:</td><td><strong>${proj.techLeadName || 'Shravani Khanvilkar'}</strong></td></tr>
+              <tr><td style="color: var(--text-muted); padding: 6px 0;">Tech Lead:</td><td><strong>${teamInfo.leadName}</strong></td></tr>
               <tr><td style="color: var(--text-muted); padding: 6px 0;">Start Date:</td><td>${proj.startDate || '2026-08-01'}</td></tr>
               <tr><td style="color: var(--text-muted); padding: 6px 0;">Final Delivery:</td><td><strong>${proj.finalDeadline || proj.dueDate || '2026-10-15'}</strong></td></tr>
             </table>
@@ -14594,19 +14631,29 @@ function renderProjDashTabContent() {
       break;
 
     case 'team':
-      const teamList = proj.teamMembers || [];
+      const teamList = teamInfo.teamMembers;
       container.innerHTML = `
         <div style="padding: 12px 0;">
-          <h4 style="margin-top: 0; color: var(--primary);">👥 Project Team Members (${teamList.length})</h4>
-          <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: var(--primary);">
-              👑 Tech Lead: ${proj.techLeadName || 'Unassigned'}
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h4 style="margin: 0; color: var(--primary);">👥 Project Team Members (${teamList.length})</h4>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+            <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 6px;">
+              👑 Tech Lead: ${teamInfo.leadName}
             </div>
-            ${teamList.map(m => `
-              <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 8px 14px; border-radius: 20px; font-size: 0.8rem; color: var(--text-primary);">
-                👤 ${escapeHTML(m.name || m)}
-              </div>
-            `).join('')}
+            ${teamList.map(m => {
+              const isLead = (m.id === proj.techLeadId || m.name === teamInfo.leadName);
+              const chipRole = m.designation || m.role || (isLead ? 'Tech Lead' : 'Employee');
+              return `
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 8px 14px; border-radius: 20px; font-size: 0.8rem; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 22px; height: 22px; border-radius: 50%; background: ${isLead ? 'var(--primary-gradient)' : 'var(--bg-tertiary)'}; color: ${isLead ? 'white' : 'var(--text-secondary)'}; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700;">
+                    ${m.avatar || (m.name ? m.name.split(' ').map(n=>n[0]).join('') : 'U')}
+                  </div>
+                  <span><strong>${escapeHTML(m.name)}</strong> <span style="font-size: 0.7rem; color: var(--text-muted);">(${escapeHTML(chipRole)})</span></span>
+                </div>
+              `;
+            }).join('')}
           </div>
         </div>
       `;
