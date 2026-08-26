@@ -14314,3 +14314,658 @@ function checkAndAnnounceGlobalMilestones() {
     }
   });
 }
+
+// ==========================================
+// --- ADVANCED PROJECT EXECUTION MODULE ---
+// ==========================================
+
+let activeDashProjectId = null;
+let activeDashTab = 'overview';
+
+function openProjectDashboardModal(projectId) {
+  const proj = state.projects.find(p => p.id === projectId);
+  if (!proj) return;
+
+  activeDashProjectId = projectId;
+  activeDashTab = 'overview';
+
+  document.getElementById('proj-dash-title').textContent = proj.name;
+  const badge = document.getElementById('proj-dash-status-badge');
+  if (badge) {
+    badge.textContent = proj.status || 'Active';
+    badge.className = `badge badge-${(proj.status || 'active').toLowerCase()}`;
+  }
+
+  // Update sub-tabs active state
+  ['overview', 'milestones', 'tasks', 'daily', 'approvals', 'team', 'activity', 'reports'].forEach(tab => {
+    const tabBtn = document.getElementById(`proj-tab-${tab}`);
+    if (tabBtn) tabBtn.classList.toggle('active', tab === 'overview');
+  });
+
+  renderProjDashTabContent();
+
+  const modal = document.getElementById('modal-project-dashboard');
+  if (modal) modal.classList.add('active');
+}
+
+function closeProjectDashboardModal() {
+  const modal = document.getElementById('modal-project-dashboard');
+  if (modal) modal.classList.remove('active');
+  activeDashProjectId = null;
+}
+
+function switchProjDashTab(tab) {
+  activeDashTab = tab;
+  ['overview', 'milestones', 'tasks', 'daily', 'approvals', 'team', 'activity', 'reports'].forEach(t => {
+    const tabBtn = document.getElementById(`proj-tab-${t}`);
+    if (tabBtn) tabBtn.classList.toggle('active', t === tab);
+  });
+  renderProjDashTabContent();
+}
+
+function renderProjDashTabContent() {
+  const proj = state.projects.find(p => p.id === activeDashProjectId);
+  const container = document.getElementById('proj-dash-content');
+  if (!proj || !container) return;
+
+  // Pending count for Approvals tab
+  const pendingUpdates = (proj.dailyWorkUpdates || []).filter(u => u.status === 'Pending');
+  const countBadge = document.getElementById('proj-dash-pending-count');
+  if (countBadge) {
+    if (pendingUpdates.length > 0) {
+      countBadge.textContent = pendingUpdates.length;
+      countBadge.style.display = 'inline-block';
+    } else {
+      countBadge.style.display = 'none';
+    }
+  }
+
+  // Default milestones if missing
+  if (!proj.milestones || proj.milestones.length === 0) {
+    proj.milestones = [
+      { id: 'M1', name: 'ICU Deadline', deadline: proj.icuDeadline || proj.dueDate || '2026-09-10', progress: proj.progress || 0, status: 'In Progress' },
+      { id: 'M2', name: 'Ventilator Deadline', deadline: proj.ventilatorDeadline || '2026-09-25', progress: 0, status: 'Not Started' },
+      { id: 'M3', name: 'Final Delivery Deadline', deadline: proj.finalDeadline || proj.dueDate || '2026-10-15', progress: 0, status: 'Pending' }
+    ];
+  }
+
+  const isTechLeadOrAdmin = (
+    state.currentRole === 'hr' ||
+    state.currentRole === 'admin' ||
+    isPratap(state.currentUser) ||
+    (state.currentUser && (state.currentUser.id === proj.techLeadId || state.currentUser.name === proj.techLeadName || state.currentUser.id === proj.createdById))
+  );
+
+  switch (activeDashTab) {
+    case 'overview':
+      container.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 12px 0;">
+          <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <h4 style="margin-top: 0; color: var(--primary); font-size: 0.95rem;">📌 Basic Project Details</h4>
+            <table style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
+              <tr><td style="color: var(--text-muted); padding: 6px 0;">Project Name:</td><td><strong>${escapeHTML(proj.name)}</strong></td></tr>
+              <tr><td style="color: var(--text-muted); padding: 6px 0;">Department:</td><td><span class="badge" style="background: var(--primary-gradient); color: white;">${proj.dept || 'AI'}</span></td></tr>
+              <tr><td style="color: var(--text-muted); padding: 6px 0;">Project Type:</td><td>${proj.projectType || 'R&D / Implementation'}</td></tr>
+              <tr><td style="color: var(--text-muted); padding: 6px 0;">Priority:</td><td><span class="badge ${getPriorityBadgeClass(proj.priority || 'Medium')}">${proj.priority || 'Medium'}</span></td></tr>
+              <tr><td style="color: var(--text-muted); padding: 6px 0;">Tech Lead:</td><td><strong>${proj.techLeadName || 'Shravani Khanvilkar'}</strong></td></tr>
+              <tr><td style="color: var(--text-muted); padding: 6px 0;">Start Date:</td><td>${proj.startDate || '2026-08-01'}</td></tr>
+              <tr><td style="color: var(--text-muted); padding: 6px 0;">Final Delivery:</td><td><strong>${proj.finalDeadline || proj.dueDate || '2026-10-15'}</strong></td></tr>
+            </table>
+          </div>
+
+          <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <h4 style="margin-top: 0; color: var(--primary); font-size: 0.95rem;">📊 Overall Project Completion</h4>
+            <div style="text-align: center; margin: 16px 0;">
+              <div style="font-size: 2.5rem; font-weight: 800; color: var(--primary);">${proj.progress || 0}%</div>
+              <div style="background: var(--bg-tertiary); height: 12px; border-radius: 6px; overflow: hidden; margin-top: 8px; border: 1px solid var(--border-color);">
+                <div style="width: ${proj.progress || 0}%; height: 100%; background: var(--primary-gradient); transition: width 0.3s ease;"></div>
+              </div>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 12px;">
+              * Overall completion is calculated from step-wise progress across standard milestones upon Tech Lead approval.
+            </div>
+            <div style="margin-top: 16px; display: flex; gap: 10px;">
+              <button class="btn btn-primary btn-sm" onclick="openAddProjectDailyWorkModal('${proj.id}')" style="flex: 1;">+ Add Today's Work</button>
+            </div>
+          </div>
+        </div>
+      `;
+      break;
+
+    case 'milestones':
+      container.innerHTML = `
+        <div style="padding: 12px 0;">
+          <h4 style="margin-top: 0; color: var(--primary);">📅 Standard 3 Milestone Deadlines</h4>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            ${proj.milestones.map(m => {
+              const deadlineDate = new Date(m.deadline);
+              const now = new Date();
+              const diffDays = Math.ceil((deadlineDate - now) / (1000 * 60 * 60 * 24));
+              let statusBadge = `<span class="badge badge-approved">🟢 On Track</span>`;
+              if (m.progress < 100 && diffDays < 5 && diffDays >= 0) statusBadge = `<span class="badge badge-pending">🟡 Attention Required</span>`;
+              if (m.progress < 100 && diffDays < 0) statusBadge = `<span class="badge badge-rejected">🔴 Delayed</span>`;
+
+              return `
+                <div style="background: var(--bg-secondary); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">${m.name}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Deadline: <strong>${m.deadline}</strong></div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 16px;">
+                    ${statusBadge}
+                    <div style="width: 120px;">
+                      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600;">
+                        <span>Progress</span>
+                        <span>${m.progress || 0}%</span>
+                      </div>
+                      <div style="background: var(--bg-tertiary); height: 6px; border-radius: 3px; overflow: hidden; margin-top: 4px;">
+                        <div style="width: ${m.progress || 0}%; height: 100%; background: var(--primary-gradient);"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+      break;
+
+    case 'tasks':
+      const projTasks = state.tasks.filter(t => t.projectId === proj.id);
+      container.innerHTML = `
+        <div style="padding: 12px 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h4 style="margin: 0; color: var(--primary);">📋 Milestone Tasks (${projTasks.length})</h4>
+            ${isTechLeadOrAdmin ? `<button class="btn btn-primary btn-xs" onclick="openAssignTaskModal('${proj.id}')">+ New Task</button>` : ''}
+          </div>
+          <table class="table" style="width: 100%; font-size: 0.8rem;">
+            <thead>
+              <tr>
+                <th>Task ID</th>
+                <th>Title / Description</th>
+                <th>Assignee</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Due Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${projTasks.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No tasks assigned under this project yet.</td></tr>` : 
+                projTasks.map(t => `
+                  <tr>
+                    <td><strong>${t.id}</strong></td>
+                    <td>${escapeHTML(t.desc)}</td>
+                    <td>${t.assigneeName || 'Unassigned'}</td>
+                    <td><span class="badge ${getPriorityBadgeClass(t.priority)}">${t.priority}</span></td>
+                    <td><span class="badge badge-${t.status.toLowerCase().replace(' ', '')}">${t.status}</span></td>
+                    <td>${t.dueDate || '—'}</td>
+                  </tr>
+                `).join('')
+              }
+            </tbody>
+          </table>
+        </div>
+      `;
+      break;
+
+    case 'daily':
+      const updates = proj.dailyWorkUpdates || [];
+      container.innerHTML = `
+        <div style="padding: 12px 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h4 style="margin: 0; color: var(--primary);">📝 Daily Work Logs (${updates.length})</h4>
+            <button class="btn btn-primary btn-sm" onclick="openAddProjectDailyWorkModal('${proj.id}')">+ Add Today's Work</button>
+          </div>
+          <table class="table" style="width: 100%; font-size: 0.8rem;">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Employee</th>
+                <th>Milestone</th>
+                <th>Work Done</th>
+                <th>Hours</th>
+                <th>Progress Added</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${updates.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No daily work updates submitted yet.</td></tr>` :
+                [...updates].sort((a, b) => new Date(b.submittedAt || b.date) - new Date(a.submittedAt || a.date)).map(u => `
+                  <tr>
+                    <td>${u.date}</td>
+                    <td><strong>${escapeHTML(u.employeeName)}</strong></td>
+                    <td><span class="badge" style="background: var(--bg-tertiary);">${u.milestone}</span></td>
+                    <td>${escapeHTML(u.workDone)}</td>
+                    <td>${u.hours} hrs</td>
+                    <td><strong style="color: var(--success);">+${u.progressAdded}%</strong></td>
+                    <td>
+                      <span class="badge badge-${(u.status || 'pending').toLowerCase()}">${u.status || 'Pending'}</span>
+                    </td>
+                  </tr>
+                `).join('')
+              }
+            </tbody>
+          </table>
+        </div>
+      `;
+      break;
+
+    case 'approvals':
+      const pendingWork = (proj.dailyWorkUpdates || []).filter(u => u.status === 'Pending');
+      container.innerHTML = `
+        <div style="padding: 12px 0;">
+          <h4 style="margin-top: 0; color: var(--primary);">⏳ Pending Work Updates Review (${pendingWork.length})</h4>
+          ${pendingWork.length === 0 ? `
+            <div class="empty-state" style="padding: 24px;">
+              <div class="empty-state-title">No pending work updates</div>
+              <p style="color: var(--text-muted);">All submitted work updates have been reviewed.</p>
+            </div>
+          ` : `
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              ${pendingWork.map(u => `
+                <div style="background: var(--bg-secondary); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div>
+                      <strong style="font-size: 0.9rem; color: var(--text-primary);">${escapeHTML(u.employeeName)}</strong>
+                      <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 8px;">(${u.date})</span>
+                    </div>
+                    <span class="badge" style="background: var(--primary-gradient); color: white;">${u.milestone}</span>
+                  </div>
+                  <div style="font-size: 0.85rem; color: var(--text-primary); margin-bottom: 8px;">
+                    <strong>Task:</strong> ${escapeHTML(u.task)}<br>
+                    <strong>Work Done:</strong> ${escapeHTML(u.workDone)}
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">
+                    Hours: ${u.hours} hrs | Progress Requested: <strong style="color: var(--success);">+${u.progressAdded}%</strong>
+                  </div>
+                  ${isTechLeadOrAdmin ? `
+                    <div style="display: flex; gap: 10px;">
+                      <button class="btn btn-success btn-xs" onclick="approveProjectWork('${proj.id}', '${u.id}')" style="flex: 1;">Approve Progress (+${u.progressAdded}%)</button>
+                      <button class="btn btn-danger btn-xs" onclick="rejectProjectWork('${proj.id}', '${u.id}')" style="flex: 1;">Reject Update</button>
+                    </div>
+                  ` : `<div style="font-size: 0.75rem; color: var(--warning); font-style: italic;">Only Tech Lead / HR can approve updates.</div>`}
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+      `;
+      break;
+
+    case 'team':
+      const teamList = proj.teamMembers || [];
+      container.innerHTML = `
+        <div style="padding: 12px 0;">
+          <h4 style="margin-top: 0; color: var(--primary);">👥 Project Team Members (${teamList.length})</h4>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: var(--primary);">
+              👑 Tech Lead: ${proj.techLeadName || 'Unassigned'}
+            </div>
+            ${teamList.map(m => `
+              <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 8px 14px; border-radius: 20px; font-size: 0.8rem; color: var(--text-primary);">
+                👤 ${escapeHTML(m.name || m)}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      break;
+
+    case 'activity':
+      const logs = proj.activityLogs || [];
+      container.innerHTML = `
+        <div style="padding: 12px 0;">
+          <h4 style="margin-top: 0; color: var(--primary);">📜 Real-Time Project Activity Timeline</h4>
+          ${logs.length === 0 ? `<div style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">No activity logged yet.</div>` :
+            `<div style="display: flex; flex-direction: column; gap: 8px;">
+              ${[...logs].reverse().map(l => `
+                <div style="background: var(--bg-secondary); padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.8rem;">
+                  <span style="color: var(--text-muted); font-size: 0.7rem;">${l.timestamp}</span> — <strong>${escapeHTML(l.message)}</strong>
+                </div>
+              `).join('')}
+            </div>`
+          }
+        </div>
+      `;
+      break;
+
+    case 'reports':
+      container.innerHTML = `
+        <div style="padding: 12px 0;">
+          <h4 style="margin-top: 0; color: var(--primary);">📈 Project Performance & Analytics</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 0.85rem; color: var(--text-muted);">Current Execution Status</div>
+              <div style="font-size: 1.4rem; font-weight: 800; color: var(--success); margin: 6px 0;">🟢 On Schedule</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">All 3 standard deadlines are within expected completion parameters.</div>
+            </div>
+            <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 0.85rem; color: var(--text-muted);">Total Work Updates Approved</div>
+              <div style="font-size: 1.4rem; font-weight: 800; color: var(--primary); margin: 6px 0;">${(proj.dailyWorkUpdates || []).filter(u => u.status === 'Approved').length} Updates</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Work hours and progress increments logged cleanly.</div>
+            </div>
+          </div>
+        </div>
+      `;
+      break;
+  }
+}
+
+function openCreateProjectModal() {
+  const modal = document.getElementById('modal-create-project');
+  if (!modal) return;
+
+  const leadSelect = document.getElementById('proj-create-techlead');
+  if (leadSelect) {
+    leadSelect.innerHTML = state.employees.map(e => `
+      <option value="${e.id}">${e.name} (${e.dept || 'General'} - ${e.role})</option>
+    `).join('');
+  }
+
+  const membersList = document.getElementById('proj-create-members-list');
+  if (membersList) {
+    membersList.innerHTML = state.employees.map(e => `
+      <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; margin-bottom: 4px; cursor: pointer;">
+        <input type="checkbox" name="proj-create-team-member" value="${e.id}">
+        <span>${e.name} (${e.dept || ''})</span>
+      </label>
+    `).join('');
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  const dateICU = document.getElementById('proj-create-icu-dl');
+  const dateVent = document.getElementById('proj-create-vent-dl');
+  const dateFinal = document.getElementById('proj-create-final-dl');
+  if (dateICU) dateICU.value = today;
+  if (dateVent) dateVent.value = today;
+  if (dateFinal) dateFinal.value = today;
+
+  modal.classList.add('active');
+}
+
+function closeCreateProjectModal() {
+  const modal = document.getElementById('modal-create-project');
+  if (modal) modal.classList.remove('active');
+}
+
+async function handleCreateProjectSubmit(e) {
+  e.preventDefault();
+
+  const name = document.getElementById('proj-create-name').value.trim();
+  const dept = document.getElementById('proj-create-dept').value;
+  const priority = document.getElementById('proj-create-priority').value;
+  const techLeadId = document.getElementById('proj-create-techlead').value;
+  const projectType = document.getElementById('proj-create-type').value.trim();
+  const icuDeadline = document.getElementById('proj-create-icu-dl').value;
+  const ventilatorDeadline = document.getElementById('proj-create-vent-dl').value;
+  const finalDeadline = document.getElementById('proj-create-final-dl').value;
+  const desc = document.getElementById('proj-create-desc').value.trim();
+
+  if (!name || !dept || !techLeadId) {
+    showToast('Please fill out all required fields.', 'error');
+    return;
+  }
+
+  const techLeadEmp = state.employees.find(e => e.id === techLeadId);
+  const techLeadName = techLeadEmp ? techLeadEmp.name : 'Shravani Khanvilkar';
+
+  const memberCheckboxes = document.querySelectorAll('input[name="proj-create-team-member"]:checked');
+  const selectedMemberIds = Array.from(memberCheckboxes).map(cb => cb.value);
+  if (!selectedMemberIds.includes(techLeadId)) selectedMemberIds.push(techLeadId);
+
+  const teamMembers = state.employees
+    .filter(e => selectedMemberIds.includes(e.id))
+    .map(e => ({ id: e.id, name: e.name, dept: e.dept, role: e.role }));
+
+  const newProjId = `PRJ-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const newProj = {
+    id: newProjId,
+    name: name,
+    dept: dept,
+    projectType: projectType || 'R&D / Implementation',
+    priority: priority,
+    status: 'Active',
+    techLeadId: techLeadId,
+    techLeadName: techLeadName,
+    createdById: state.currentUser ? state.currentUser.id : techLeadId,
+    createdByName: state.currentUser ? state.currentUser.name : techLeadName,
+    startDate: new Date().toISOString().split('T')[0],
+    finalDeliveryDate: finalDeadline,
+    icuDeadline: icuDeadline,
+    ventilatorDeadline: ventilatorDeadline,
+    finalDeadline: finalDeadline,
+    dueDate: finalDeadline,
+    progress: 0,
+    description: desc,
+    files: [],
+    employeeIds: selectedMemberIds,
+    teamMembers: teamMembers,
+    milestones: [
+      { id: 'M1', name: 'ICU Deadline', deadline: icuDeadline, progress: 0, status: 'In Progress' },
+      { id: 'M2', name: 'Ventilator Deadline', deadline: ventilatorDeadline, progress: 0, status: 'Not Started' },
+      { id: 'M3', name: 'Final Delivery Deadline', deadline: finalDeadline, progress: 0, status: 'Pending' }
+    ],
+    dailyWorkUpdates: [],
+    activityLogs: [
+      {
+        timestamp: new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }),
+        message: `Project "${name}" created by ${state.currentUser ? state.currentUser.name : techLeadName}.`,
+        authorId: state.currentUser ? state.currentUser.id : techLeadId
+      }
+    ]
+  };
+
+  state.projects.push(newProj);
+  localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+
+  try {
+    await fetch('/api/create-project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newProj)
+    });
+  } catch (err) {
+    console.error('Failed to sync new project to server:', err);
+  }
+
+  triggerBackendSync();
+  closeCreateProjectModal();
+  renderHRTasksAndProjects();
+  showToast(`Project "${name}" created successfully!`, 'success');
+}
+
+function openAddProjectDailyWorkModal(projectId) {
+  const proj = state.projects.find(p => p.id === projectId);
+  if (!proj) return;
+
+  document.getElementById('proj-work-project-id').value = projectId;
+  document.getElementById('proj-work-date').value = new Date().toISOString().split('T')[0];
+
+  const modal = document.getElementById('modal-add-project-daily-work');
+  if (modal) modal.classList.add('active');
+}
+
+function closeAddProjectDailyWorkModal() {
+  const modal = document.getElementById('modal-add-project-daily-work');
+  if (modal) modal.classList.remove('active');
+}
+
+async function handleProjectDailyWorkSubmit(e) {
+  e.preventDefault();
+
+  const projectId = document.getElementById('proj-work-project-id').value;
+  const date = document.getElementById('proj-work-date').value;
+  const milestone = document.getElementById('proj-work-milestone').value;
+  const task = document.getElementById('proj-work-task').value.trim();
+  const desc = document.getElementById('proj-work-desc').value.trim();
+  const hours = Number(document.getElementById('proj-work-hours').value);
+  const progressAdded = Number(document.getElementById('proj-work-progress-added').value);
+  const remarks = document.getElementById('proj-work-remarks').value.trim();
+
+  const proj = state.projects.find(p => p.id === projectId);
+  if (!proj) return;
+
+  if (!proj.dailyWorkUpdates) proj.dailyWorkUpdates = [];
+
+  const workId = `WRK-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const updateObj = {
+    id: workId,
+    date: date,
+    employeeId: state.currentUser.id,
+    employeeName: state.currentUser.name,
+    milestone: milestone,
+    task: task,
+    workDone: desc,
+    hours: hours,
+    progressAdded: progressAdded,
+    remarks: remarks,
+    status: 'Pending',
+    submittedAt: new Date().toISOString()
+  };
+
+  proj.dailyWorkUpdates.push(updateObj);
+
+  if (!proj.activityLogs) proj.activityLogs = [];
+  proj.activityLogs.push({
+    timestamp: new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }),
+    message: `${state.currentUser.name} submitted daily work update (+${progressAdded}% requested for ${milestone}).`,
+    authorId: state.currentUser.id
+  });
+
+  localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+
+  try {
+    await fetch('/api/update-project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: proj.id,
+        dailyWorkUpdates: proj.dailyWorkUpdates,
+        activityLogs: proj.activityLogs
+      })
+    });
+  } catch (err) {
+    console.error('Failed to sync daily work update to server:', err);
+  }
+
+  triggerBackendSync();
+  closeAddProjectDailyWorkModal();
+  if (activeDashProjectId === projectId) {
+    renderProjDashTabContent();
+  }
+  showToast('Daily work update submitted for Tech Lead approval!', 'success');
+}
+
+async function approveProjectWork(projectId, workId) {
+  const proj = state.projects.find(p => p.id === projectId);
+  if (!proj || !proj.dailyWorkUpdates) return;
+
+  const update = proj.dailyWorkUpdates.find(u => u.id === workId);
+  if (!update) return;
+
+  update.status = 'Approved';
+  update.approvedBy = state.currentUser ? state.currentUser.name : 'Tech Lead';
+
+  const milestone = (proj.milestones || []).find(m => m.name === update.milestone);
+  if (milestone) {
+    let newProgress = (milestone.progress || 0) + update.progressAdded;
+    if (newProgress > 100) newProgress = 100;
+    milestone.progress = newProgress;
+    if (newProgress === 100) milestone.status = 'Completed';
+  }
+
+  if (proj.milestones && proj.milestones.length > 0) {
+    const totalProg = proj.milestones.reduce((acc, m) => acc + (m.progress || 0), 0);
+    const avgProg = Math.round(totalProg / proj.milestones.length);
+    const fixedSteps = [0, 15, 30, 45, 60, 75, 90, 100];
+    const closestStep = fixedSteps.reduce((prev, curr) => Math.abs(curr - avgProg) < Math.abs(prev - avgProg) ? curr : prev);
+    proj.progress = closestStep;
+    if (proj.progress === 100) proj.status = 'Completed';
+  }
+
+  if (!proj.activityLogs) proj.activityLogs = [];
+  proj.activityLogs.push({
+    timestamp: new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }),
+    message: `${state.currentUser ? state.currentUser.name : 'Tech Lead'} approved work update by ${update.employeeName}. Overall progress updated to ${proj.progress}%.`,
+    authorId: state.currentUser ? state.currentUser.id : 'TL'
+  });
+
+  localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+
+  try {
+    await fetch('/api/update-project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: proj.id,
+        progress: proj.progress,
+        status: proj.status,
+        milestones: proj.milestones,
+        dailyWorkUpdates: proj.dailyWorkUpdates,
+        activityLogs: proj.activityLogs
+      })
+    });
+  } catch (err) {
+    console.error('Failed to sync work approval to server:', err);
+  }
+
+  triggerBackendSync();
+  renderHRTasksAndProjects();
+  if (activeDashProjectId === projectId) {
+    renderProjDashTabContent();
+  }
+  showToast(`Work update approved! Overall project progress updated to ${proj.progress}%.`, 'success');
+}
+
+async function rejectProjectWork(projectId, workId) {
+  const proj = state.projects.find(p => p.id === projectId);
+  if (!proj || !proj.dailyWorkUpdates) return;
+
+  const update = proj.dailyWorkUpdates.find(u => u.id === workId);
+  if (!update) return;
+
+  update.status = 'Rejected';
+
+  if (!proj.activityLogs) proj.activityLogs = [];
+  proj.activityLogs.push({
+    timestamp: new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }),
+    message: `Work update by ${update.employeeName} rejected by Tech Lead.`,
+    authorId: state.currentUser ? state.currentUser.id : 'TL'
+  });
+
+  localStorage.setItem('ems_projects', JSON.stringify(state.projects));
+
+  try {
+    await fetch('/api/update-project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: proj.id,
+        dailyWorkUpdates: proj.dailyWorkUpdates,
+        activityLogs: proj.activityLogs
+      })
+    });
+  } catch (err) {
+    console.error('Failed to sync work rejection to server:', err);
+  }
+
+  triggerBackendSync();
+  if (activeDashProjectId === projectId) {
+    renderProjDashTabContent();
+  }
+  showToast('Work update rejected.', 'info');
+}
+
+// Window/Global bindings for Project Execution module
+window.openProjectDashboardModal = openProjectDashboardModal;
+window.closeProjectDashboardModal = closeProjectDashboardModal;
+window.switchProjDashTab = switchProjDashTab;
+window.openCreateProjectModal = openCreateProjectModal;
+window.closeCreateProjectModal = closeCreateProjectModal;
+window.handleCreateProjectSubmit = handleCreateProjectSubmit;
+window.openAddProjectDailyWorkModal = openAddProjectDailyWorkModal;
+window.closeAddProjectDailyWorkModal = closeAddProjectDailyWorkModal;
+window.handleProjectDailyWorkSubmit = handleProjectDailyWorkSubmit;
+window.approveProjectWork = approveProjectWork;
+window.rejectProjectWork = rejectProjectWork;
