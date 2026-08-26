@@ -486,36 +486,50 @@ async function clearAndSeedMongoDB() {
   }
 }
 
-// Helper to track and clean active users with full identifier alias matching
-function trackAndGetActiveUsers(employeeId, isActiveParam) {
-  if (employeeId) {
-    const keysToTrack = new Set([employeeId, employeeId.toLowerCase()]);
-    // Alias mapping for employee ID & email variations
-    if (employeeId === 'AIRG00041' || employeeId === 'AIRGO000182' || employeeId.includes('atharva')) {
-      keysToTrack.add('AIRG00041');
-      keysToTrack.add('AIRGO000182');
-      keysToTrack.add('atharva@gurujiair.com');
-      keysToTrack.add('atharvarnahire182@gmail.com');
-    }
+// Helper to track and clean active users with full identifier alias matching via MongoDB Atlas (serverless safe)
+async function trackAndGetActiveUsers(employeeId, isActiveParam) {
+  try {
+    let doc = await models.SystemMetadata.findOne({ key: 'activeUsersMap' });
+    let map = (doc && doc.value) ? doc.value : {};
 
-    keysToTrack.forEach(key => {
-      if (isActiveParam === 'false') {
-        delete activeUsers[key];
-      } else {
-        activeUsers[key] = Date.now();
+    if (employeeId) {
+      const keysToTrack = new Set([employeeId, employeeId.toLowerCase()]);
+      if (employeeId === 'AIRG00041' || employeeId === 'AIRGO000182' || employeeId.includes('atharva')) {
+        keysToTrack.add('AIRG00041');
+        keysToTrack.add('AIRGO000182');
+        keysToTrack.add('atharva@gurujiair.com');
+        keysToTrack.add('atharvarnahire182@gmail.com');
       }
-    });
-  }
 
-  // Clean up inactive users (older than 15 seconds)
-  const now = Date.now();
-  for (const [id, lastSeen] of Object.entries(activeUsers)) {
-    if (now - lastSeen >= 15000) {
-      delete activeUsers[id];
+      keysToTrack.forEach(key => {
+        if (isActiveParam === 'false') {
+          delete map[key];
+        } else {
+          map[key] = Date.now();
+        }
+      });
     }
-  }
 
-  return Object.keys(activeUsers);
+    // Clean up inactive users (older than 30 seconds)
+    const now = Date.now();
+    for (const [id, lastSeen] of Object.entries(map)) {
+      if (now - lastSeen >= 30000) {
+        delete map[id];
+      }
+    }
+
+    // Persist active users map to MongoDB Atlas asynchronously
+    await models.SystemMetadata.findOneAndUpdate(
+      { key: 'activeUsersMap' },
+      { key: 'activeUsersMap', value: map, timestamp: now },
+      { upsert: true }
+    );
+
+    return Object.keys(map);
+  } catch (err) {
+    console.error('Error tracking active users in MongoDB Atlas:', err.message);
+    return [];
+  }
 }
 
 // Helper to automatically update the active session's logout time (heartbeat tracking)
@@ -618,7 +632,7 @@ app.get('/api/sync', async (req, res) => {
       await updateUserSessionHeartbeat(req.query.employeeId);
     }
     const data = await getMongoDBState();
-    data.activeUsers = trackAndGetActiveUsers(req.query.employeeId, req.query.active);
+    data.activeUsers = await trackAndGetActiveUsers(req.query.employeeId, req.query.active);
     return res.json(data);
   } catch (err) {
     console.error('❌ Failed to read from MongoDB Atlas:', err.message);
@@ -635,7 +649,7 @@ app.get('/api/sync-timestamp', async (req, res) => {
     }
     let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' });
     const timestamp = meta ? meta.timestamp : Date.now();
-    const activeUsers = trackAndGetActiveUsers(req.query.employeeId, req.query.active);
+    const activeUsers = await trackAndGetActiveUsers(req.query.employeeId, req.query.active);
     return res.json({ timestamp, activeUsers });
   } catch (err) {
     console.error('❌ Failed to read sync timestamp:', err.message);
@@ -654,7 +668,7 @@ app.get('/api/chats-only', async (req, res) => {
     ]);
     let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' });
     const timestamp = meta ? meta.timestamp : Date.now();
-    const activeUsers = trackAndGetActiveUsers(req.query.employeeId, null);
+    const activeUsers = await trackAndGetActiveUsers(req.query.employeeId, null);
     return res.json({ chats, announcements, notices, timestamp, activeUsers });
   } catch (err) {
     console.error('❌ Failed to read chats-only:', err.message);
@@ -707,7 +721,7 @@ app.post('/api/sync', async (req, res) => {
       await updateUserSessionHeartbeat(req.query.employeeId);
     }
     const updatedTimestamp = await saveMongoDBState(newState, req.query.employeeId);
-    const activeList = trackAndGetActiveUsers(req.query.employeeId, req.query.active);
+    const activeList = await trackAndGetActiveUsers(req.query.employeeId, req.query.active);
     return res.json({ success: true, timestamp: updatedTimestamp, activeUsers: activeList });
   } catch (err) {
     console.error('❌ Failed to write to MongoDB Atlas:', err);
@@ -1184,6 +1198,9 @@ app.post('/api/super-admin-recovery', async (req, res) => {
   } catch (err) {
     console.error('Error in super-admin-recovery:', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Atomic Leave Request Endpoints (Direct Instant Server Persistence)
 app.post('/api/submit-leave-request', async (req, res) => {
   try {

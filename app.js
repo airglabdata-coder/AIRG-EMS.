@@ -358,32 +358,32 @@ function initSyncPolling() {
       const unsyncedLocalChats = (state.chats || []).filter(m => !serverChatIds.has(m.id));
       const mergedChats = [...chatData.chats, ...unsyncedLocalChats];
 
-      // Signature of merged chat messages (includes IDs and timestamps for instant change detection)
-      const newSignature = mergedChats.map(m => `${m.id}_${m.timestamp || ''}`).join('|');
-
       // Update active users list always
       if (chatData.activeUsers) state.activeUsers = chatData.activeUsers;
+
+      // Signature of merged chat messages (includes IDs and timestamps for instant change detection)
+      const newSignature = mergedChats.map(m => `${m.id}_${m.timestamp || ''}`).join('|');
 
       if (lastChatSignature !== newSignature) {
         lastChatSignature = newSignature;
         state.chats = mergedChats;
         safeOriginalSetItem('ems_chats', JSON.stringify(state.chats));
-
-        // Re-render chat UI immediately if currently viewing communications
-        const activeMenuItem = document.querySelector('.menu-item.active');
-        const activeView = state.currentView || (activeMenuItem ? activeMenuItem.getAttribute('data-view') : '');
-        if (activeView === 'communications' || state.currentView === 'communications') {
-          if (state.activeCommTab === 'chats') {
-            renderChatRoom();
-            renderCommSidebar();
-          } else if (state.activeCommTab === 'notices') {
-            renderNotices();
-          } else if (state.activeCommTab === 'announcements') {
-            renderAnnouncements();
-          }
-        }
-        updateAllMenuBadges();
       }
+
+      // Re-render chat UI & online dots immediately if currently viewing communications
+      const activeMenuItem = document.querySelector('.menu-item.active');
+      const activeView = state.currentView || (activeMenuItem ? activeMenuItem.getAttribute('data-view') : '');
+      if (activeView === 'communications' || state.currentView === 'communications') {
+        if (state.activeCommTab === 'chats') {
+          renderChatRoom();
+          renderCommSidebar();
+        } else if (state.activeCommTab === 'notices') {
+          renderNotices();
+        } else if (state.activeCommTab === 'announcements') {
+          renderAnnouncements();
+        }
+      }
+      updateAllMenuBadges();
 
       if (chatData.announcements) {
         state.announcements = chatData.announcements;
