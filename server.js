@@ -233,6 +233,42 @@ async function syncCollection(Model, array, keyField = 'id', isReviewer = false,
       };
     }
 
+    // === PROJECT SMART-MERGE ===
+    if (Model.modelName === 'Project') {
+      const setFields = { ...cleanItem };
+      const existing = existingRecordsMap.get(cleanItem[keyField]);
+
+      if (existing) {
+        if ((!setFields.teamMembers || setFields.teamMembers.length === 0) && existing.teamMembers && existing.teamMembers.length > 0) {
+          setFields.teamMembers = existing.teamMembers;
+        }
+        if ((!setFields.employeeIds || setFields.employeeIds.length === 0) && existing.employeeIds && existing.employeeIds.length > 0) {
+          setFields.employeeIds = existing.employeeIds;
+        }
+        if ((!setFields.milestones || setFields.milestones.length === 0) && existing.milestones && existing.milestones.length > 0) {
+          setFields.milestones = existing.milestones;
+        }
+        if ((!setFields.dailyWorkUpdates || setFields.dailyWorkUpdates.length === 0) && existing.dailyWorkUpdates && existing.dailyWorkUpdates.length > 0) {
+          setFields.dailyWorkUpdates = existing.dailyWorkUpdates;
+        }
+        if ((!setFields.activityLogs || setFields.activityLogs.length === 0) && existing.activityLogs && existing.activityLogs.length > 0) {
+          setFields.activityLogs = existing.activityLogs;
+        }
+        if ((!setFields.techLeadId || setFields.techLeadId === 'Unassigned') && existing.techLeadId && existing.techLeadId !== 'Unassigned') {
+          setFields.techLeadId = existing.techLeadId;
+          setFields.techLeadName = existing.techLeadName;
+        }
+      }
+
+      return {
+        updateOne: {
+          filter: { [keyField]: cleanItem[keyField] },
+          update: { $set: setFields },
+          upsert: true
+        }
+      };
+    }
+
     return {
       updateOne: {
         filter: { [keyField]: cleanItem[keyField] },
@@ -1372,6 +1408,64 @@ app.post('/api/update-ticket-status', async (req, res) => {
     return res.json({ success: true, ticket: updated ? updated.toJSON() : null });
   } catch (err) {
     console.error('Error updating ticket status directly:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Atomic Project Creation Endpoint
+app.post('/api/create-project', async (req, res) => {
+  try {
+    await connectDB();
+    const projData = req.body;
+    if (!projData || !projData.id) {
+      return res.status(400).json({ error: 'Missing project data or id' });
+    }
+
+    const created = await models.Project.create(projData);
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+    return res.json({ success: true, project: created.toJSON() });
+  } catch (err) {
+    console.error('Error creating project directly:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Atomic Project Update Endpoint
+app.post('/api/update-project', async (req, res) => {
+  try {
+    await connectDB();
+    const { id, ...updateFields } = req.body;
+    if (!id) {
+      return res.status(400).json({ error: 'Missing project id' });
+    }
+
+    const updated = await models.Project.findOneAndUpdate(
+      { id },
+      { $set: updateFields },
+      { new: true }
+    );
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+    return res.json({ success: true, project: updated ? updated.toJSON() : null });
+  } catch (err) {
+    console.error('Error updating project directly:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Atomic Project Deletion Endpoint
+app.post('/api/delete-project', async (req, res) => {
+  try {
+    await connectDB();
+    const { projectId } = req.body;
+    if (!projectId) {
+      return res.status(400).json({ error: 'Missing projectId' });
+    }
+
+    const result = await models.Project.deleteOne({ id: projectId });
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+    return res.json({ success: true, deletedCount: result.deletedCount });
+  } catch (err) {
+    console.error('Error deleting project directly:', err);
     return res.status(500).json({ error: err.message });
   }
 });

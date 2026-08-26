@@ -5112,32 +5112,31 @@ function createProjectCard(proj, isMyProject) {
   card.style.gap = '20px';
 
   // Find current Tech Lead name
-  const leadEmp = state.employees.find(e => e.id === proj.techLeadId);
-  const leadName = leadEmp ? leadEmp.name : 'Unassigned';
+  const leadEmp = state.employees.find(e => e.id === proj.techLeadId || e.name === proj.techLeadName);
+  const leadName = proj.techLeadName || (leadEmp ? leadEmp.name : 'Unassigned');
 
-  let dueDateDisplay = '';
-  if (proj.dueDate) {
-    dueDateDisplay = `
-      <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-top: 4px;">
-        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-        Due: <strong>${proj.dueDate}</strong>
-      </div>
-    `;
-  }
+  const icuDl = proj.icuDeadline || proj.dueDate || '2026-09-10';
+  const ventDl = proj.ventilatorDeadline || '2026-09-25';
+  const finalDl = proj.finalDeadline || proj.dueDate || '2026-10-15';
+
+  let dueDateDisplay = `
+    <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px; margin-top: 4px; background: var(--bg-tertiary); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+      <div>🏥 ICU Deadline: <strong style="color: var(--text-primary);">${icuDl}</strong></div>
+      <div>🫁 Ventilator Deadline: <strong style="color: var(--text-primary);">${ventDl}</strong></div>
+      <div>🏁 Final Delivery: <strong style="color: var(--primary);">${finalDl}</strong></div>
+    </div>
+  `;
 
   // HR and Admin can edit all projects; Tech Lead can edit their own project
   const isEditable = (
     state.currentRole === 'hr' ||
     state.currentRole === 'admin' ||
-    state.currentUser.id === proj.techLeadId
+    (state.currentUser && (state.currentUser.id === proj.techLeadId || state.currentUser.name === proj.techLeadName))
   );
 
   // Get all employees associated with the project
   const taskAssigneeIds = state.tasks.filter(t => t.projectId === proj.id).map(t => t.assigneeId);
 
-  // Project members are: the Tech Lead, anyone explicitly assigned, and anyone with a task in the project
   const allProjectEmployees = state.employees.filter(e => {
     return e.id === proj.techLeadId || (proj.employeeIds && proj.employeeIds.includes(e.id)) || taskAssigneeIds.includes(e.id);
   });
@@ -5151,7 +5150,6 @@ function createProjectCard(proj, isMyProject) {
     }
   });
 
-  // Sort: Tech Lead first, then by name
   uniqueEmployees.sort((a, b) => {
     if (a.id === proj.techLeadId) return -1;
     if (b.id === proj.techLeadId) return 1;
@@ -5159,7 +5157,7 @@ function createProjectCard(proj, isMyProject) {
   });
 
   const memberChipsHtml = uniqueEmployees.map(emp => {
-    const isLead = emp.id === proj.techLeadId;
+    const isLead = emp.id === proj.techLeadId || emp.name === proj.techLeadName;
     const canRemove = isEditable && !isLead;
 
     let chipRole = emp.designation || emp.role || (isLead ? 'Tech Lead' : 'Employee');
@@ -5181,115 +5179,65 @@ function createProjectCard(proj, isMyProject) {
     `;
   }).join('');
 
-  // Dropdown for non-member employees
   const nonMemberEmployees = state.employees.filter(e => !seenIds.has(e.id));
   const existingEmployeesToAssignOptions = nonMemberEmployees.map(emp => {
     const label = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
     return `<option value="${emp.id}">${label}</option>`;
   }).join('');
 
-  // Dropdown options for all employees to appoint as Tech Lead
   const allEmployeesOptions = state.employees.map(emp => {
     const isCurrent = emp.id === proj.techLeadId;
     const label = emp.role.toLowerCase() === 'admin' ? `${emp.name} (CEO)` : `${emp.name} (${emp.dept} - ${emp.role})`;
     return `<option value="${emp.id}" ${isCurrent ? 'selected' : ''}>${label}</option>`;
   }).join('');
 
-  // Determine if deletable by Admin, HR, or the assigned Tech Lead of the project
   const canDelete = (
     state.currentRole === 'admin' ||
     state.currentRole === 'hr' ||
-    ((state.currentRole === 'techlead' || state.currentRole === 'manager') && state.currentUser.id === proj.techLeadId)
+    ((state.currentRole === 'techlead' || state.currentRole === 'manager') && state.currentUser && (state.currentUser.id === proj.techLeadId || state.currentUser.name === proj.techLeadName))
   );
 
-  // LEFT COLUMN HTML
-  let leftColHtml = '';
-  if (isMyProject === false) {
-    // Other projects (simplified view)
-    leftColHtml = `
-      <div style="display: flex; flex-direction: column; gap: 12px; height: 100%;">
-        <div class="project-card-title">${proj.name}</div>
-        <div class="project-card-meta" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <span>Status: <span class="badge badge-${proj.status.toLowerCase()}">${proj.status}</span></span>
-            <span style="font-weight: 600; color: var(--primary);">${proj.dept}</span>
-          </div>
-          ${dueDateDisplay}
-        </div>
-        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: auto;">
-          Current Tech Lead: <strong>${leadName}</strong>
-        </div>
-        ${canDelete ? `
-          <div style="margin-top: auto; border-top: 1px dashed var(--border-color); padding-top: 12px;">
-            <button class="btn btn-danger btn-xs" onclick="deleteProject('${proj.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; border: none; cursor: pointer; color: white;">
-              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Delete Project
-            </button>
-          </div>
-        ` : ''}
-      </div>
-    `;
-  } else {
-    // My project (full view) or Admin/HR view (isMyProject is null)
-    let leadDisplay = `
-      <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
-        Tech Lead: <strong style="color: var(--text-primary);">${leadName}</strong>
-      </div>
-    `;
+  let leadDisplay = `
+    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+      Tech Lead: <strong style="color: var(--text-primary);">${leadName}</strong>
+    </div>
+  `;
 
-    leftColHtml = `
-      <div style="display: flex; flex-direction: column; gap: 12px; height: 100%;">
-        <div class="project-card-title">${proj.name}</div>
-        <div class="project-card-meta" style="display: flex; flex-direction: column; gap: 4px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <span>Status: <span class="badge badge-${proj.status.toLowerCase()}">${proj.status}</span></span>
-            <span style="font-weight: 600; color: var(--primary);">${proj.dept}</span>
-          </div>
-          ${dueDateDisplay}
+  let leftColHtml = `
+    <div style="display: flex; flex-direction: column; gap: 12px; height: 100%;">
+      <div class="project-card-title" style="font-weight: 800; font-size: 1.1rem;">${proj.name}</div>
+      <div class="project-card-meta" style="display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <span>Status: <span class="badge badge-${(proj.status || 'active').toLowerCase()}">${proj.status || 'Active'}</span></span>
+          <span style="font-weight: 600; color: var(--primary);">${proj.dept || 'AI'}</span>
         </div>
-        <div class="project-progress-container" style="margin-top: 16px;">
-          <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; margin-bottom: 6px;">
-            <span style="color: var(--text-muted);">Progress</span>
-            <span class="prog-info" style="color: var(--text-primary);"><span class="prog-val">${progressPercent}%</span></span>
-          </div>
-          ${(isMyProject === true || state.currentRole === 'hr' || state.currentRole === 'admin' || (isMyProject === null && state.currentUser.id === proj.techLeadId)) ? `
-            <div style="position: relative; width: 100%; height: 8px; margin: 10px 0;">
-              <!-- Underlay: The actual progress bar visual -->
-              <div class="progress-bar-bg" style="width: 100%; height: 8px; background-color: var(--bg-tertiary); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color); position: absolute; top: 0; left: 0; pointer-events: none;">
-                <div class="progress-bar-fill" style="width: ${progressPercent}%; height: 100%; background: var(--primary-gradient); border-radius: 4px; transition: width 0.1s ease;"></div>
-              </div>
-              <!-- Overlay: The range slider, perfectly aligned and transparent track -->
-              <input type="range" min="0" max="100" value="${progressPercent}" 
-                     class="project-slider-overlay"
-                     style="position: absolute; top: -4px; left: 0; width: 100%; height: 16px; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; margin: 0; outline: none;" 
-                     oninput="
-                       this.closest('.project-progress-container').querySelector('.prog-val').innerText = this.value + '%';
-                       this.previousElementSibling.querySelector('.progress-bar-fill').style.width = this.value + '%';
-                     "
-                     onchange="updateProjectProgress('${proj.id}', this.value)" />
-            </div>
-          ` : `
-            <div class="progress-bar-bg" style="width: 100%; height: 8px; background-color: var(--bg-tertiary); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color); position: relative;">
-              <div class="progress-bar-fill" id="bar-fill-${proj.id}" style="width: ${progressPercent}%; height: 100%; background: var(--primary-gradient); border-radius: 4px; transition: width 0.3s ease;"></div>
-            </div>
-          `}
-        </div>
-        ${leadDisplay}
-        ${canDelete ? `
-          <div style="margin-top: auto; border-top: 1px dashed var(--border-color); padding-top: 12px;">
-            <button class="btn btn-danger btn-xs" onclick="deleteProject('${proj.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; border: none; cursor: pointer; color: white;">
-              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Delete Project
-            </button>
-          </div>
-        ` : ''}
+        ${dueDateDisplay}
       </div>
-    `;
-  }
+      <div class="project-progress-container" style="margin-top: 8px;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; margin-bottom: 6px;">
+          <span style="color: var(--text-muted);">Completion</span>
+          <span class="prog-info" style="color: var(--text-primary);"><span class="prog-val">${progressPercent}%</span></span>
+        </div>
+        <div class="progress-bar-bg" style="width: 100%; height: 8px; background-color: var(--bg-tertiary); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color); position: relative;">
+          <div class="progress-bar-fill" id="bar-fill-${proj.id}" style="width: ${progressPercent}%; height: 100%; background: var(--primary-gradient); border-radius: 4px; transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+      ${leadDisplay}
+      <button class="btn btn-primary btn-xs" onclick="openProjectDashboardModal('${proj.id}')" style="margin-top: auto; width: 100%; font-weight: 700; padding: 6px; border-radius: 6px;">
+        🚀 Open Project Dashboard
+      </button>
+      ${canDelete ? `
+        <div style="border-top: 1px dashed var(--border-color); padding-top: 8px;">
+          <button class="btn btn-danger btn-xs" onclick="deleteProject('${proj.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; border: none; cursor: pointer; color: white; width: 100%; justify-content: center;">
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete Project
+          </button>
+        </div>
+      ` : ''}
+    </div>
+  `;
 
   // MIDDLE & RIGHT COLUMNS HTML
   const descriptionText = proj.description || '';
@@ -5689,35 +5637,38 @@ function renderHRTasksAndProjects() {
       grid.innerHTML = `
         <div class="empty-state" style="grid-column: 1 / -1; padding: 24px;">
           <div class="empty-state-title">No projects active</div>
-          <p>Click "Add New Project" to get started.</p>
+          <p>Click "+ Add New Project" to get started.</p>
         </div>
       `;
-    } else if (state.currentRole === 'techlead' || state.currentRole === 'manager') {
-      const myProjects = state.projects.filter(p =>
-        p.techLeadId === state.currentUser.id ||
-        p.techLeadId === state.currentUser.email ||
-        (p.employeeIds && (p.employeeIds.includes(state.currentUser.id) || p.employeeIds.includes(state.currentUser.email))) ||
-        (p.dept && state.currentUser.dept && state.currentUser.dept.split(',').map(d => d.trim().toLowerCase()).includes(p.dept.toLowerCase()))
-      );
-      if (myProjects.length === 0) {
+    } else {
+      const user = state.currentUser;
+      const isTechLeadOrManager = (state.currentRole === 'techlead' || state.currentRole === 'manager');
+
+      const visibleProjects = state.projects.filter(p => {
+        if (state.currentRole === 'hr' || state.currentRole === 'admin' || (user && isPratap(user))) return true;
+        if (!user) return true;
+
+        const isLead = (p.techLeadId === user.id || p.techLeadName === user.name || p.createdById === user.id || p.createdByName === user.name);
+        const isMember = (p.employeeIds && (p.employeeIds.includes(user.id) || p.employeeIds.includes(user.email))) ||
+                         (p.teamMembers && p.teamMembers.some(m => typeof m === 'object' ? m.id === user.id : m === user.name));
+        const isDept = p.dept && user.dept && user.dept.split(',').map(d => d.trim().toLowerCase()).includes(p.dept.toLowerCase());
+
+        return isLead || isMember || isDept;
+      });
+
+      if (visibleProjects.length === 0) {
         grid.innerHTML = `
           <div class="empty-state" style="grid-column: 1 / -1; padding: 24px;">
             <div class="empty-state-title">No projects active</div>
-            <p>You are not assigned to any projects.</p>
+            <p>You are not assigned to any projects yet.</p>
           </div>
         `;
       } else {
-        myProjects.forEach(proj => {
-          const card = createProjectCard(proj, true);
+        visibleProjects.forEach(proj => {
+          const card = createProjectCard(proj, isTechLeadOrManager);
           grid.appendChild(card);
         });
       }
-    } else {
-      // HR/Admin view
-      state.projects.forEach(proj => {
-        const card = createProjectCard(proj, null);
-        grid.appendChild(card);
-      });
     }
   }
 

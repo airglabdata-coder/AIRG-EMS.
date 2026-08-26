@@ -49,11 +49,26 @@ const ProjectSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String },
   dept: { type: String },
+  projectType: { type: String },
   status: { type: String },
+  priority: { type: String },
   techLeadId: { type: String },
+  techLeadName: { type: String },
+  createdById: { type: String },
+  createdByName: { type: String },
+  startDate: { type: String },
+  finalDeliveryDate: { type: String },
+  icuDeadline: { type: String },
+  ventilatorDeadline: { type: String },
+  finalDeadline: { type: String },
   progress: { type: Number },
   description: { type: String },
-  files: { type: Array }
+  files: { type: Array },
+  employeeIds: { type: Array },
+  teamMembers: { type: Array },
+  milestones: { type: Array },
+  dailyWorkUpdates: { type: Array },
+  activityLogs: { type: Array }
 }, { strict: false });
 
 // Task Schema

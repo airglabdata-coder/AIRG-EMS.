@@ -3329,6 +3329,167 @@
     }
   </style>
 
+  <!-- Create Project Modal -->
+  <div id="modal-create-project" class="modal-overlay">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 class="modal-title">🚀 Create New Project</h3>
+        <button class="close-btn" onclick="closeCreateProjectModal()">&times;</button>
+      </div>
+      <form id="create-project-form" onsubmit="handleCreateProjectSubmit(event)">
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group" style="grid-column: span 2;">
+            <label for="proj-create-name" style="font-weight: 600;">Project Name *</label>
+            <input type="text" id="proj-create-name" placeholder="e.g. Healthcare Automation Engine 2.0" required>
+          </div>
+          <div class="form-group">
+            <label for="proj-create-dept" style="font-weight: 600;">Department *</label>
+            <select id="proj-create-dept" required>
+              <option value="AI">AI</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Lab Setup">Lab Setup</option>
+              <option value="Instructor">Instructor</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="proj-create-priority" style="font-weight: 600;">Priority *</label>
+            <select id="proj-create-priority" required>
+              <option value="High">High</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="proj-create-techlead" style="font-weight: 600;">Tech Lead / Manager *</label>
+            <select id="proj-create-techlead" required>
+              <!-- Populated via app.js -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="proj-create-type" style="font-weight: 600;">Project Type</label>
+            <input type="text" id="proj-create-type" placeholder="e.g. Hardware & Software R&D">
+          </div>
+          
+          <div style="grid-column: span 2; font-weight: 700; color: var(--primary); font-size: 0.9rem; margin-top: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
+            📅 Standard 3 Milestone Deadlines
+          </div>
+          
+          <div class="form-group">
+            <label for="proj-create-icu-dl" style="font-weight: 600;">🏥 ICU Deadline *</label>
+            <input type="date" id="proj-create-icu-dl" required>
+          </div>
+          <div class="form-group">
+            <label for="proj-create-vent-dl" style="font-weight: 600;">🫁 Ventilator Deadline *</label>
+            <input type="date" id="proj-create-vent-dl" required>
+          </div>
+          <div class="form-group" style="grid-column: span 2;">
+            <label for="proj-create-final-dl" style="font-weight: 600;">🏁 Final Delivery Deadline *</label>
+            <input type="date" id="proj-create-final-dl" required>
+          </div>
+
+          <div class="form-group" style="grid-column: span 2;">
+            <label style="font-weight: 600;">Assign Team Members</label>
+            <div id="proj-create-members-list" style="max-height: 120px; overflow-y: auto; border: 1px solid var(--border-color); padding: 8px; border-radius: 6px; background: var(--bg-tertiary);">
+              <!-- Populated checkboxes via app.js -->
+            </div>
+          </div>
+          <div class="form-group" style="grid-column: span 2;">
+            <label for="proj-create-desc" style="font-weight: 600;">Project Description</label>
+            <textarea id="proj-create-desc" placeholder="Describe the objectives and scope..." rows="3"></textarea>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeCreateProjectModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Interactive Project Dashboard Modal (8 Sub-Tabs) -->
+  <div id="modal-project-dashboard" class="modal-overlay">
+    <div class="modal-card" style="max-width: 950px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <h3 id="proj-dash-title" class="modal-title" style="font-size: 1.3rem;">Project Title</h3>
+          <span id="proj-dash-status-badge" class="badge">Active</span>
+        </div>
+        <button class="close-btn" onclick="closeProjectDashboardModal()">&times;</button>
+      </div>
+
+      <!-- Dashboard Navigation Tabs -->
+      <div class="comm-tabs" style="margin: 12px 0; display: flex; flex-wrap: wrap; gap: 6px;">
+        <button class="comm-tab-btn active" id="proj-tab-overview" onclick="switchProjDashTab('overview')">Overview</button>
+        <button class="comm-tab-btn" id="proj-tab-milestones" onclick="switchProjDashTab('milestones')">Milestones</button>
+        <button class="comm-tab-btn" id="proj-tab-tasks" onclick="switchProjDashTab('tasks')">Tasks</button>
+        <button class="comm-tab-btn" id="proj-tab-daily" onclick="switchProjDashTab('daily')">Daily Work</button>
+        <button class="comm-tab-btn" id="proj-tab-approvals" onclick="switchProjDashTab('approvals')">Approvals <span id="proj-dash-pending-count" class="badge badge-rejected" style="display:none; margin-left: 4px;">0</span></button>
+        <button class="comm-tab-btn" id="proj-tab-team" onclick="switchProjDashTab('team')">Team</button>
+        <button class="comm-tab-btn" id="proj-tab-activity" onclick="switchProjDashTab('activity')">Activity</button>
+        <button class="comm-tab-btn" id="proj-tab-reports" onclick="switchProjDashTab('reports')">Reports</button>
+      </div>
+
+      <div id="proj-dash-content" style="overflow-y: auto; flex: 1; padding-right: 4px;">
+        <!-- Injected via app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Daily Work Modal -->
+  <div id="modal-add-project-daily-work" class="modal-overlay">
+    <div class="modal-card" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📝 Add Today's Work Update</h3>
+        <button class="close-btn" onclick="closeAddProjectDailyWorkModal()">&times;</button>
+      </div>
+      <form id="add-project-daily-work-form" onsubmit="handleProjectDailyWorkSubmit(event)">
+        <input type="hidden" id="proj-work-project-id">
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label style="font-weight: 600;">Date</label>
+            <input type="date" id="proj-work-date" required>
+          </div>
+          <div class="form-group">
+            <label style="font-weight: 600;">Milestone *</label>
+            <select id="proj-work-milestone" required>
+              <option value="ICU Deadline">🏥 ICU Deadline</option>
+              <option value="Ventilator Deadline">🫁 Ventilator Deadline</option>
+              <option value="Final Delivery Deadline">🏁 Final Delivery Deadline</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column: span 2;">
+            <label style="font-weight: 600;">Task / Module Title *</label>
+            <input type="text" id="proj-work-task" placeholder="e.g. Sensor Dashboard API Integration" required>
+          </div>
+          <div class="form-group" style="grid-column: span 2;">
+            <label style="font-weight: 600;">Work Done Description *</label>
+            <textarea id="proj-work-desc" placeholder="Describe the work completed today in detail..." rows="3" required></textarea>
+          </div>
+          <div class="form-group">
+            <label style="font-weight: 600;">Hours Worked *</label>
+            <input type="number" id="proj-work-hours" min="0.5" step="0.5" placeholder="e.g. 6" required>
+          </div>
+          <div class="form-group">
+            <label style="font-weight: 600;">Progress Step Added *</label>
+            <select id="proj-work-progress-added" required>
+              <option value="15">+15% Progress</option>
+              <option value="30">+30% Progress</option>
+              <option value="45">+45% Progress</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column: span 2;">
+            <label style="font-weight: 600;">Remarks / Next Steps</label>
+            <input type="text" id="proj-work-remarks" placeholder="e.g. Unit tests remaining for tomorrow">
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px;">
+          <button type="button" class="btn btn-secondary" onclick="closeAddProjectDailyWorkModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit Daily Work</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Celebration Modal -->
   <div id="celebration-modal-overlay" class="celebration-modal-overlay">
     <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
