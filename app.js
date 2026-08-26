@@ -4774,7 +4774,7 @@ function renderEmployeeTasksAndProjects() {
     const myProjectIds = activeProjects.map(p => p.id);
 
     // Also include personal tasks (private tasks created by this user)
-    const personalTasks = state.tasks.filter(t => t.isPrivate === true && t.ownerId === user.id);
+    const personalTasks = state.tasks.filter(t => isMyPersonalTask(t, user.id, user.name));
 
     if (myProjectIds.length === 0 && personalTasks.length === 0) {
       tbody.innerHTML = `
@@ -5682,6 +5682,9 @@ function renderHRTasksAndProjects() {
     tbody.innerHTML = '';
 
     const filteredTasks = state.tasks.filter(t => {
+      // 1. MUST NEVER show Personal Tasks in the global All Assigned Employee Tasks table!
+      if (isPersonalTask(t)) return false;
+
       if (state.currentRole === 'techlead' || state.currentRole === 'manager') {
         const proj = state.projects.find(p => p.id === t.projectId);
         if (!proj || proj.techLeadId !== state.currentUser.id) {
@@ -5795,7 +5798,7 @@ function renderHRTasksAndProjects() {
   if (personalTbody) {
     personalTbody.innerHTML = '';
     const personalTasks = state.tasks.filter(t => 
-      t.isPrivate === true && t.ownerId === state.currentUser.id
+      isMyPersonalTask(t, state.currentUser ? state.currentUser.id : null, state.currentUser ? state.currentUser.name : null)
     );
 
     if (personalTasks.length === 0) {
@@ -11891,15 +11894,34 @@ function escapeHTML(str) {
   );
 }
 
-// Priority Badge Class Helper
 function getPriorityBadgeClass(priority) {
-  switch (priority) {
-    case 'Critical': return 'badge-rejected'; // red
-    case 'High': return 'badge-rejected'; // red/orange
-    case 'Medium': return 'badge-pending'; // yellow
-    case 'Low': return 'badge-approved'; // green
-    default: return 'badge-pending';
-  }
+  if (!priority) return 'badge-pending';
+  const p = priority.toString().trim();
+  if (p.startsWith('A)') || p === 'Critical' || p === 'Urgent') return 'badge-rejected'; // Red
+  if (p.startsWith('B)') || p === 'High') return 'badge-rejected'; // Orange-Red
+  if (p.startsWith('C)') || p === 'Medium') return 'badge-pending'; // Yellow
+  if (p.startsWith('D)') || p === 'Low') return 'badge-approved'; // Green
+  return 'badge-pending';
+}
+
+function isPersonalTask(t) {
+  if (!t) return false;
+  if (t.isPrivate === true || t.isPersonal === true) return true;
+  if (t.projectId === 'Personal' || t.projectName === 'Personal') return true;
+  if (t.projectId === 'personal' || t.projectId === 'personal-tasks' || t.projectName === 'Personal Tasks') return true;
+  return false;
+}
+
+function isMyPersonalTask(t, userId, userName) {
+  if (!isPersonalTask(t)) return false;
+  if (!userId) return false;
+  return (
+    t.assigneeId === userId ||
+    t.createdById === userId ||
+    t.ownerId === userId ||
+    t.userId === userId ||
+    (userName && (t.assigneeName === userName || t.createdByName === userName))
+  );
 }
 
 function getDepartmentTechLead(dept) {
