@@ -1329,6 +1329,53 @@ app.post('/api/delete-employee-registration', async (req, res) => {
   }
 });
 
+// Atomic Ticket Creation Endpoint
+app.post('/api/create-ticket', async (req, res) => {
+  try {
+    await connectDB();
+    const ticketData = req.body;
+    if (!ticketData || !ticketData.id) {
+      return res.status(400).json({ error: 'Missing ticket data or id' });
+    }
+
+    const created = await models.Ticket.create(ticketData);
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+    return res.json({ success: true, ticket: created.toJSON() });
+  } catch (err) {
+    console.error('Error creating ticket directly:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Atomic Ticket Update & Status Endpoint
+app.post('/api/update-ticket-status', async (req, res) => {
+  try {
+    await connectDB();
+    const { id, status, resolvedBy, assignedToId, assignedToName, replies, updatedAt } = req.body;
+    if (!id) {
+      return res.status(400).json({ error: 'Missing ticket id' });
+    }
+
+    const updateFields = { updatedAt: updatedAt || new Date().toISOString() };
+    if (status) updateFields.status = status;
+    if (resolvedBy) updateFields.resolvedBy = resolvedBy;
+    if (assignedToId) updateFields.assignedToId = assignedToId;
+    if (assignedToName) updateFields.assignedToName = assignedToName;
+    if (replies && Array.isArray(replies)) updateFields.replies = replies;
+
+    const updated = await models.Ticket.findOneAndUpdate(
+      { id },
+      { $set: updateFields },
+      { new: true }
+    );
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+    return res.json({ success: true, ticket: updated ? updated.toJSON() : null });
+  } catch (err) {
+    console.error('Error updating ticket status directly:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Export the app for Vercel Serverless
 module.exports = app;
 

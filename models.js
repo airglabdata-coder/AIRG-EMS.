@@ -153,6 +153,7 @@ const TicketSchema = new mongoose.Schema({
   category: { type: String },
   priority: { type: String },
   status: { type: String },
+  resolvedBy: { type: String },
   assignedToId: { type: String },
   assignedToName: { type: String },
   targetRole: { type: String },

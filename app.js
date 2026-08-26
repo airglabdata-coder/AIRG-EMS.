@@ -11770,7 +11770,6 @@ function loginAsUser(user, isReload = false) {
 
   updateCommMenuBadges();
 
-  // Register push notifications
   if (user && 'serviceWorker' in navigator && 'PushManager' in window) {
     setupPushSubscription(user.id);
   }
@@ -11807,17 +11806,49 @@ window.logout = logout;
 // --- SUPPORT TICKET SYSTEM MODULE ---
 // ==========================================
 
+function getTicketStatusBadgeHtml(t) {
+  if (!t) return `<span class="badge badge-pending" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">Open</span>`;
+
+  const status = (t.status || '').toLowerCase();
+  if (status === 'resolved' || status === 'closed') {
+    const resolver = (t.resolvedBy || '').toLowerCase();
+    if (resolver.includes('admin') || resolver.includes('ceo') || resolver.includes('pratap')) {
+      return `<span class="badge badge-approved" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">Resolved by Admin/CEO</span>`;
+    }
+    return `<span class="badge badge-approved" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">Resolved by HR</span>`;
+  }
+
+  if (status === 'in progress') {
+    return `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">In Progress</span>`;
+  }
+
+  return `<span class="badge badge-pending" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">Open</span>`;
+}
+
 function renderTickets() {
-  const isAgent = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin');
+  const isAdminUser = (state.currentRole === 'admin') || isPratap(state.currentUser);
+  const isAgent = (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || isAdminUser);
 
   const subTabs = document.getElementById('ticket-sub-tabs');
   const empSection = document.getElementById('ticket-employee-section');
   const agentSection = document.getElementById('ticket-agent-section');
 
+  const submitFormCard = document.querySelector('#ticket-creation-form')?.closest('.card');
+
+  if (isAdminUser) {
+    // Admin ONLY manages tickets and cannot raise tickets
+    if (subTabs) subTabs.style.display = 'none';
+    if (empSection) empSection.style.display = 'none';
+    if (agentSection) agentSection.style.display = 'flex';
+    state.activeTicketSubTab = 'manage';
+    renderAgentTickets();
+    return;
+  }
+
   if (isAgent) {
     if (subTabs) subTabs.style.display = 'flex';
+    if (submitFormCard) submitFormCard.style.display = 'block';
 
-    // Update sub-tabs active classes
     const myTab = document.getElementById('ticket-tab-my');
     const manageTab = document.getElementById('ticket-tab-manage');
     if (myTab && manageTab) {
@@ -11836,6 +11867,7 @@ function renderTickets() {
     }
   } else {
     if (subTabs) subTabs.style.display = 'none';
+    if (submitFormCard) submitFormCard.style.display = 'block';
     state.activeTicketSubTab = 'my';
     if (agentSection) agentSection.style.display = 'none';
     if (empSection) empSection.style.display = 'flex';
@@ -11850,7 +11882,7 @@ function switchTicketSubTab(tab) {
 
 // 1. Employee view rendering
 function renderEmployeeTickets() {
-  const userId = state.currentUser.id;
+  const userId = state.currentUser ? state.currentUser.id : '';
   const userTickets = state.tickets.filter(t => t.employeeId === userId);
 
   // Update Stats
@@ -11878,7 +11910,6 @@ function renderEmployeeTickets() {
   const sortedTickets = [...userTickets].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
   tbody.innerHTML = sortedTickets.map(t => {
-    const statusClass = `badge badge-${t.status.toLowerCase().replace(' ', '')}`;
     const formattedDate = new Date(t.updatedAt).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
     const assigneeName = t.assignedToName || '<span style="color: var(--text-muted); font-style: italic;">Unassigned</span>';
     const canDeleteTicket = t.status === 'Open';
@@ -11889,7 +11920,7 @@ function renderEmployeeTickets() {
         <td>${t.category}</td>
         <td>${escapeHTML(t.title)}</td>
         <td><span class="badge ${getPriorityBadgeClass(t.priority)}">${t.priority}</span></td>
-        <td><span class="${statusClass}">${t.status}</span></td>
+        <td>${getTicketStatusBadgeHtml(t)}</td>
         <td>${assigneeName}</td>
         <td>${formattedDate}</td>
         <td style="display:flex; gap:6px; align-items:center;">
@@ -11945,12 +11976,12 @@ function renderAgentTickets() {
   const filterStatus = document.getElementById('ticket-filter-status')?.value || 'all';
 
   const userRole = state.currentRole; // 'hr', 'techlead', 'admin'
-  const userDept = state.currentUser.dept;
+  const userDept = state.currentUser ? state.currentUser.dept : '';
 
   // Base role-specific visibility routing
   let visibleTickets = state.tickets.filter(t => {
     // Admin sees all tickets
-    if (userRole === 'admin') return true;
+    if (userRole === 'admin' || (state.currentUser && isPratap(state.currentUser))) return true;
 
     // Tech Lead only sees technical blockers from their own department (or assigned to them)
     if (userRole === 'techlead') {
@@ -11959,14 +11990,14 @@ function renderAgentTickets() {
       return isTechLeadAssignee || isDeptBlocker;
     }
 
-    // HR only sees HR support and Finance tickets (or assigned to them)
+    // HR sees HR support, Finance tickets, or assigned tickets
     if (userRole === 'hr') {
       const isHRAssignee = (t.assignedToId === state.currentUser.id);
       const isHRCategory = (t.targetRole === 'hr' || t.category === 'HR Support' || t.category === 'Finance');
       return isHRAssignee || isHRCategory;
     }
 
-    return false;
+    return true;
   });
 
   // Apply search and dropdown filters
@@ -12006,7 +12037,6 @@ function renderAgentTickets() {
   const sortedTickets = [...filtered].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
   tbody.innerHTML = sortedTickets.map(t => {
-    const statusClass = `badge badge-${t.status.toLowerCase().replace(' ', '')}`;
     const formattedDate = new Date(t.createdAt).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
     const assigneeName = t.assignedToName || '<span style="color: var(--warning); font-style: italic;">Unassigned</span>';
 
@@ -12017,7 +12047,7 @@ function renderAgentTickets() {
         <td>${t.category}</td>
         <td>${escapeHTML(t.title)}</td>
         <td><span class="badge ${getPriorityBadgeClass(t.priority)}">${t.priority}</span></td>
-        <td><span class="${statusClass}">${t.status}</span></td>
+        <td>${getTicketStatusBadgeHtml(t)}</td>
         <td>${assigneeName}</td>
         <td>${formattedDate}</td>
         <td>
@@ -12029,7 +12059,7 @@ function renderAgentTickets() {
 }
 
 // 3. New Ticket Submission
-function handleTicketFormSubmit(e) {
+async function handleTicketFormSubmit(e) {
   e.preventDefault();
 
   const titleInput = document.getElementById('ticket-title');
@@ -12039,32 +12069,25 @@ function handleTicketFormSubmit(e) {
 
   if (!titleInput || !catInput || !prioInput || !descInput) return;
 
-  // Determine routing rules based on category
   const category = catInput.value;
   let targetRole = 'admin';
-  let targetDept = '';
   let assignedToId = '';
   let assignedToName = '';
 
-  if (category === 'Technical Blocker') {
-    targetRole = 'techlead';
-    targetDept = state.currentUser.dept ? state.currentUser.dept.split(',')[0].trim() : 'AI';
-    const tl = getDepartmentTechLead(targetDept);
-    assignedToId = tl.id;
-    assignedToName = tl.name;
-  } else if (category === 'HR Support') {
+  if (category === 'HR Support') {
     targetRole = 'hr';
     assignedToId = 'AIRG00042';
     assignedToName = 'Shravani Khanvilkar';
   } else {
-    // IT Support, Facilities, Finance
+    // Finance & Expense Claims
     targetRole = 'admin';
     assignedToId = 'AIRG00001';
     assignedToName = 'Pratap Pawar';
   }
 
+  const newId = `TCK-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
   const newTicket = {
-    id: `TCK-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+    id: newId,
     employeeId: state.currentUser.id,
     employeeName: state.currentUser.name,
     title: titleInput.value.trim(),
