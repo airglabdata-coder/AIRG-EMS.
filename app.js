@@ -11126,12 +11126,20 @@ function getReimbursementStatusBadgeHtml(claim) {
 function renderReimbursements() {
   const isEmployeeRole = (state.currentRole || '').toLowerCase() === 'employee' && !isPratap(state.currentUser);
 
-  const empSection = document.getElementById('emp-reimbursements-section');
-  const hrSection = document.getElementById('hr-reimbursements-section');
+  const empSection = document.getElementById('reimbursement-employee-section') || document.getElementById('emp-reimbursements-section');
+  const hrSection = document.getElementById('reimbursement-hr-section') || document.getElementById('hr-reimbursements-section');
 
   if (isEmployeeRole) {
-    if (empSection) empSection.style.display = 'block';
+    if (empSection) empSection.style.display = 'flex';
     if (hrSection) hrSection.style.display = 'none';
+
+    const nameInput = document.getElementById('reimbursement-emp-name');
+    if (nameInput && state.currentUser) nameInput.value = state.currentUser.name;
+
+    const dateInput = document.getElementById('reimbursement-date');
+    if (dateInput && !dateInput.value) {
+      dateInput.value = new Date().toISOString().split('T')[0];
+    }
 
     const tbody = document.getElementById('emp-reimbursements-tbody');
     if (tbody) {
@@ -11171,7 +11179,7 @@ function renderReimbursements() {
     }
   } else {
     if (empSection) empSection.style.display = 'none';
-    if (hrSection) hrSection.style.display = 'block';
+    if (hrSection) hrSection.style.display = 'flex';
 
     const queueTbody = document.getElementById('hr-reimbursements-queue-tbody');
     if (queueTbody) {
