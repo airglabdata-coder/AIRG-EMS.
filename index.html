@@ -2282,10 +2282,24 @@
           <div class="form-group" style="margin-bottom: 12px;">
             <label for="task-priority">Priority</label>
             <select id="task-priority" required>
-              <option value="A) Most Important">A) Most Important</option>
-              <option value="B) Important">B) Important</option>
-              <option value="C) Medium" selected>C) Medium</option>
-              <option value="D) Low">D) Low</option>
+              <optgroup label="🔴 High Priority">
+                <option value="High-A">High-A (Most Critical / Highest Priority)</option>
+                <option value="High-B">High-B (Very Important)</option>
+                <option value="High-C">High-C (Important)</option>
+                <option value="High-D">High-D (Lower Priority Within High)</option>
+              </optgroup>
+              <optgroup label="🟨 Medium Priority">
+                <option value="Medium-A">Medium-A (Most Important Within Medium)</option>
+                <option value="Medium-B">Medium-B (Important)</option>
+                <option value="Medium-C" selected>Medium-C (Normal Medium Priority)</option>
+                <option value="Medium-D">Medium-D (Lowest Priority Within Medium)</option>
+              </optgroup>
+              <optgroup label="🟢 Low Priority">
+                <option value="Low-A">Low-A (Highest Within Low)</option>
+                <option value="Low-B">Low-B (Important but Non-Urgent)</option>
+                <option value="Low-C">Low-C (Optional / Lower Importance)</option>
+                <option value="Low-D">Low-D (Lowest Priority)</option>
+              </optgroup>
             </select>
           </div>
         </div>
@@ -2453,10 +2467,24 @@
           <div class="form-group" style="margin-bottom: 12px;">
             <label for="emp-task-priority">Priority</label>
             <select id="emp-task-priority" required>
-              <option value="A) Most Important">A) Most Important</option>
-              <option value="B) Important">B) Important</option>
-              <option value="C) Medium" selected>C) Medium</option>
-              <option value="D) Low">D) Low</option>
+              <optgroup label="🔴 High Priority">
+                <option value="High-A">High-A (Most Critical / Highest Priority)</option>
+                <option value="High-B">High-B (Very Important)</option>
+                <option value="High-C">High-C (Important)</option>
+                <option value="High-D">High-D (Lower Priority Within High)</option>
+              </optgroup>
+              <optgroup label="🟨 Medium Priority">
+                <option value="Medium-A">Medium-A (Most Important Within Medium)</option>
+                <option value="Medium-B">Medium-B (Important)</option>
+                <option value="Medium-C" selected>Medium-C (Normal Medium Priority)</option>
+                <option value="Medium-D">Medium-D (Lowest Priority Within Medium)</option>
+              </optgroup>
+              <optgroup label="🟢 Low Priority">
+                <option value="Low-A">Low-A (Highest Within Low)</option>
+                <option value="Low-B">Low-B (Important but Non-Urgent)</option>
+                <option value="Low-C">Low-C (Optional / Lower Importance)</option>
+                <option value="Low-D">Low-D (Lowest Priority)</option>
+              </optgroup>
             </select>
           </div>
         </div>
@@ -3366,10 +3394,24 @@
           <div class="form-group">
             <label for="proj-create-priority" style="font-weight: 600;">Priority *</label>
             <select id="proj-create-priority" required>
-              <option value="A) Most Important">A) Most Important</option>
-              <option value="B) Important">B) Important</option>
-              <option value="C) Medium" selected>C) Medium</option>
-              <option value="D) Low">D) Low</option>
+              <optgroup label="🔴 High Priority">
+                <option value="High-A">High-A (Most Critical / Highest Priority)</option>
+                <option value="High-B">High-B (Very Important)</option>
+                <option value="High-C">High-C (Important)</option>
+                <option value="High-D">High-D (Lower Priority Within High)</option>
+              </optgroup>
+              <optgroup label="🟨 Medium Priority">
+                <option value="Medium-A">Medium-A (Most Important Within Medium)</option>
+                <option value="Medium-B">Medium-B (Important)</option>
+                <option value="Medium-C" selected>Medium-C (Normal Medium Priority)</option>
+                <option value="Medium-D">Medium-D (Lowest Priority Within Medium)</option>
+              </optgroup>
+              <optgroup label="🟢 Low Priority">
+                <option value="Low-A">Low-A (Highest Within Low)</option>
+                <option value="Low-B">Low-B (Important but Non-Urgent)</option>
+                <option value="Low-C">Low-C (Optional / Lower Importance)</option>
+                <option value="Low-D">Low-D (Lowest Priority)</option>
+              </optgroup>
             </select>
           </div>
           <div class="form-group">

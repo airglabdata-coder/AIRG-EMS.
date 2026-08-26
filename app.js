@@ -5706,7 +5706,7 @@ function renderHRTasksAndProjects() {
       const matchesProj = filterProj === 'all' || t.projectId === filterProj;
       const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
       return matchesSearch && matchesProj && matchesStatus;
-    });
+    }).sort((a, b) => getPriorityWeight(a.priority) - getPriorityWeight(b.priority));
 
     if (filteredTasks.length === 0) {
       tbody.innerHTML = `
@@ -5810,7 +5810,7 @@ function renderHRTasksAndProjects() {
     personalTbody.innerHTML = '';
     const personalTasks = state.tasks.filter(t => 
       isMyPersonalTask(t, state.currentUser ? state.currentUser.id : null, state.currentUser ? state.currentUser.name : null)
-    );
+    ).sort((a, b) => getPriorityWeight(a.priority) - getPriorityWeight(b.priority));
 
     if (personalTasks.length === 0) {
       personalTbody.innerHTML = `
@@ -11943,13 +11943,49 @@ function escapeHTML(str) {
   );
 }
 
-function getPriorityBadgeClass(priority) {
-  if (!priority) return 'badge-pending';
+const PRIORITY_WEIGHTS = {
+  'High-A': 1,
+  'High-B': 2,
+  'High-C': 3,
+  'High-D': 4,
+  'Medium-A': 5,
+  'Medium-B': 6,
+  'Medium-C': 7,
+  'Medium-D': 8,
+  'Low-A': 9,
+  'Low-B': 10,
+  'Low-C': 11,
+  'Low-D': 12
+};
+
+function normalizePriority(priority) {
+  if (!priority) return 'Medium-C';
   const p = priority.toString().trim();
-  if (p.startsWith('A)') || p === 'Critical' || p === 'Urgent') return 'badge-rejected'; // Red
-  if (p.startsWith('B)') || p === 'High') return 'badge-rejected'; // Orange-Red
-  if (p.startsWith('C)') || p === 'Medium') return 'badge-pending'; // Yellow
-  if (p.startsWith('D)') || p === 'Low') return 'badge-approved'; // Green
+  if (PRIORITY_WEIGHTS[p]) return p;
+
+  if (p === 'Critical' || p === 'Urgent' || p === 'A) Most Important') return 'High-A';
+  if (p === 'High' || p === 'B) Important') return 'High-B';
+  if (p === 'Medium' || p === 'C) Medium') return 'Medium-C';
+  if (p === 'Low' || p === 'D) Low') return 'Low-C';
+
+  if (p.startsWith('High')) return 'High-B';
+  if (p.startsWith('Medium')) return 'Medium-C';
+  if (p.startsWith('Low')) return 'Low-C';
+
+  return 'Medium-C';
+}
+
+function getPriorityWeight(priority) {
+  const norm = normalizePriority(priority);
+  return PRIORITY_WEIGHTS[norm] || 99;
+}
+
+function getPriorityBadgeClass(priority) {
+  const norm = normalizePriority(priority);
+  if (norm === 'High-A' || norm === 'High-B') return 'badge-rejected';
+  if (norm === 'High-C' || norm === 'High-D') return 'badge-warning';
+  if (norm.startsWith('Medium')) return 'badge-pending';
+  if (norm.startsWith('Low')) return 'badge-approved';
   return 'badge-pending';
 }
 
@@ -14580,7 +14616,8 @@ function renderProjDashTabContent() {
       break;
 
     case 'tasks':
-      const projTasks = state.tasks.filter(t => t.projectId === proj.id);
+      const projTasks = state.tasks.filter(t => t.projectId === proj.id)
+        .sort((a, b) => getPriorityWeight(a.priority) - getPriorityWeight(b.priority));
       container.innerHTML = `
         <div style="padding: 12px 0;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
