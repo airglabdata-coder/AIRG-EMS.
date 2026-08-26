@@ -11088,47 +11088,58 @@ function updatePayslipNotes(value) {
   const salary = getEmployeeSalaryForMonth(targetEmp, selectedMonth);
   salary.notes = value;
 
-  // Also sync the configuration panel notes textarea if currently on screen
   const notesEl = document.getElementById('salary-custom-notes');
   if (notesEl) {
     notesEl.value = value;
   }
 
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
-  triggerBackendSync(); // [AUTO-ADDED] persist ems_employees to server
+  triggerBackendSync();
   showToast('Payslip notes updated successfully!', 'success');
   renderPayslips();
 }
 window.updatePayslipNotes = updatePayslipNotes;
 
-function renderReimbursements() {
-  const isEmployee = state.currentRole === 'employee' || state.currentRole === 'techlead' || state.currentRole === 'manager';
-  const empSection = document.getElementById('reimbursement-employee-section');
-  const hrSection = document.getElementById('reimbursement-hr-section');
+function getReimbursementStatusBadgeHtml(claim) {
+  if (!claim) return `<span class="badge badge-pending" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">Pending</span>`;
 
-  if (isEmployee) {
-    if (empSection) empSection.style.display = 'flex';
+  const status = (claim.status || '').toLowerCase();
+  if (status === 'approved') {
+    const approver = (claim.approvedBy || claim.comment || '').toLowerCase();
+    if (approver.includes('admin') || approver.includes('ceo') || approver.includes('pratap')) {
+      return `<span class="badge badge-approved" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">Approved by Admin/CEO</span>`;
+    }
+    return `<span class="badge badge-approved" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">Approved by HR</span>`;
+  }
+
+  if (status === 'rejected') {
+    const rejecter = (claim.rejectedBy || claim.comment || '').toLowerCase();
+    if (rejecter.includes('admin') || rejecter.includes('ceo') || rejecter.includes('pratap')) {
+      return `<span class="badge badge-rejected" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">Rejected by Admin/CEO</span>`;
+    }
+    return `<span class="badge badge-rejected" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">Rejected by HR</span>`;
+  }
+
+  return `<span class="badge badge-pending" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">Pending</span>`;
+}
+
+function renderReimbursements() {
+  const isEmployeeRole = (state.currentRole || '').toLowerCase() === 'employee' && !isPratap(state.currentUser);
+
+  const empSection = document.getElementById('emp-reimbursements-section');
+  const hrSection = document.getElementById('hr-reimbursements-section');
+
+  if (isEmployeeRole) {
+    if (empSection) empSection.style.display = 'block';
     if (hrSection) hrSection.style.display = 'none';
 
-    // Populate employee form details
-    const nameInput = document.getElementById('reimbursement-emp-name');
-    if (nameInput) nameInput.value = state.currentUser.name;
-
-    // Reset date default to today
-    const dateInput = document.getElementById('reimbursement-date');
-    if (dateInput && !dateInput.value) {
-      dateInput.value = getTodayDateString();
-    }
-
-    // Render claims history
     const tbody = document.getElementById('emp-reimbursements-tbody');
     if (tbody) {
       tbody.innerHTML = '';
       const myClaims = state.reimbursements.filter(c => c.employeeId === state.currentUser.id);
       if (myClaims.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-title">No reimbursement claims yet</div><p>Submit a new claim using the form on the left.</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-state-title">No reimbursement claims</div><p>Submit a new claim using the form on the left.</p></div></td></tr>`;
       } else {
-        // Sort newest first
         myClaims.sort((a, b) => new Date(b.submittedAt || b.date) - new Date(a.submittedAt || a.date));
         myClaims.forEach(claim => {
           const tr = document.createElement('tr');
@@ -11150,7 +11161,7 @@ function renderReimbursements() {
             <td>${claim.location}</td>
             <td title="${claim.purpose}">${truncateText(claim.purpose, 25)}</td>
             <td>${attachmentsHTML}</td>
-            <td><span class="badge badge-${claim.status.toLowerCase()}">${claim.status}</span></td>
+            <td>${getReimbursementStatusBadgeHtml(claim)}</td>
             <td>${claim.comment || '<span class="text-muted">-</span>'}</td>
             <td>${canDeleteClaim ? `<button class="btn btn-secondary btn-xs" onclick="deleteReimbursement('${claim.id}')" style="color:var(--danger); border-color:rgba(239,68,68,0.3);" title="Withdraw claim">Delete</button>` : ''}</td>
           `;
@@ -11159,66 +11170,55 @@ function renderReimbursements() {
       }
     }
   } else {
-    // HR / Admin
     if (empSection) empSection.style.display = 'none';
-    if (hrSection) hrSection.style.display = 'flex';
+    if (hrSection) hrSection.style.display = 'block';
 
-    // 1. Render Approval Queue
     const queueTbody = document.getElementById('hr-reimbursements-queue-tbody');
     if (queueTbody) {
       queueTbody.innerHTML = '';
       const pendingClaims = state.reimbursements.filter(c => c.status === 'pending');
-      if (pendingClaims.length === 0) {
-        queueTbody.innerHTML = `<tr><td colspan="8"><div class="empty-state" style="padding: 24px;"><div class="empty-state-title">No pending claims</div><p>All reimbursement requests have been processed.</p></div></td></tr>`;
-      } else {
-        pendingClaims.sort((a, b) => new Date(b.submittedAt || b.date) - new Date(a.submittedAt || a.date));
-        pendingClaims.forEach(claim => {
-          const tr = document.createElement('tr');
-
-          let attachmentsHTML = 'None';
-          if (claim.attachments && claim.attachments.length > 0) {
-            attachmentsHTML = claim.attachments.map(att => `
-              <span class="badge badge-pending" style="cursor:pointer; margin-right:4px; display:inline-flex; align-items:center;" onclick="openReimbursementAttachment(${JSON.stringify(att).replace(/"/g, '&quot;')})">
-                📎 ${att.name}
-              </span>
-            `).join('');
-          }
-
-          tr.innerHTML = `
-            <td>
-              <div style="font-weight:600; color:var(--text-primary);">${claim.employeeName}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">${state.employees.find(e => e.id === claim.employeeId)?.dept || ''}</div>
-            </td>
-            <td>${formatDate(claim.date)}</td>
-            <td><strong>${claim.type}</strong></td>
-            <td style="font-weight:700; color:var(--primary);">₹${claim.amount}</td>
-            <td>${claim.location}</td>
-            <td title="${claim.purpose}">${truncateText(claim.purpose, 30)}</td>
-            <td>${attachmentsHTML}</td>
-            <td>
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                <input type="text" id="reimb-comment-${claim.id}" placeholder="Remarks (optional)" style="padding:6px 10px; font-size:0.8rem; height:32px;">
-                <div style="display:flex; gap:8px;">
-                  <button class="btn btn-success btn-sm" onclick="approveReimbursement('${claim.id}')" style="flex:1;">Approve</button>
-                  <button class="btn btn-danger btn-sm" onclick="rejectReimbursement('${claim.id}')" style="flex:1;">Reject</button>
-                </div>
+      pendingClaims.sort((a, b) => new Date(b.submittedAt || b.date) - new Date(a.submittedAt || a.date));
+      pendingClaims.forEach(claim => {
+        const tr = document.createElement('tr');
+        let attachmentsHTML = 'None';
+        if (claim.attachments && claim.attachments.length > 0) {
+          attachmentsHTML = claim.attachments.map(att => `
+            <span class="badge badge-pending" style="cursor:pointer; margin-right:4px; display:inline-flex; align-items:center;" onclick="openReimbursementAttachment(${JSON.stringify(att).replace(/"/g, '&quot;')})">
+              📎 ${att.name}
+            </span>
+          `).join('');
+        }
+        tr.innerHTML = `
+          <td>
+            <div style="font-weight:600; color:var(--text-primary);">${claim.employeeName}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">${state.employees.find(e => e.id === claim.employeeId)?.dept || ''}</div>
+          </td>
+          <td>${formatDate(claim.date)}</td>
+          <td><strong>${claim.type}</strong></td>
+          <td style="font-weight:700; color:var(--primary);">₹${claim.amount}</td>
+          <td>${claim.location}</td>
+          <td title="${claim.purpose}">${truncateText(claim.purpose, 30)}</td>
+          <td>${attachmentsHTML}</td>
+          <td>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <input type="text" id="reimb-comment-${claim.id}" placeholder="Remarks (optional)" style="padding:6px 10px; font-size:0.8rem; height:32px;">
+              <div style="display:flex; gap:8px;">
+                <button class="btn btn-success btn-sm" onclick="approveReimbursement('${claim.id}')" style="flex:1;">Approve</button>
+                <button class="btn btn-danger btn-sm" onclick="rejectReimbursement('${claim.id}')" style="flex:1;">Reject</button>
               </div>
-            </td>
-          `;
-          queueTbody.appendChild(tr);
-        });
-      }
+            </div>
+          </td>
+        `;
+        queueTbody.appendChild(tr);
+      });
     }
 
-    // 2. Render Archive Table
     const archiveTbody = document.getElementById('hr-reimbursements-all-tbody');
     if (archiveTbody) {
       archiveTbody.innerHTML = '';
-
-      const searchQ = (document.getElementById('hr-reimbursement-search').value || '').toLowerCase();
-      const filterType = document.getElementById('filter-reimbursement-type').value;
-      const filterStatus = document.getElementById('filter-reimbursement-status').value;
-
+      const searchQ = (document.getElementById('hr-reimbursement-search')?.value || '').toLowerCase();
+      const filterType = document.getElementById('filter-reimbursement-type')?.value || 'all';
+      const filterStatus = document.getElementById('filter-reimbursement-status')?.value || 'all';
       const filtered = state.reimbursements.filter(c => {
         const matchesSearch = c.employeeName.toLowerCase().includes(searchQ) || c.purpose.toLowerCase().includes(searchQ);
         const matchesType = filterType === 'all' || c.type === filterType;
@@ -11253,7 +11253,7 @@ function renderReimbursements() {
             <td>${claim.location}</td>
             <td title="${claim.purpose}">${truncateText(claim.purpose, 25)}</td>
             <td>${attachmentsHTML}</td>
-            <td><span class="badge badge-${claim.status.toLowerCase()}">${claim.status}</span></td>
+            <td>${getReimbursementStatusBadgeHtml(claim)}</td>
             <td>${claim.comment || '<span class="text-muted">-</span>'}</td>
           `;
           archiveTbody.appendChild(tr);
@@ -11418,41 +11418,90 @@ function renderReimbursementFilePreview(fileObj, previewContainer, fileListArray
   previewContainer.appendChild(div);
 }
 
-function approveReimbursement(id) {
+async function approveReimbursement(id) {
   const claim = state.reimbursements.find(c => c.id === id);
   if (!claim) return;
 
+  const userRole = (state.currentUser ? state.currentUser.role || '' : '').toLowerCase();
+  const userName = state.currentUser ? state.currentUser.name || '' : '';
+  const isAdminOrCEO = userRole.includes('admin') || userRole.includes('ceo') || (state.currentUser && isPratap(state.currentUser));
+
+  const approverTitle = isAdminOrCEO ? `Admin / CEO (${userName})` : `HR Manager (${userName})`;
+  const approverShort = isAdminOrCEO ? 'Admin / CEO' : 'HR';
+
   const commentInput = document.getElementById(`reimb-comment-${id}`);
-  const comment = commentInput ? commentInput.value.trim() : '';
+  const customComment = commentInput ? commentInput.value.trim() : '';
+  const finalComment = customComment || `Approved by ${approverShort}`;
 
   claim.status = 'approved';
-  claim.comment = comment || 'Approved by HR';
+  claim.approvedBy = approverTitle;
+  claim.comment = finalComment;
+
   localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
-  triggerBackendSync(); // [AUTO-ADDED] persist ems_reimbursements to server
-
-  showToast(`Approved claim of ₹${claim.amount} for ${claim.employeeName}!`, 'success');
-
-  // Refresh views
   renderReimbursements();
-  // Also refresh payslips in case we approved a reimbursement for the current month!
   renderPayslips();
+
+  // Instant atomic save directly to MongoDB Atlas
+  try {
+    await fetch('/api/update-reimbursement-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: claim.id,
+        status: 'approved',
+        approvedBy: approverTitle,
+        comment: finalComment
+      })
+    });
+  } catch (err) {
+    console.error('Failed to sync reimbursement approval to server:', err);
+  }
+
+  triggerBackendSync();
+  showToast(`Approved claim of ₹${claim.amount} for ${claim.employeeName} (${approverShort})!`, 'success');
 }
 
-function rejectReimbursement(id) {
+async function rejectReimbursement(id) {
   const claim = state.reimbursements.find(c => c.id === id);
   if (!claim) return;
 
+  const userRole = (state.currentUser ? state.currentUser.role || '' : '').toLowerCase();
+  const userName = state.currentUser ? state.currentUser.name || '' : '';
+  const isAdminOrCEO = userRole.includes('admin') || userRole.includes('ceo') || (state.currentUser && isPratap(state.currentUser));
+
+  const rejecterTitle = isAdminOrCEO ? `Admin / CEO (${userName})` : `HR Manager (${userName})`;
+  const rejecterShort = isAdminOrCEO ? 'Admin / CEO' : 'HR';
+
   const commentInput = document.getElementById(`reimb-comment-${id}`);
-  const comment = commentInput ? commentInput.value.trim() : '';
+  const customComment = commentInput ? commentInput.value.trim() : '';
+  const finalComment = customComment || `Rejected by ${rejecterShort}`;
 
   claim.status = 'rejected';
-  claim.comment = comment || 'Rejected by HR';
-  localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
-  triggerBackendSync(); // [AUTO-ADDED] persist ems_reimbursements to server
+  claim.rejectedBy = rejecterTitle;
+  claim.comment = finalComment;
 
-  showToast(`Rejected claim of ₹${claim.amount} for ${claim.employeeName}.`, 'success');
+  localStorage.setItem('ems_reimbursements', JSON.stringify(state.reimbursements));
   renderReimbursements();
   renderPayslips();
+
+  // Instant atomic save directly to MongoDB Atlas
+  try {
+    await fetch('/api/update-reimbursement-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: claim.id,
+        status: 'rejected',
+        rejectedBy: rejecterTitle,
+        comment: finalComment
+      })
+    });
+  } catch (err) {
+    console.error('Failed to sync reimbursement rejection to server:', err);
+  }
+
+  triggerBackendSync();
+  showToast(`Rejected claim of ₹${claim.amount} for ${claim.employeeName} (${rejecterShort}).`, 'info');
 }
 
 function openReimbursementAttachment(fileObj) {

@@ -173,10 +173,12 @@ async function syncCollection(Model, array, keyField = 'id', isReviewer = false,
     // Prevent stale data from non-HR users from overwriting HR approvals
     if (['LeaveRequest', 'Ticket', 'Reimbursement', 'DailyReport', 'TrainerReport'].includes(Model.modelName)) {
       const existing = existingRecordsMap.get(cleanItem[keyField]);
-      if (existing && !isReviewer) {
+      if (existing) {
         if (['LeaveRequest', 'Ticket', 'Reimbursement'].includes(Model.modelName)) {
           if (existing.status && existing.status.toLowerCase() !== 'pending') {
             cleanItem.status = existing.status;
+            if (existing.approvedBy) cleanItem.approvedBy = existing.approvedBy;
+            if (existing.rejectedBy) cleanItem.rejectedBy = existing.rejectedBy;
             if (existing.comment) cleanItem.comment = existing.comment;
           }
         } else if (Model.modelName === 'DailyReport') {
@@ -1245,6 +1247,34 @@ app.post('/api/update-leave-status', async (req, res) => {
     return res.json({ success: true, request: updated ? updated.toJSON() : null });
   } catch (err) {
     console.error('Error updating leave status directly:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Atomic Reimbursement Request Endpoint (Direct Instant Server Persistence)
+app.post('/api/update-reimbursement-status', async (req, res) => {
+  try {
+    await connectDB();
+    const { id, status, comment, approvedBy, rejectedBy } = req.body;
+    if (!id || !status) {
+      return res.status(400).json({ error: 'Missing id or status' });
+    }
+    const updateFields = {
+      status,
+      comment: comment || (status === 'approved' ? 'Approved' : 'Rejected')
+    };
+    if (approvedBy) updateFields.approvedBy = approvedBy;
+    if (rejectedBy) updateFields.rejectedBy = rejectedBy;
+
+    const updated = await models.Reimbursement.findOneAndUpdate(
+      { id },
+      { $set: updateFields },
+      { new: true }
+    );
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+    return res.json({ success: true, reimbursement: updated ? updated.toJSON() : null });
+  } catch (err) {
+    console.error('Error updating reimbursement status directly:', err);
     return res.status(500).json({ error: err.message });
   }
 });

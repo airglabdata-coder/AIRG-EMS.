@@ -138,6 +138,8 @@ const ReimbursementSchema = new mongoose.Schema({
   attachments: { type: Array },
   status: { type: String },
   comment: { type: String },
+  approvedBy: { type: String },
+  rejectedBy: { type: String },
   submittedAt: { type: String }
 }, { strict: false });
 
