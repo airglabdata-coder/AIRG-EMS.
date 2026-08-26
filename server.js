@@ -787,13 +787,47 @@ app.post('/api/delete-record', async (req, res) => {
   }
 
   try {
-    const isReviewer = ['Admin', 'HR'].includes(role);
-    
-    // Admins and HR can delete anything (except maybe hard-deleting employees, but employee soft-delete is handled by POST /api/sync)
+    const normalizedRole = (role || '').toString().toLowerCase().trim();
+    const isReviewer = ['admin', 'hr'].includes(normalizedRole);
+
+    // Admins and HR can delete anything
     if (isReviewer) {
       await Model.deleteMany({ id });
-      console.log(`[EXPLICIT DELETE] Admin ${employeeId} deleted ${modelName} ${id}`);
+      console.log(`[EXPLICIT DELETE] Reviewer ${employeeId} (${role}) deleted ${modelName} ${id}`);
       return res.json({ success: true });
+    }
+
+    // Projects: HR, Admin, or Tech Leads / Creators can delete projects
+    if (modelName === 'Project') {
+      const projDoc = await Model.findOne({ id }).lean();
+      if (!projDoc) {
+        console.log(`[EXPLICIT DELETE] Project ${id} not found in DB. Permitting local cleanup for ${employeeId}.`);
+        return res.json({ success: true, localOnly: true });
+      }
+      const isProjectLead = (projDoc.techLeadId === employeeId || projDoc.createdById === employeeId || normalizedRole === 'techlead' || normalizedRole === 'manager');
+      if (isProjectLead) {
+        await Model.deleteMany({ id });
+        console.log(`[EXPLICIT DELETE] Tech Lead ${employeeId} deleted Project ${id}`);
+        return res.json({ success: true });
+      } else {
+        return res.status(403).json({ error: 'Unauthorized to delete this project. Only project Tech Leads or HR/Admin can delete projects.' });
+      }
+    }
+
+    // Tasks: Reviewers, Tech Leads, or Task Owners/Assignees can delete tasks
+    if (modelName === 'Task') {
+      const taskDoc = await Model.findOne({ id }).lean();
+      if (!taskDoc) {
+        return res.json({ success: true, localOnly: true });
+      }
+      const isTaskOwner = (taskDoc.assigneeId === employeeId || taskDoc.ownerId === employeeId || taskDoc.createdById === employeeId || normalizedRole === 'techlead' || normalizedRole === 'manager');
+      if (isTaskOwner) {
+        await Model.deleteMany({ id });
+        console.log(`[EXPLICIT DELETE] User ${employeeId} deleted Task ${id}`);
+        return res.json({ success: true });
+      } else {
+        return res.status(403).json({ error: 'Unauthorized to delete this task' });
+      }
     }
 
     // Regular users can only delete their own specific records
@@ -821,7 +855,7 @@ app.post('/api/delete-record', async (req, res) => {
       return res.json({ success: true });
     }
 
-    // For all other models (Notice, Announcement, Project, Task, Employee), regular users cannot delete
+    // For all other models, regular users cannot delete
     return res.status(403).json({ error: 'Unauthorized to delete this record type' });
   } catch (err) {
     console.error(`[EXPLICIT DELETE] Failed:`, err);

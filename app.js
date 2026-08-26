@@ -5656,15 +5656,15 @@ function renderHRTasksAndProjects() {
       const isTechLeadOrManager = (state.currentRole === 'techlead' || state.currentRole === 'manager');
 
       const visibleProjects = state.projects.filter(p => {
-        if (state.currentRole === 'hr' || state.currentRole === 'admin' || (user && isPratap(user))) return true;
-        if (!user) return true;
+        if (state.currentRole === 'hr' || state.currentRole === 'admin' || (user && isPratap(user)) || (user && (user.role === 'Admin' || user.role === 'HR'))) return true;
+        if (!user) return false;
 
         const isLead = (p.techLeadId === user.id || p.techLeadName === user.name || p.createdById === user.id || p.createdByName === user.name);
         const isMember = (p.employeeIds && (p.employeeIds.includes(user.id) || p.employeeIds.includes(user.email))) ||
-                         (p.teamMembers && p.teamMembers.some(m => typeof m === 'object' ? m.id === user.id : m === user.name));
-        const isDept = p.dept && user.dept && user.dept.split(',').map(d => d.trim().toLowerCase()).includes(p.dept.toLowerCase());
+                         (p.teamMembers && p.teamMembers.some(m => typeof m === 'object' ? (m.id === user.id || m.name === user.name) : m === user.name)) ||
+                         (state.tasks && state.tasks.some(t => t.projectId === p.id && t.assigneeId === user.id));
 
-        return isLead || isMember || isDept;
+        return isLead || isMember;
       });
 
       if (visibleProjects.length === 0) {
