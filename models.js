@@ -172,11 +172,12 @@ const CelebrationDaySchema = new mongoose.Schema({
   name: { type: String }
 });
 
-// SystemState Metadata Schema (to keep track of sync timestamps, lastUpdated etc.)
+// SystemState Metadata Schema (to keep track of sync timestamps, lastUpdated, activeUsersMap etc.)
 const SystemMetadataSchema = new mongoose.Schema({
   key: { type: String, default: 'lastUpdated' },
-  timestamp: { type: Number, default: Date.now }
-});
+  timestamp: { type: Number, default: Date.now },
+  value: { type: mongoose.Schema.Types.Mixed }
+}, { strict: false });
 
 // PushSubscription Schema
 const PushSubscriptionSchema = new mongoose.Schema({

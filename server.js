@@ -490,13 +490,20 @@ async function clearAndSeedMongoDB() {
 async function trackAndGetActiveUsers(employeeId, isActiveParam) {
   try {
     let doc = await models.SystemMetadata.findOne({ key: 'activeUsersMap' });
-    let map = (doc && doc.value) ? doc.value : {};
+    let map = {};
+    if (doc && doc.value) {
+      if (typeof doc.value === 'object') {
+        map = { ...doc.value };
+      }
+    }
 
     if (employeeId) {
       const keysToTrack = new Set([employeeId, employeeId.toLowerCase()]);
       if (employeeId === 'AIRG00041' || employeeId === 'AIRGO000182' || employeeId.includes('atharva')) {
         keysToTrack.add('AIRG00041');
         keysToTrack.add('AIRGO000182');
+        keysToTrack.add('airg00041');
+        keysToTrack.add('airgo000182');
         keysToTrack.add('atharva@gurujiair.com');
         keysToTrack.add('atharvarnahire182@gmail.com');
       }
@@ -510,15 +517,15 @@ async function trackAndGetActiveUsers(employeeId, isActiveParam) {
       });
     }
 
-    // Clean up inactive users (older than 30 seconds)
+    // Clean up inactive users (older than 45 seconds)
     const now = Date.now();
     for (const [id, lastSeen] of Object.entries(map)) {
-      if (now - lastSeen >= 30000) {
+      if (now - lastSeen >= 45000) {
         delete map[id];
       }
     }
 
-    // Persist active users map to MongoDB Atlas asynchronously
+    // Persist active users map to MongoDB Atlas
     await models.SystemMetadata.findOneAndUpdate(
       { key: 'activeUsersMap' },
       { key: 'activeUsersMap', value: map, timestamp: now },

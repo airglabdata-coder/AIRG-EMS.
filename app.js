@@ -7233,7 +7233,10 @@ function renderCommSidebar() {
         const avatarStyle = emp.photo ? 'border-radius: 50%; overflow: hidden; background: none; padding: 0;' : '';
 
         const targetSet = getEmployeeAllIdentifiers(emp);
-        const isActive = state.activeUsers && state.activeUsers.some(u => targetSet.has(u.toLowerCase()));
+        const isActive = state.activeUsers && state.activeUsers.length > 0 && state.activeUsers.some(u => {
+          const cleanU = (u || '').toLowerCase().trim();
+          return targetSet.has(cleanU) || cleanU === (emp.id || '').toLowerCase() || (emp.email && cleanU === emp.email.toLowerCase());
+        });
 
         empLink.innerHTML = `
           <div style="position: relative; display: inline-block; flex-shrink: 0;">
@@ -7345,7 +7348,10 @@ function renderChatRoom() {
         return isFromUserToTarget || isFromTargetToUser;
       });
 
-      const isActive = state.activeUsers && state.activeUsers.some(u => targetSet.has(u.toLowerCase()));
+      const isActive = state.activeUsers && state.activeUsers.length > 0 && state.activeUsers.some(u => {
+        const cleanU = (u || '').toLowerCase().trim();
+        return targetSet.has(cleanU) || cleanU === (targetEmp.id || '').toLowerCase() || (targetEmp.email && cleanU === targetEmp.email.toLowerCase());
+      });
       
       const onLeaveList = getEmployeesOnLeaveToday();
       const isTargetOnLeave = onLeaveList.some(e => e.id === targetEmp.id);
