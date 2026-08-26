@@ -2226,7 +2226,7 @@
   </div>
 
   <!-- Assign Task Modal Overlay -->
-  <div id="task-modal-overlay" class="modal-overlay">
+  <div id="task-modal-overlay" class="modal-overlay" style="z-index: 10005;">
     <div class="modal">
       <div class="modal-header">
         <h3>Assign New Task</h3>
@@ -2245,10 +2245,15 @@
               style="min-height: 80px; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);"></textarea>
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
-            <label for="task-images">Upload/Attach Images & Screenshots</label>
-            <input type="file" id="task-images" accept="image/*" multiple
+            <label for="task-images">Upload/Attach Photos, Screenshots, PDFs & Documents</label>
+            <input type="file" id="task-images" accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip" multiple
               style="font-size: 0.85rem; width: 100%; color: var(--text-primary);">
             <div id="task-images-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;"></div>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="task-drive-link">🔗 Google Drive / Attachment Web Link</label>
+            <input type="url" id="task-drive-link" placeholder="Paste Google Drive or any web link here..."
+              style="font-size: 0.85rem; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); box-sizing: border-box;">
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
             <label for="task-project-select">Project</label>
@@ -2400,7 +2405,7 @@
   </div>
 
   <!-- Create Employee Task Modal Overlay -->
-  <div id="emp-task-modal-overlay" class="modal-overlay">
+  <div id="emp-task-modal-overlay" class="modal-overlay" style="z-index: 10005;">
     <div class="modal">
       <div class="modal-header">
         <h3>Add New Task</h3>
@@ -2419,10 +2424,15 @@
               style="min-height: 80px; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary);"></textarea>
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
-            <label for="emp-task-images">Upload/Attach Images & Screenshots</label>
-            <input type="file" id="emp-task-images" accept="image/*" multiple
+            <label for="emp-task-images">Upload/Attach Photos, Screenshots, PDFs & Documents</label>
+            <input type="file" id="emp-task-images" accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip" multiple
               style="font-size: 0.85rem; width: 100%; color: var(--text-primary);">
             <div id="emp-task-images-preview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;"></div>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="emp-task-drive-link">🔗 Google Drive / Attachment Web Link</label>
+            <input type="url" id="emp-task-drive-link" placeholder="Paste Google Drive or any web link here..."
+              style="font-size: 0.85rem; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); box-sizing: border-box;">
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
             <label for="emp-task-project-select">Project</label>

@@ -1085,24 +1085,35 @@ function setupFileInputListener(inputId, previewContainerId, fileListArray) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
-      // Block non-image files larger than 500KB
-      if (!file.type.startsWith('image/') && file.size > 512000) {
-        showToast(`File "${file.name}" exceeds 500KB. Please upload it to Google Drive and paste the link in the text box instead.`, 'error');
+      // Block files larger than 2MB
+      if (file.size > 2097152) {
+        showToast(`File "${file.name}" exceeds 2MB limit. Please upload it to Google Drive and paste the link in the link field instead.`, 'error');
         continue;
       }
 
       const reader = new FileReader();
       reader.onload = function (event) {
         const base64Data = event.target.result;
-        compressImage(base64Data, 800, 800, 0.6, function (compressedDataUrl) {
+        if (file.type.startsWith('image/')) {
+          compressImage(base64Data, 800, 800, 0.6, function (compressedDataUrl) {
+            const fileObj = {
+              name: file.name,
+              type: file.type,
+              data: compressedDataUrl
+            };
+            fileListArray.push(fileObj);
+            renderAttachmentPreview(fileObj, previewContainer, fileListArray);
+          });
+        } else {
+          // PDFs, Docs, Zips, Spreadsheets - store base64 URL directly
           const fileObj = {
             name: file.name,
-            type: file.type,
-            data: compressedDataUrl
+            type: file.type || 'application/pdf',
+            data: base64Data
           };
           fileListArray.push(fileObj);
           renderAttachmentPreview(fileObj, previewContainer, fileListArray);
-        });
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -6191,12 +6202,15 @@ function changeProjectTechLead(projId, newTechLeadId) {
 }
 window.changeProjectTechLead = changeProjectTechLead;
 
-function openAssignTaskModal() {
+function openAssignTaskModal(preselectProjectId) {
   document.getElementById('task-assignment-form').reset();
 
   currentAttachedImagesHR.length = 0;
   const hrPreview = document.getElementById('task-images-preview');
   if (hrPreview) hrPreview.innerHTML = '';
+
+  const linkInput = document.getElementById('task-drive-link');
+  if (linkInput) linkInput.value = '';
 
   // Default due date to 1 week from now
   const oneWeekLater = new Date();
@@ -6214,7 +6228,22 @@ function openAssignTaskModal() {
   }
 
   populateTaskModalOptions();
-  document.getElementById('task-modal-overlay').classList.add('active');
+
+  if (preselectProjectId) {
+    const projSelect = document.getElementById('task-project-select');
+    if (projSelect) {
+      projSelect.value = preselectProjectId;
+      if (typeof handleAssignTaskProjectChange === 'function') {
+        handleAssignTaskProjectChange({ target: projSelect });
+      }
+    }
+  }
+
+  const modalOverlay = document.getElementById('task-modal-overlay');
+  if (modalOverlay) {
+    modalOverlay.style.zIndex = '10005';
+    modalOverlay.classList.add('active');
+  }
 }
 
 function hideTaskModal() {
@@ -6232,6 +6261,10 @@ function handleTaskAssignmentSubmit(e) {
   const dueDate = document.getElementById('task-due-date').value;
   const priority = document.getElementById('task-priority').value;
 
+  const linkInput = document.getElementById('task-drive-link');
+  const driveUrl = linkInput ? linkInput.value.trim() : '';
+  const driveLinks = driveUrl ? [{ url: driveUrl, label: 'Google Drive / Attachment Link' }] : [];
+
   if (!desc || !projId || !empId || !startDate || !dueDate || !priority) {
     showToast('Please fill out all fields.', 'error');
     return;
@@ -6248,12 +6281,13 @@ function handleTaskAssignmentSubmit(e) {
   const newTask = {
     id: `TSK${400 + state.tasks.length + 1}`,
     projectId: projId,
-    projectName: project.name,
+    projectName: project ? project.name : 'General',
     desc: desc,
     details: details,
+    driveLinks: driveLinks,
     images: [...currentAttachedImagesHR],
     assigneeId: empId,
-    assigneeName: employee.name,
+    assigneeName: employee ? employee.name : 'Employee',
     startDate: startDate,
     dueDate: dueDate,
     priority: priority,
@@ -6268,7 +6302,10 @@ function handleTaskAssignmentSubmit(e) {
 
   hideTaskModal();
   renderHRTasksAndProjects();
-  showToast(`Task assigned to ${employee.name}!`, 'success');
+  if (typeof activeDashProjectId !== 'undefined' && activeDashProjectId === projId) {
+    renderProjDashTabContent();
+  }
+  showToast(`Task assigned to ${employee ? employee.name : 'Employee'}!`, 'success');
 }
 
 async function deleteTask(taskId) {
@@ -6587,6 +6624,9 @@ function openCreateEmpTaskModal() {
   const empPreview = document.getElementById('emp-task-images-preview');
   if (empPreview) empPreview.innerHTML = '';
 
+  const empLinkInput = document.getElementById('emp-task-drive-link');
+  if (empLinkInput) empLinkInput.value = '';
+
   // Default due date to 1 week from now
   const oneWeekLater = new Date();
   oneWeekLater.setDate(oneWeekLater.getDate() + 7);
@@ -6626,7 +6666,11 @@ function openCreateEmpTaskModal() {
     });
   }
 
-  document.getElementById('emp-task-modal-overlay').classList.add('active');
+  const modalOverlay = document.getElementById('emp-task-modal-overlay');
+  if (modalOverlay) {
+    modalOverlay.style.zIndex = '10005';
+    modalOverlay.classList.add('active');
+  }
 }
 
 function hideEmpTaskModal() {
@@ -6642,6 +6686,10 @@ function handleEmpTaskCreationSubmit(e) {
   const startDate = document.getElementById('emp-task-start-date').value;
   const dueDate = document.getElementById('emp-task-due-date').value;
   const priority = document.getElementById('emp-task-priority').value;
+
+  const empLinkInput = document.getElementById('emp-task-drive-link');
+  const empDriveUrl = empLinkInput ? empLinkInput.value.trim() : '';
+  const empDriveLinks = empDriveUrl ? [{ url: empDriveUrl, label: 'Google Drive / Attachment Link' }] : [];
 
   if (!desc || !projId || !startDate || !dueDate || !priority) {
     showToast('Please fill out all fields.', 'error');
@@ -6666,6 +6714,7 @@ function handleEmpTaskCreationSubmit(e) {
     projectName: projectName,
     desc: desc,
     details: details,
+    driveLinks: empDriveLinks,
     images: [...currentAttachedImagesEmp],
     assigneeId: state.currentUser.id,
     assigneeName: state.currentUser.name,
