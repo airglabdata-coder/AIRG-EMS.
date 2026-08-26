@@ -589,38 +589,6 @@ const DEFAULT_EMPLOYEES = [
     phone: "+91 99752 59016"
   },
   {
-    id: "AIRG00030",
-    name: "Aniket Shrungare",
-    dept: "Electronics, Lab Setup",
-    email: "aniket@gurujiair.com",
-    role: "Employee",
-    balance: 20,
-    absent: 0,
-    avatar: "AS",
-    aadhar: "2437 8300 0000",
-    pan: "ANIKE1234S",
-    bankAcc: "98765432102",
-    bankIfsc: "HDFC0000123",
-    password: "aniket",
-    phone: "+91 97649 11848"
-  },
-  {
-    id: "AIRG00031",
-    name: "Dipak Reddy",
-    dept: "Electronics, Lab Setup",
-    email: "dipak@gurujiair.com",
-    role: "Employee",
-    balance: 20,
-    absent: 0,
-    avatar: "DR",
-    aadhar: "4052 2900 0000",
-    pan: "DIPAK1234R",
-    bankAcc: "98765432103",
-    bankIfsc: "HDFC0000123",
-    password: "dipak",
-    phone: "+91 78409 67594"
-  },
-  {
     id: "AIRG00029",
     name: "Pratik Mane",
     dept: "Electronics, Lab Setup",
@@ -746,8 +714,7 @@ const DEFAULT_EMPLOYEES = [
     bankAcc: "98765432111",
     bankIfsc: "HDFC0000123",
     password: "aditya",
-    phone: "+91 93805 75065",
-    status: "pending_approval"
+    phone: "+91 93805 75065"
   },
   {
     id: "AIRG00001",
@@ -4147,9 +4114,21 @@ async function approveRegistration(empId) {
   if (!emp) return;
   
   if (confirm(`Are you sure you want to approve registration for "${emp.name}" (${emp.id})?`)) {
-    emp.status = 'approved'; // Set approved status
+    emp.status = 'approved';
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
-    await syncStateNow();
+    renderRegistrationApprovalQueue();
+
+    try {
+      await fetch('/api/approve-registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empId: emp.id })
+      });
+    } catch (err) {
+      console.error('Failed to sync registration approval to server:', err);
+    }
+
+    triggerBackendSync();
     
     // Refresh dropdowns and UI
     populateEmployeeDropdown();
@@ -4158,9 +4137,6 @@ async function approveRegistration(empId) {
     if (typeof renderEmployeeDetails === 'function') {
       renderEmployeeDetails();
     }
-    const activeMenuItem = document.querySelector('.menu-item.active');
-    const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
-    switchView(currentView);
     
     showToast(`Registration approved for "${emp.name}".`, 'success');
   }
@@ -4170,16 +4146,24 @@ async function rejectRegistration(empId) {
   const emp = state.employees.find(e => e.id === empId);
   if (!emp) return;
   
-  if (confirm(`Are you sure you want to reject and delete registration for "${emp.name}" (${emp.id})?`)) {
+  if (confirm(`Are you sure you want to reject and permanently delete registration for "${emp.name}" (${emp.id})?`)) {
+    const targetEmail = emp.email;
     state.employees = state.employees.filter(e => e.id !== empId);
     localStorage.setItem('ems_employees', JSON.stringify(state.employees));
-    await syncStateNow();
+    renderRegistrationApprovalQueue();
 
-    const activeMenuItem = document.querySelector('.menu-item.active');
-    const currentView = activeMenuItem ? activeMenuItem.getAttribute('data-view') : 'tasks';
-    switchView(currentView);
+    try {
+      await fetch('/api/delete-employee-registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empId: emp.id, email: targetEmail })
+      });
+    } catch (err) {
+      console.error('Failed to delete registration from server:', err);
+    }
 
-    showToast(`Registration rejected for "${emp.name}".`, 'info');
+    triggerBackendSync();
+    showToast(`Registration rejected and permanently deleted for "${emp.name}".`, 'info');
   }
 }
 

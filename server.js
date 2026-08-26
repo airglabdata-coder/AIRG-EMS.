@@ -1279,6 +1279,56 @@ app.post('/api/update-reimbursement-status', async (req, res) => {
   }
 });
 
+// Atomic Registration Approval Endpoint
+app.post('/api/approve-registration', async (req, res) => {
+  try {
+    await connectDB();
+    const { empId } = req.body;
+    if (!empId) {
+      return res.status(400).json({ error: 'Missing empId' });
+    }
+
+    const updated = await models.Employee.findOneAndUpdate(
+      { $or: [{ id: empId }, { id: empId.toUpperCase() }, { id: empId.toLowerCase() }] },
+      { $set: { status: 'approved' } },
+      { new: true }
+    );
+
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+    return res.json({ success: true, employee: updated ? updated.toJSON() : null });
+  } catch (err) {
+    console.error('Error approving registration directly:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Atomic Registration / Employee Permanent Deletion Endpoint
+app.post('/api/delete-employee-registration', async (req, res) => {
+  try {
+    await connectDB();
+    const { empId, email } = req.body;
+    if (!empId && !email) {
+      return res.status(400).json({ error: 'Missing empId or email' });
+    }
+
+    const queryConditions = [];
+    if (empId) {
+      queryConditions.push({ id: empId }, { id: empId.toUpperCase() }, { id: empId.toLowerCase() });
+    }
+    if (email) {
+      queryConditions.push({ email: email.toLowerCase() });
+    }
+
+    const result = await models.Employee.deleteMany({ $or: queryConditions });
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp: Date.now() }, { upsert: true });
+
+    return res.json({ success: true, deletedCount: result.deletedCount });
+  } catch (err) {
+    console.error('Error deleting employee registration directly:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Export the app for Vercel Serverless
 module.exports = app;
 
