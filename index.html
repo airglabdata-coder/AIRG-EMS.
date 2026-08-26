@@ -2234,7 +2234,7 @@
           style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
       </div>
       <form id="task-assignment-form">
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: 75vh; overflow-y: auto; padding-right: 6px;">
           <div class="form-group" style="margin-bottom: 12px;">
             <label for="task-desc">Task Title</label>
             <input type="text" id="task-desc" placeholder="e.g. Refactor API controllers" required>
@@ -2254,6 +2254,29 @@
             <label for="task-drive-link">🔗 Google Drive / Attachment Web Link</label>
             <input type="url" id="task-drive-link" placeholder="Paste Google Drive or any web link here..."
               style="font-size: 0.85rem; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); box-sizing: border-box;">
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="task-priority" style="font-weight: 600;">Priority *</label>
+            <select id="task-priority" required>
+              <optgroup label="🔴 High Priority">
+                <option value="High-A">High-A (Most Critical / Highest Priority)</option>
+                <option value="High-B">High-B (Very Important)</option>
+                <option value="High-C">High-C (Important)</option>
+                <option value="High-D">High-D (Lower Priority Within High)</option>
+              </optgroup>
+              <optgroup label="🟨 Medium Priority">
+                <option value="Medium-A">Medium-A (Most Important Within Medium)</option>
+                <option value="Medium-B">Medium-B (Important)</option>
+                <option value="Medium-C" selected>Medium-C (Normal Medium Priority)</option>
+                <option value="Medium-D">Medium-D (Lowest Priority Within Medium)</option>
+              </optgroup>
+              <optgroup label="🟢 Low Priority">
+                <option value="Low-A">Low-A (Highest Within Low)</option>
+                <option value="Low-B">Low-B (Important but Non-Urgent)</option>
+                <option value="Low-C">Low-C (Optional / Lower Importance)</option>
+                <option value="Low-D">Low-D (Lowest Priority)</option>
+              </optgroup>
+            </select>
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
             <label for="task-project-select">Project</label>
@@ -2278,29 +2301,6 @@
               <label for="task-due-date">Due Date</label>
               <input type="date" id="task-due-date" required>
             </div>
-          </div>
-          <div class="form-group" style="margin-bottom: 12px;">
-            <label for="task-priority">Priority</label>
-            <select id="task-priority" required>
-              <optgroup label="🔴 High Priority">
-                <option value="High-A">High-A (Most Critical / Highest Priority)</option>
-                <option value="High-B">High-B (Very Important)</option>
-                <option value="High-C">High-C (Important)</option>
-                <option value="High-D">High-D (Lower Priority Within High)</option>
-              </optgroup>
-              <optgroup label="🟨 Medium Priority">
-                <option value="Medium-A">Medium-A (Most Important Within Medium)</option>
-                <option value="Medium-B">Medium-B (Important)</option>
-                <option value="Medium-C" selected>Medium-C (Normal Medium Priority)</option>
-                <option value="Medium-D">Medium-D (Lowest Priority Within Medium)</option>
-              </optgroup>
-              <optgroup label="🟢 Low Priority">
-                <option value="Low-A">Low-A (Highest Within Low)</option>
-                <option value="Low-B">Low-B (Important but Non-Urgent)</option>
-                <option value="Low-C">Low-C (Optional / Lower Importance)</option>
-                <option value="Low-D">Low-D (Lowest Priority)</option>
-              </optgroup>
-            </select>
           </div>
         </div>
         <div class="modal-footer">
@@ -2427,7 +2427,7 @@
           style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
       </div>
       <form id="emp-task-creation-form">
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: 75vh; overflow-y: auto; padding-right: 6px;">
           <div class="form-group" style="margin-bottom: 12px;">
             <label for="emp-task-desc">Task Title</label>
             <input type="text" id="emp-task-desc" placeholder="e.g. Prepare presentation slides" required>
@@ -2449,23 +2449,7 @@
               style="font-size: 0.85rem; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); box-sizing: border-box;">
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
-            <label for="emp-task-project-select">Project</label>
-            <select id="emp-task-project-select">
-              <!-- Dynamically populated department projects + "Personal / Non-Project" option -->
-            </select>
-          </div>
-          <div class="form-grid" style="margin-bottom: 12px;">
-            <div class="form-group">
-              <label for="emp-task-start-date">Start Date</label>
-              <input type="date" id="emp-task-start-date" required>
-            </div>
-            <div class="form-group">
-              <label for="emp-task-due-date">Due Date</label>
-              <input type="date" id="emp-task-due-date" required>
-            </div>
-          </div>
-          <div class="form-group" style="margin-bottom: 12px;">
-            <label for="emp-task-priority">Priority</label>
+            <label for="emp-task-priority" style="font-weight: 600;">Priority *</label>
             <select id="emp-task-priority" required>
               <optgroup label="🔴 High Priority">
                 <option value="High-A">High-A (Most Critical / Highest Priority)</option>
@@ -2486,6 +2470,22 @@
                 <option value="Low-D">Low-D (Lowest Priority)</option>
               </optgroup>
             </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="emp-task-project-select">Project</label>
+            <select id="emp-task-project-select">
+              <!-- Dynamically populated department projects + "Personal / Non-Project" option -->
+            </select>
+          </div>
+          <div class="form-grid" style="margin-bottom: 12px;">
+            <div class="form-group">
+              <label for="emp-task-start-date">Start Date</label>
+              <input type="date" id="emp-task-start-date" required>
+            </div>
+            <div class="form-group">
+              <label for="emp-task-due-date">Due Date</label>
+              <input type="date" id="emp-task-due-date" required>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
