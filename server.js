@@ -84,7 +84,8 @@ async function getMongoDBState() {
     nationalHolidays,
     celebrationDays,
     schools,
-    trainerReports
+    trainerReports,
+    customChatGroups
   ] = await Promise.all([
     models.Employee.find({}),
     models.LeaveRequest.find({}),
@@ -99,7 +100,8 @@ async function getMongoDBState() {
     models.NationalHoliday.find({}),
     models.CelebrationDay.find({}),
     models.School.find({}),
-    models.TrainerReport.find({})
+    models.TrainerReport.find({}),
+    models.CustomChatGroup.find({})
   ]);
 
   let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' });
@@ -119,10 +121,11 @@ async function getMongoDBState() {
       notices: notices.map(x => x.toJSON()),
       reimbursements: reimbursements.map(x => x.toJSON()),
       tickets: tickets.map(x => x.toJSON()),
-      nationalHolidays: nationalHolidays.map(h => ({ date: h.date, name: h.name })),
-      celebrationDays: celebrationDays.map(c => ({ date: c.date, name: c.name })),
+      nationalHolidays: nationalHolidays.map(x => x.toJSON()),
+      celebrationDays: celebrationDays.map(x => x.toJSON()),
       schools: schools.map(x => x.toJSON()),
-      trainerReports: trainerReports.map(x => x.toJSON())
+      trainerReports: trainerReports.map(x => x.toJSON()),
+      customChatGroups: customChatGroups.map(x => x.toJSON())
     },
     timestamp: meta.timestamp
   };
@@ -445,7 +448,8 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
     syncCollection(models.NationalHoliday, stateObj.nationalHolidays, 'date', isReviewer),
     syncCollection(models.CelebrationDay, stateObj.celebrationDays, 'date', isReviewer),
     syncCollection(models.School, stateObj.schools, 'id', isReviewer),
-    syncCollection(models.TrainerReport, stateObj.trainerReports, 'id', isReviewer)
+    syncCollection(models.TrainerReport, stateObj.trainerReports, 'id', isReviewer),
+    syncCollection(models.CustomChatGroup, stateObj.customChatGroups, 'id', isReviewer)
   ];
 
   await Promise.all(syncOps);

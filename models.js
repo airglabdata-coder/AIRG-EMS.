@@ -279,5 +279,13 @@ module.exports = {
   PushSubscription: mongoose.model('PushSubscription', PushSubscriptionSchema),
   School: mongoose.model('School', SchoolSchema),
   TrainerReport: mongoose.model('TrainerReport', TrainerReportSchema),
-  Tombstone: mongoose.model('Tombstone', TombstoneSchema)
+  Tombstone: mongoose.model('Tombstone', TombstoneSchema),
+  CustomChatGroup: mongoose.model('CustomChatGroup', new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    createdBy: { type: String },
+    createdByName: { type: String },
+    members: { type: Array, default: [] },
+    createdAt: { type: String }
+  }, { strict: false }))
 };

@@ -7820,8 +7820,13 @@ function renderAnnouncements() {
   });
 }
 
+let isPostingAnnouncement = false;
+
 async function handleAnnouncementSubmit(e) {
   e.preventDefault();
+  if (isPostingAnnouncement) return;
+
+  const submitBtn = e.target ? e.target.querySelector('button[type="submit"]') : null;
   const titleInput = document.getElementById('announcement-title');
   const contentInput = document.getElementById('announcement-content');
   if (!titleInput || !contentInput) return;
@@ -7832,6 +7837,25 @@ async function handleAnnouncementSubmit(e) {
   if (!title || !content) {
     showToast('Please fill out all fields.', 'error');
     return;
+  }
+
+  // Deduplicate: check if identical announcement posted within last 60 seconds
+  const isDuplicate = (state.announcements || []).some(a =>
+    a.title === title &&
+    a.content === content &&
+    (Math.abs(new Date().getTime() - new Date(a.timestamp).getTime()) < 60000)
+  );
+
+  if (isDuplicate) {
+    showToast('This announcement was already posted.', 'info');
+    hidePostAnnouncementModal();
+    return;
+  }
+
+  isPostingAnnouncement = true;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Posting...';
   }
 
   const newAnn = {
@@ -7887,6 +7911,13 @@ async function handleAnnouncementSubmit(e) {
   hidePostAnnouncementModal();
   renderAnnouncements();
   updateCommMenuBadges();
+
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Post Announcement';
+  }
+  isPostingAnnouncement = false;
+
   showToast('Announcement posted successfully!', 'success');
 }
 
