@@ -823,6 +823,75 @@ app.post('/api/update-employee-role', async (req, res) => {
   }
 });
 
+// Dedicated API endpoint to handle registration approvals
+app.post('/api/approve-registration', async (req, res) => {
+  const { empId } = req.body;
+  if (!empId) {
+    return res.status(400).json({ error: 'Missing empId' });
+  }
+
+  try {
+    await connectDB();
+    await models.Employee.updateOne(
+      { id: empId },
+      { $set: { status: 'approved' } }
+    );
+
+    console.log(`[REGISTRATION APPROVAL] Approved registration for ${empId}`);
+
+    const timestamp = Date.now();
+    await models.SystemMetadata.findOneAndUpdate(
+      { key: 'lastUpdated' },
+      { timestamp },
+      { upsert: true }
+    );
+
+    return res.json({ success: true, empId, timestamp });
+  } catch (err) {
+    console.error('❌ Failed to approve registration:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Dedicated API endpoint to reject and permanently delete employee registration
+app.post('/api/delete-employee-registration', async (req, res) => {
+  const { empId, email } = req.body;
+  const targetId = empId || email;
+  if (!targetId) {
+    return res.status(400).json({ error: 'Missing empId or email' });
+  }
+
+  try {
+    await connectDB();
+    const query = empId ? { id: empId } : { email: email };
+    const empDoc = await models.Employee.findOne(query).lean();
+    const actualId = empDoc ? empDoc.id : empId;
+
+    await models.Employee.deleteMany(query);
+    if (actualId) {
+      await models.Tombstone.findOneAndUpdate(
+        { id: actualId },
+        { id: actualId, modelName: 'Employee', deletedAt: Date.now() },
+        { upsert: true }
+      );
+    }
+
+    console.log(`[REGISTRATION REJECTED] Deleted registration for ${actualId || email}`);
+
+    const timestamp = Date.now();
+    await models.SystemMetadata.findOneAndUpdate(
+      { key: 'lastUpdated' },
+      { timestamp },
+      { upsert: true }
+    );
+
+    return res.json({ success: true, empId: actualId, timestamp });
+  } catch (err) {
+    console.error('❌ Failed to delete employee registration:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // New Explicit Deletion API
 app.post('/api/delete-record', async (req, res) => {
   const { modelName, id, employeeId, role } = req.body;
