@@ -1026,7 +1026,10 @@
             <div class="card" style="padding: 18px; flex: 1;">
               <!-- Dynamic List (either chatrooms, announcement stats, or notice instructions) -->
               <div id="comm-sidebar-list-container">
-                <div class="comm-list-title" id="comm-list-title-label">Conversations</div>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                  <div class="comm-list-title" id="comm-list-title-label" style="margin-bottom: 0;">Conversations</div>
+                  <button id="btn-create-chat-group" class="btn btn-primary btn-sm" onclick="openCreateChatGroupModal()" style="font-size: 0.75rem; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;">+ New Group</button>
+                </div>
                 <div class="comm-list-items" id="comm-list-items-box">
                   <!-- Dynamically populated links -->
                 </div>
@@ -3578,6 +3581,32 @@
         <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px;">
           <button type="button" class="btn btn-secondary" onclick="closeAddProjectDailyWorkModal()">Cancel</button>
           <button type="submit" class="btn btn-primary">Submit Daily Work</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Custom Chat Group Modal -->
+  <div id="modal-create-chat-group" class="modal-overlay">
+    <div class="modal-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="modal-title">👥 Create Custom Chat Group</h3>
+        <button class="close-btn" onclick="closeCreateChatGroupModal()">&times;</button>
+      </div>
+      <form id="create-chat-group-form" onsubmit="handleCreateChatGroupSubmit(event)">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="font-weight: 600;">Group Name *</label>
+          <input type="text" id="chat-group-name-input" placeholder="e.g. Lab Setup Team, AI R&D Group" required style="width: 100%;">
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="font-weight: 600;">Select Members (Employees, Tech Leads, HR, CEO) *</label>
+          <div id="chat-group-members-list" style="max-height: 220px; overflow-y: auto; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; background: var(--bg-tertiary); display: flex; flex-direction: column; gap: 8px;">
+            <!-- Checkboxes injected via app.js -->
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeCreateChatGroupModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Group</button>
         </div>
       </form>
     </div>

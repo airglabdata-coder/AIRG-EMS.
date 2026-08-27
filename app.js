@@ -144,7 +144,8 @@ async function syncStateNow() {
     nationalHolidays: state.nationalHolidays || [],
     celebrationDays: state.celebrationDays || [],
     smsNotifications: state.smsNotifications || [],
-    schools: state.schools || []
+    schools: state.schools || [],
+    customChatGroups: state.customChatGroups || []
   };
 
   const url = state.currentUser ? `/api/sync?employeeId=${state.currentUser.id}` : '/api/sync';
@@ -274,6 +275,10 @@ async function fetchCentralizedState() {
         cleanBloatedAttachments(s.tickets);
         state.tickets = s.tickets;
         safeOriginalSetItem('ems_tickets', JSON.stringify(s.tickets));
+      }
+      if (s.customChatGroups) {
+        state.customChatGroups = s.customChatGroups;
+        safeOriginalSetItem('ems_custom_chat_groups', JSON.stringify(s.customChatGroups));
       }
       if (Array.isArray(s.trainerReports)) {
         state.trainerReports = s.trainerReports;
@@ -888,6 +893,7 @@ let state = {
 
   // Communications State
   chats: [],
+  customChatGroups: JSON.parse(localStorage.getItem('ems_custom_chat_groups') || '[]'),
   announcements: [],
   notices: [],
   activeCommTab: 'chats', // 'chats', 'announcements', 'notices'
@@ -7184,6 +7190,33 @@ function renderCommSidebar() {
     }
     convList.push({ type: 'group', latestTime: groupTime });
 
+    // 1.5 Custom Chat Groups
+    const userEmpId = state.currentUser ? state.currentUser.id : '';
+    const userEmail = state.currentUser ? (state.currentUser.email || '').toLowerCase() : '';
+
+    (state.customChatGroups || []).forEach(grp => {
+      const isMember = grp.createdBy === userEmpId ||
+        (grp.members && grp.members.some(m => m === userEmpId || (typeof m === 'string' && m.toLowerCase() === userEmail)));
+
+      if (isMember) {
+        let grpTime = new Date(grp.createdAt || 0).getTime();
+        const customMsgs = (state.chats || []).filter(c => c.receiverId === grp.id);
+        if (customMsgs.length > 0) {
+          const lastCustomMsg = customMsgs.reduce((latest, current) =>
+            new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest, customMsgs[0]);
+          grpTime = new Date(lastCustomMsg.timestamp).getTime();
+        }
+
+        convList.push({
+          type: 'custom_group',
+          id: grp.id,
+          group: grp,
+          name: grp.name,
+          latestTime: grpTime
+        });
+      }
+    });
+
     // 2. Direct Messages for all employees
     const userSet = getEmployeeAllIdentifiers(state.currentUser);
 
@@ -7235,6 +7268,27 @@ function renderCommSidebar() {
           ${badgeHtml}
         `;
         itemsBox.appendChild(groupLink);
+      } else if (item.type === 'custom_group') {
+        const grp = item.group;
+        const isCustomActive = state.activeChatType === 'custom_group' && state.activeChatTargetId === grp.id;
+        const grpLink = document.createElement('div');
+        grpLink.className = `comm-item-link ${isCustomActive ? 'active' : ''}`;
+        grpLink.onclick = () => {
+          state.activeChatType = 'custom_group';
+          state.activeChatTargetId = grp.id;
+          renderCommunicationsHub();
+        };
+        const unreadCustom = getUnreadChatCount(grp.id);
+        const badgeHtml = unreadCustom > 0 ? `<span class="menu-badge" style="display: inline-flex; margin-left: auto; background-color: var(--danger); font-size: 0.7rem; padding: 2px 6px;">${unreadCustom}</span>` : '';
+        grpLink.innerHTML = `
+          <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; background: linear-gradient(135deg, #6366f1, #a855f7);">👥</div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-weight:600; font-size:0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${grp.name}</div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">${(grp.members || []).length} members</div>
+          </div>
+          ${badgeHtml}
+        `;
+        itemsBox.appendChild(grpLink);
       } else {
         const emp = item.emp;
         const isDirectActive = state.activeChatType === 'direct' && state.activeChatTargetId === emp.id;
@@ -7310,11 +7364,6 @@ function renderCommMainContent() {
 
   if (!chatPane || !annPane || !noticePane) return;
 
-  chatPane.style.display = 'none';
-  annPane.style.display = 'none';
-  noticePane.style.display = 'none';
-  if (smsPane) smsPane.style.display = 'none';
-
   if (state.activeCommTab === 'chats') {
     chatPane.style.display = 'flex';
     renderChatRoom();
@@ -7349,6 +7398,19 @@ function renderChatRoom() {
   if (state.activeChatType === 'group') {
     headerTitle.textContent = 'General Group Chat';
     filteredMessages = (state.chats || []).filter(m => m.receiverId === 'group' || m.receiverId === 'all' || m.receiverId === 'general');
+  } else if (state.activeChatType === 'custom_group') {
+    const curGroup = (state.customChatGroups || []).find(g => g.id === state.activeChatTargetId);
+    if (curGroup) {
+      headerTitle.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span>👥 ${escapeHTML(curGroup.name)}</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(${(curGroup.members || []).length} members)</span>
+        </div>
+      `;
+    } else {
+      headerTitle.textContent = 'Group Chat';
+    }
+    filteredMessages = (state.chats || []).filter(m => m.receiverId === state.activeChatTargetId);
   } else {
     let targetEmp = state.employees.find(e => e.id === state.activeChatTargetId || e.email === state.activeChatTargetId);
     if (!targetEmp && state.employees.length > 0) {
@@ -7398,13 +7460,15 @@ function renderChatRoom() {
          );
          const endStr = theirLeave ? new Date(theirLeave.endDate).toLocaleDateString() : 'Unknown';
          const banner = document.createElement('div');
-         banner.style.padding = '12px';
-         banner.style.background = 'rgba(234, 179, 8, 0.1)';
-         banner.style.borderBottom = '1px solid rgba(234, 179, 8, 0.3)';
-         banner.style.color = 'var(--warning)';
-         banner.style.fontSize = '0.85rem';
-         banner.style.textAlign = 'center';
-         banner.innerHTML = `⚠️ <strong>${targetEmp.name}</strong> is currently on leave until <strong>${endStr}</strong>. Please only contact for urgent matters.`;
+         banner.className = 'info-banner';
+         banner.style.marginBottom = '12px';
+         banner.style.backgroundColor = 'rgba(234, 179, 8, 0.1)';
+         banner.style.borderColor = 'rgba(234, 179, 8, 0.3)';
+         banner.innerHTML = `
+           <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #eab308;">
+             <span>⚠️ <strong>${targetEmp.name}</strong> is currently on approved leave until <strong>${endStr}</strong>. They may not respond immediately.</span>
+           </div>
+         `;
          messagesContainer.appendChild(banner);
       }
     } else {
@@ -7412,88 +7476,94 @@ function renderChatRoom() {
     }
   }
 
-  if (filteredMessages.length === 0) {
-    messagesContainer.innerHTML = `
-      <div class="empty-state" style="margin: auto;">
-        <div class="empty-state-title">No messages yet</div>
-        <p>Send a message below to start the conversation.</p>
+  // Render messages sorted by time
+  const sortedMessages = [...filteredMessages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+  if (sortedMessages.length === 0) {
+    const emptyDiv = document.createElement('div');
+    emptyDiv.className = 'empty-state';
+    emptyDiv.style.margin = 'auto';
+    emptyDiv.innerHTML = `
+      <div class="empty-state-title">No messages yet</div>
+      <p>Send a message below to start the conversation.</p>
+    `;
+    messagesContainer.appendChild(emptyDiv);
+    return;
+  }
+
+  let lastDateStr = '';
+  sortedMessages.forEach(msg => {
+    const msgDate = new Date(msg.timestamp);
+    const dateStr = msgDate.toLocaleDateString();
+    const timeStr = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (dateStr !== lastDateStr) {
+      const divider = document.createElement('div');
+      divider.style.textAlign = 'center';
+      divider.style.margin = '15px 0';
+      divider.style.fontSize = '0.75rem';
+      divider.style.color = 'var(--text-muted)';
+
+      let displayDate = dateStr;
+      const today = new Date().toLocaleDateString();
+      const yesterday = new Date(Date.now() - 86400000).toLocaleDateString();
+      if (dateStr === today) displayDate = 'Today';
+      else if (dateStr === yesterday) displayDate = 'Yesterday';
+      else displayDate = msgDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+      divider.innerHTML = `<span style="background-color: var(--card-bg); padding: 4px 12px; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.3); border: 1px solid var(--border-color);">${displayDate}</span>`;
+      messagesContainer.appendChild(divider);
+      lastDateStr = dateStr;
+    }
+
+    const isSent = state.currentUser && (
+      msg.senderId === state.currentUser.id ||
+      (msg.senderName && msg.senderName === state.currentUser.name)
+    );
+
+    const row = document.createElement('div');
+    row.className = `message-row ${isSent ? 'sent' : 'received'}`;
+
+    let fileHtml = '';
+    if (msg.file) {
+      const f = msg.file;
+      if (f.type && f.type.startsWith('image/')) {
+        fileHtml = `
+          <div style="margin-top: 6px;">
+            <img src="${f.data}" style="max-width: 200px; max-height: 150px; border-radius: 6px; cursor: pointer; display: block;" onclick="openFullImageViewModalWithData('${f.data}')" />
+            <div style="font-size: 0.7rem; margin-top: 4px;">
+              <a href="${f.data}" download="${f.name}" style="color: var(--primary); text-decoration: underline; font-weight: 500;">Download ${f.name}</a>
+            </div>
+          </div>
+        `;
+      } else {
+        fileHtml = `
+          <div style="margin-top: 6px; display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.05); padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--primary); flex-shrink: 0;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <a href="${f.data}" download="${f.name}" style="color: var(--primary); text-decoration: underline; font-size: 0.75rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;">${f.name}</a>
+          </div>
+        `;
+      }
+    }
+
+    const deleteMsgBtn = isSent ? `
+      <button onclick="deleteChatMessage('${msg.id}')" title="Delete message" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:0 4px; font-size:0.85rem; line-height:1; opacity:0.6;" onmouseover="this.style.opacity='1'; this.style.color='var(--danger)'" onmouseout="this.style.opacity='0.6'; this.style.color='var(--text-muted)'">🗑</button>
+    ` : '';
+    row.innerHTML = `
+      ${(!isSent && (state.activeChatType === 'group' || state.activeChatType === 'custom_group')) ? `<div class="message-sender-name">${msg.senderName}</div>` : ''}
+      <div class="message-bubble">
+        <div>${msg.content}</div>
+        ${fileHtml}
+      </div>
+      <div style="display:flex; align-items:center; gap:4px;">
+        <div class="message-time">${timeStr}</div>
+        ${deleteMsgBtn}
       </div>
     `;
-  } else {
-    // Sort chronological (oldest first)
-    const sorted = [...filteredMessages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    
-    let lastDateStr = null;
-    sorted.forEach(msg => {
-      const msgDate = new Date(msg.timestamp);
-      const dateStr = msgDate.toLocaleDateString();
-      
-      if (dateStr !== lastDateStr) {
-        const divider = document.createElement('div');
-        divider.style.textAlign = 'center';
-        divider.style.margin = '15px 0';
-        divider.style.fontSize = '0.75rem';
-        divider.style.color = 'var(--text-muted)';
-        
-        let displayDate = dateStr;
-        const today = new Date().toLocaleDateString();
-        const yesterday = new Date(Date.now() - 86400000).toLocaleDateString();
-        if (dateStr === today) displayDate = 'Today';
-        else if (dateStr === yesterday) displayDate = 'Yesterday';
-        else displayDate = msgDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-        
-        divider.innerHTML = `<span style="background-color: var(--card-bg); padding: 4px 12px; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.3); border: 1px solid var(--border-color);">${displayDate}</span>`;
-        messagesContainer.appendChild(divider);
-        lastDateStr = dateStr;
-      }
-
-      const isSent = msg.senderId === state.currentUser.id;
-      const row = document.createElement('div');
-      row.className = `message-row ${isSent ? 'sent' : 'received'}`;
-
-      const timeStr = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      let fileHtml = '';
-      if (msg.file) {
-        const f = msg.file;
-        if (f.type.startsWith('image/')) {
-          fileHtml = `
-            <div style="margin-top: 6px;">
-              <img src="${f.data}" style="max-width: 200px; max-height: 150px; border-radius: 6px; cursor: pointer; display: block;" onclick="openFullImageViewModalWithData('${f.data}')" />
-              <div style="font-size: 0.7rem; margin-top: 4px;">
-                <a href="${f.data}" download="${f.name}" style="color: var(--primary); text-decoration: underline; font-weight: 500;">Download ${f.name}</a>
-              </div>
-            </div>
-          `;
-        } else {
-          fileHtml = `
-            <div style="margin-top: 6px; display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.05); padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border-color);">
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: var(--primary); flex-shrink: 0;">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <a href="${f.data}" download="${f.name}" style="color: var(--primary); text-decoration: underline; font-size: 0.75rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;">${f.name}</a>
-            </div>
-          `;
-        }
-      }
-
-      const deleteMsgBtn = isSent ? `
-        <button onclick="deleteChatMessage('${msg.id}')" title="Delete message" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:0 4px; font-size:0.85rem; line-height:1; opacity:0.6;" onmouseover="this.style.opacity='1'; this.style.color='var(--danger)'" onmouseout="this.style.opacity='0.6'; this.style.color='var(--text-muted)'">🗑</button>
-      ` : '';
-      row.innerHTML = `
-        ${(!isSent && state.activeChatType === 'group') ? `<div class="message-sender-name">${msg.senderName}</div>` : ''}
-        <div class="message-bubble">
-          <div>${msg.content}</div>
-          ${fileHtml}
-        </div>
-        <div style="display:flex; align-items:center; gap:4px;">
-          <div class="message-time">${timeStr}</div>
-          ${deleteMsgBtn}
-        </div>
-      `;
-      messagesContainer.appendChild(row);
-    });
-  }
+    messagesContainer.appendChild(row);
+  });
 
   // Scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -15242,3 +15312,112 @@ window.closeAddProjectDailyWorkModal = closeAddProjectDailyWorkModal;
 window.handleProjectDailyWorkSubmit = handleProjectDailyWorkSubmit;
 window.approveProjectWork = approveProjectWork;
 window.rejectProjectWork = rejectProjectWork;
+
+// --- Custom Chat Group Functions ---
+function openCreateChatGroupModal() {
+  const modal = document.getElementById('modal-create-chat-group');
+  if (!modal) return;
+
+  const nameInput = document.getElementById('chat-group-name-input');
+  if (nameInput) nameInput.value = '';
+
+  const listContainer = document.getElementById('chat-group-members-list');
+  if (listContainer) {
+    listContainer.innerHTML = '';
+    (state.employees || []).forEach(emp => {
+      if (emp.isDeleted) return;
+      const isSelf = state.currentUser && emp.id === state.currentUser.id;
+      const checkItem = document.createElement('label');
+      checkItem.style.display = 'flex';
+      checkItem.style.alignItems = 'center';
+      checkItem.style.gap = '10px';
+      checkItem.style.fontSize = '0.85rem';
+      checkItem.style.cursor = 'pointer';
+      checkItem.style.padding = '4px 6px';
+      checkItem.style.borderRadius = '4px';
+
+      checkItem.innerHTML = `
+        <input type="checkbox" class="chat-group-member-checkbox" value="${emp.id}" ${isSelf ? 'checked disabled' : ''}>
+        <div>
+          <strong>${escapeHTML(emp.name)}</strong>
+          <span style="color: var(--text-muted); font-size: 0.75rem;"> (${emp.dept || 'General'} - ${emp.role})</span>
+        </div>
+      `;
+      listContainer.appendChild(checkItem);
+    });
+  }
+
+  modal.classList.add('active');
+}
+
+function closeCreateChatGroupModal() {
+  const modal = document.getElementById('modal-create-chat-group');
+  if (modal) modal.classList.remove('active');
+}
+
+async function handleCreateChatGroupSubmit(e) {
+  e.preventDefault();
+  const nameInput = document.getElementById('chat-group-name-input');
+  const groupName = nameInput ? nameInput.value.trim() : '';
+
+  if (!groupName) {
+    showToast('Please enter a group name.', 'error');
+    return;
+  }
+
+  const selectedBoxes = document.querySelectorAll('.chat-group-member-checkbox:checked');
+  const selectedMemberIds = Array.from(selectedBoxes).map(cb => cb.value);
+
+  if (state.currentUser && !selectedMemberIds.includes(state.currentUser.id)) {
+    selectedMemberIds.push(state.currentUser.id);
+  }
+
+  if (selectedMemberIds.length < 2) {
+    showToast('Please select at least one other member for the group.', 'error');
+    return;
+  }
+
+  const groupId = `GRP_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const newGroup = {
+    id: groupId,
+    name: groupName,
+    createdBy: state.currentUser ? state.currentUser.id : '',
+    createdByName: state.currentUser ? state.currentUser.name : '',
+    members: selectedMemberIds,
+    createdAt: new Date().toISOString()
+  };
+
+  if (!state.customChatGroups) state.customChatGroups = [];
+  state.customChatGroups.push(newGroup);
+
+  localStorage.setItem('ems_custom_chat_groups', JSON.stringify(state.customChatGroups));
+
+  // Send system welcome message
+  const systemMsg = {
+    id: `MSG_${Date.now()}`,
+    senderId: state.currentUser ? state.currentUser.id : 'system',
+    senderName: state.currentUser ? state.currentUser.name : 'System',
+    receiverId: groupId,
+    content: `🎉 Group "${groupName}" created! Members: ${selectedMemberIds.map(id => {
+      const emp = state.employees.find(e => e.id === id);
+      return emp ? emp.name : id;
+    }).join(', ')}.`,
+    timestamp: new Date().toISOString()
+  };
+
+  state.chats.push(systemMsg);
+  localStorage.setItem('ems_chats', JSON.stringify(state.chats));
+
+  triggerBackendSync();
+  closeCreateChatGroupModal();
+
+  state.activeChatType = 'custom_group';
+  state.activeChatTargetId = groupId;
+
+  renderCommunicationsHub();
+  showToast(`Group "${groupName}" created successfully!`, 'success');
+}
+
+window.openCreateChatGroupModal = openCreateChatGroupModal;
+window.closeCreateChatGroupModal = closeCreateChatGroupModal;
+window.handleCreateChatGroupSubmit = handleCreateChatGroupSubmit;
