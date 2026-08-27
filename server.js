@@ -419,17 +419,20 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
   }
   stateObj.projects = finalProjects;
 
-  // 5. Validate and sanitize incoming Schools
-  let finalSchools = [];
-  const existingSchools = await models.School.find({});
-  const isHROrManagerOrLead = syncingUserRole.includes('admin') || syncingUserRole.includes('hr') || syncingUserRole.includes('manager') || syncingUserRole.includes('tech lead') || syncingUserRole.includes('techlead');
-
-  if (isHROrManagerOrLead) {
-    finalSchools = stateObj.schools || [];
-  } else {
-    finalSchools = existingSchools.map(s => s.toJSON());
-  }
-  stateObj.schools = finalSchools;
+  // 5. Smart merge incoming Schools with existing DB Schools
+  const existingSchools = await models.School.find({}).lean();
+  const schoolMap = new Map(existingSchools.map(s => [s.id, s]));
+  (stateObj.schools || []).forEach(incomingSch => {
+    if (incomingSch && incomingSch.id) {
+      const existing = schoolMap.get(incomingSch.id);
+      if (existing) {
+        schoolMap.set(incomingSch.id, { ...existing, ...incomingSch });
+      } else {
+        schoolMap.set(incomingSch.id, incomingSch);
+      }
+    }
+  });
+  stateObj.schools = Array.from(schoolMap.values());
 
   // 6. Merge CustomChatGroups to ensure no group created by any member is overwritten
   const existingGroups = await models.CustomChatGroup.find({}).lean();
@@ -1461,6 +1464,29 @@ app.post('/api/super-admin-recovery', async (req, res) => {
   } catch (err) {
     console.error('Error in super-admin-recovery:', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Atomic School Reassignment & Update Endpoint (Direct Instant Server Persistence)
+app.post('/api/update-school', async (req, res) => {
+  try {
+    await connectDB();
+    const { school } = req.body;
+    if (!school || !school.id) {
+      return res.status(400).json({ error: 'Missing school object' });
+    }
+    const updated = await models.School.findOneAndUpdate(
+      { id: school.id },
+      { $set: school },
+      { upsert: true, new: true }
+    );
+    const timestamp = Date.now();
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp }, { upsert: true });
+    console.log(`[SCHOOL UPDATE] Instant updated school "${school.name}" manager to: ${school.managerName}`);
+    return res.json({ success: true, timestamp, school: updated.toJSON() });
+  } catch (err) {
+    console.error('Error updating school directly:', err);
+    return res.status(500).json({ error: err.message });
   }
 });
 

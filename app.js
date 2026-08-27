@@ -12931,7 +12931,7 @@ function closeAddSchoolModal() {
   document.getElementById('add-school-modal-overlay').classList.remove('active');
 }
 
-function handleAddSchoolSubmit(e) {
+async function handleAddSchoolSubmit(e) {
   e.preventDefault();
   const name = document.getElementById('new-school-name').value.trim();
   const managerName = document.getElementById('new-school-manager').value;
@@ -12957,6 +12957,17 @@ function handleAddSchoolSubmit(e) {
 
   state.schools.push(newSchool);
   localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+
+  try {
+    await fetch('/api/update-school', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ school: newSchool })
+    });
+  } catch (err) {
+    console.error('Failed to post new school directly:', err);
+  }
+
   triggerBackendSync();
 
   renderSchoolManagement();
@@ -13796,7 +13807,7 @@ function closeReassignSchoolModal() {
   document.getElementById('reassign-school-modal-overlay').classList.remove('active');
 }
 
-function handleReassignSchoolSubmit(e) {
+async function handleReassignSchoolSubmit(e) {
   e.preventDefault();
   const schoolId = document.getElementById('reassign-school-select').value;
   const managerName = document.getElementById('reassign-manager-select').value;
@@ -13810,6 +13821,17 @@ function handleReassignSchoolSubmit(e) {
   if (sch) {
     sch.managerName = managerName;
     localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+
+    try {
+      await fetch('/api/update-school', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ school: sch })
+      });
+    } catch (err) {
+      console.error('Failed to update school directly:', err);
+    }
+
     triggerBackendSync();
 
     renderSchoolManagement();
