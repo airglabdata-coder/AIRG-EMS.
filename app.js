@@ -7169,6 +7169,12 @@ function switchCommTab(tabName) {
 function renderCommSidebar() {
   const titleEl = document.getElementById('comm-list-title-label') || document.getElementById('comm-sidebar-title');
   const itemsBox = document.getElementById('comm-list-items-box') || document.getElementById('comm-items-box');
+  const btnNewGroup = document.getElementById('btn-create-chat-group');
+
+  if (btnNewGroup) {
+    btnNewGroup.style.display = state.activeCommTab === 'chats' ? 'inline-flex' : 'none';
+  }
+
   if (!itemsBox) return;
 
   itemsBox.innerHTML = '';
@@ -7333,21 +7339,14 @@ function renderCommSidebar() {
     });
 
   } else if (state.activeCommTab === 'announcements') {
-    titleEl.textContent = 'Feeds';
-    const link = document.createElement('div');
-    link.className = 'comm-item-link active';
-    link.innerHTML = `
-      <div class="avatar" style="width:30px; height:30px; font-size:0.75rem; background: var(--warning);">📢</div>
-      <div style="font-weight:600;">Announcements</div>
-    `;
-    itemsBox.appendChild(link);
-
+    if (titleEl) titleEl.textContent = 'Feeds';
     itemsBox.innerHTML = `
       <div style="padding: 16px; color: var(--text-muted); text-align: center; font-size: 0.85rem;">
         View all company-wide announcements in the main panel.
       </div>
     `;
   } else if (state.activeCommTab === 'notices') {
+    if (titleEl) titleEl.textContent = 'HR Notices';
     itemsBox.innerHTML = `
       <div style="padding: 16px; color: var(--text-muted); text-align: center; font-size: 0.85rem;">
         View all important policy notices in the main panel.
@@ -7363,6 +7362,11 @@ function renderCommMainContent() {
   const smsPane = document.getElementById('comm-sms-pane');
 
   if (!chatPane || !annPane || !noticePane) return;
+
+  chatPane.style.display = 'none';
+  annPane.style.display = 'none';
+  noticePane.style.display = 'none';
+  if (smsPane) smsPane.style.display = 'none';
 
   if (state.activeCommTab === 'chats') {
     chatPane.style.display = 'flex';
