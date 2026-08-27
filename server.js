@@ -745,17 +745,18 @@ app.get('/api/sync-timestamp', async (req, res) => {
 app.get('/api/chats-only', async (req, res) => {
   try {
     await connectDB();
-    const [chats, announcements, notices, tombstones] = await Promise.all([
+    const [chats, announcements, notices, tombstones, customChatGroups] = await Promise.all([
       models.Chat.find({}).lean(),
       models.Announcement.find({}).lean(),
       models.Notice.find({}).lean(),
-      models.Tombstone.find({ modelName: 'Chat' }).lean()
+      models.Tombstone.find({ modelName: 'Chat' }).lean(),
+      models.CustomChatGroup.find({}).lean()
     ]);
     const deletedChatIds = tombstones.map(t => t.id);
     let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' });
     const timestamp = meta ? meta.timestamp : Date.now();
     const activeUsers = await trackAndGetActiveUsers(req.query.employeeId, null);
-    return res.json({ chats, announcements, notices, deletedChatIds, timestamp, activeUsers });
+    return res.json({ chats, announcements, notices, customChatGroups, deletedChatIds, timestamp, activeUsers });
   } catch (err) {
     console.error('❌ Failed to read chats-only:', err.message);
     return res.status(500).json({ error: 'Database read failed.' });

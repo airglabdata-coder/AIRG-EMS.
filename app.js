@@ -416,6 +416,22 @@ function initSyncPolling() {
         state.notices = chatData.notices;
         safeOriginalSetItem('ems_notices', JSON.stringify(state.notices));
       }
+      if (Array.isArray(chatData.customChatGroups)) {
+        const grpMap = new Map((state.customChatGroups || []).map(g => [g.id, g]));
+        chatData.customChatGroups.forEach(g => {
+          if (g && g.id) {
+            const existing = grpMap.get(g.id);
+            if (existing) {
+              const mergedMembers = Array.from(new Set([...(existing.members || []), ...(g.members || [])]));
+              grpMap.set(g.id, { ...existing, ...g, members: mergedMembers });
+            } else {
+              grpMap.set(g.id, g);
+            }
+          }
+        });
+        state.customChatGroups = Array.from(grpMap.values());
+        safeOriginalSetItem('ems_custom_chat_groups', JSON.stringify(state.customChatGroups));
+      }
     } catch (err) {
       // Silent fail — chat poll errors shouldn't disrupt the user
     }
