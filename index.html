@@ -231,26 +231,17 @@
             </svg>
           </button>
 
-          <!-- User Profile Widget -->
-          <div class="profile-widget">
-            <div id="header-avatar" class="avatar">SJ</div>
-            <div class="profile-info">
-              <div id="header-name" class="profile-name">Sarah Jenkins</div>
-              <div id="header-role" class="profile-role">Human Resources</div>
-            </div>
+          <!-- Interactive Role Selector (Now in middle next to action icons) -->
+          <div class="role-switcher-container" style="display: none;">
+            <button id="btn-role-employee" class="role-btn active" title="Switch to employee panel">Employee</button>
+            <button id="btn-role-techlead" class="role-btn" title="Switch to Tech Lead view">Tech Lead</button>
+            <button id="btn-role-hr" class="role-btn" title="Switch to HR view">HR Manager</button>
+            <button id="btn-role-admin" class="role-btn" title="Switch to Admin view">Admin</button>
           </div>
         </div>
       </div>
 
       <div class="header-controls">
-        <!-- Interactive Role Selector -->
-        <div class="role-switcher-container" style="display: none;">
-          <button id="btn-role-employee" class="role-btn active" title="Switch to employee panel">Employee</button>
-          <button id="btn-role-techlead" class="role-btn" title="Switch to Tech Lead view">Tech Lead</button>
-          <button id="btn-role-hr" class="role-btn" title="Switch to HR view">HR Manager</button>
-          <button id="btn-role-admin" class="role-btn" title="Switch to Admin view">Admin</button>
-        </div>
-
         <!-- Employee Selector Dropdown (visible in Employee Mode) -->
         <div id="employee-selector-wrapper" class="employee-select-container"
           style="display: none; align-items: center; gap: 8px;">
@@ -261,6 +252,15 @@
             style="padding: 6px 12px; font-size: 0.85rem; width: auto; font-weight: 600; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); cursor: pointer;">
             <!-- Options populated dynamically in app.js -->
           </select>
+        </div>
+
+        <!-- User Profile Widget (Now at Far Right Edge) -->
+        <div class="profile-widget">
+          <div id="header-avatar" class="avatar">SJ</div>
+          <div class="profile-info">
+            <div id="header-name" class="profile-name">Sarah Jenkins</div>
+            <div id="header-role" class="profile-role">Human Resources</div>
+          </div>
         </div>
       </div>
     </header>
