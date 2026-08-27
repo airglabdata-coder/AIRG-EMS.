@@ -793,6 +793,36 @@ app.post('/api/sync', async (req, res) => {
   }
 });
 
+// Explicit API endpoint to assign/update an employee's role permanently
+app.post('/api/update-employee-role', async (req, res) => {
+  const { targetEmployeeId, role, updatedBy } = req.body;
+  if (!targetEmployeeId || !role) {
+    return res.status(400).json({ error: 'Missing targetEmployeeId or role' });
+  }
+
+  try {
+    await connectDB();
+    const result = await models.Employee.updateOne(
+      { id: targetEmployeeId },
+      { $set: { role: role } }
+    );
+
+    console.log(`[ROLE UPDATE] Updated role for ${targetEmployeeId} to "${role}" by ${updatedBy}`);
+
+    const timestamp = Date.now();
+    await models.SystemMetadata.findOneAndUpdate(
+      { key: 'lastUpdated' },
+      { timestamp },
+      { upsert: true }
+    );
+
+    return res.json({ success: true, targetEmployeeId, role, timestamp });
+  } catch (err) {
+    console.error('❌ Failed to update employee role:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // New Explicit Deletion API
 app.post('/api/delete-record', async (req, res) => {
   const { modelName, id, employeeId, role } = req.body;
