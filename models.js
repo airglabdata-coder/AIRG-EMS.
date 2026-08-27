@@ -255,6 +255,12 @@ const TrainerReportSchema = new mongoose.Schema({
   updatedAt: { type: String }
 }, { strict: false });
 
+const TombstoneSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  modelName: { type: String },
+  deletedAt: { type: Number, default: Date.now }
+});
+
 // Compile and Export Models
 module.exports = {
   Employee: mongoose.model('Employee', EmployeeSchema),
@@ -272,5 +278,6 @@ module.exports = {
   SystemMetadata: mongoose.model('SystemMetadata', SystemMetadataSchema),
   PushSubscription: mongoose.model('PushSubscription', PushSubscriptionSchema),
   School: mongoose.model('School', SchoolSchema),
-  TrainerReport: mongoose.model('TrainerReport', TrainerReportSchema)
+  TrainerReport: mongoose.model('TrainerReport', TrainerReportSchema),
+  Tombstone: mongoose.model('Tombstone', TombstoneSchema)
 };

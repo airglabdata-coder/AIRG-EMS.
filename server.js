@@ -287,6 +287,25 @@ async function syncCollection(Model, array, keyField = 'id', isReviewer = false,
 async function saveMongoDBState(stateObj, syncingEmployeeId) {
   await connectDB();
 
+  // 0. Filter out any incoming records that have been deleted (Tombstones)
+  const tombstones = await models.Tombstone.find({}).lean();
+  const deadIds = new Set(tombstones.map(t => t.id));
+
+  const filterZombies = (arr) => Array.isArray(arr) ? arr.filter(item => item && !deadIds.has(item.id)) : arr;
+  stateObj.employees = filterZombies(stateObj.employees);
+  stateObj.requests = filterZombies(stateObj.requests);
+  stateObj.projects = filterZombies(stateObj.projects);
+  stateObj.tasks = filterZombies(stateObj.tasks);
+  stateObj.chats = filterZombies(stateObj.chats);
+  stateObj.dailyReports = filterZombies(stateObj.dailyReports);
+  stateObj.announcements = filterZombies(stateObj.announcements);
+  stateObj.notices = filterZombies(stateObj.notices);
+  stateObj.reimbursements = filterZombies(stateObj.reimbursements);
+  stateObj.tickets = filterZombies(stateObj.tickets);
+  stateObj.schools = filterZombies(stateObj.schools);
+  stateObj.trainerReports = filterZombies(stateObj.trainerReports);
+
+
   // 1. Fetch all existing employees from MongoDB first to validate/merge
   const existingEmployees = await models.Employee.find({});
   const existingMap = new Map(existingEmployees.map(e => [e.id, e]));
@@ -793,6 +812,7 @@ app.post('/api/delete-record', async (req, res) => {
     // Admins and HR can delete anything
     if (isReviewer) {
       await Model.deleteMany({ id });
+      await models.Tombstone.findOneAndUpdate({ id }, { id, modelName, deletedAt: Date.now() }, { upsert: true });
       console.log(`[EXPLICIT DELETE] Reviewer ${employeeId} (${role}) deleted ${modelName} ${id}`);
       return res.json({ success: true });
     }
@@ -807,6 +827,7 @@ app.post('/api/delete-record', async (req, res) => {
       const isProjectLead = (projDoc.techLeadId === employeeId || projDoc.createdById === employeeId || normalizedRole === 'techlead' || normalizedRole === 'manager');
       if (isProjectLead) {
         await Model.deleteMany({ id });
+        await models.Tombstone.findOneAndUpdate({ id }, { id, modelName, deletedAt: Date.now() }, { upsert: true });
         console.log(`[EXPLICIT DELETE] Tech Lead ${employeeId} deleted Project ${id}`);
         return res.json({ success: true });
       } else {
@@ -823,6 +844,7 @@ app.post('/api/delete-record', async (req, res) => {
       const isTaskOwner = (taskDoc.assigneeId === employeeId || taskDoc.ownerId === employeeId || taskDoc.createdById === employeeId || normalizedRole === 'techlead' || normalizedRole === 'manager');
       if (isTaskOwner) {
         await Model.deleteMany({ id });
+        await models.Tombstone.findOneAndUpdate({ id }, { id, modelName, deletedAt: Date.now() }, { upsert: true });
         console.log(`[EXPLICIT DELETE] User ${employeeId} deleted Task ${id}`);
         return res.json({ success: true });
       } else {
@@ -843,14 +865,17 @@ app.post('/api/delete-record', async (req, res) => {
         }
         // If record is not in MongoDB Atlas at all (e.g. unsynced local duplicate), allow local cleanup
         console.log(`[EXPLICIT DELETE] Record ${modelName} ${id} not found in DB. Permitting local cleanup for ${employeeId}.`);
+        await models.Tombstone.findOneAndUpdate({ id }, { id, modelName, deletedAt: Date.now() }, { upsert: true });
         return res.json({ success: true, localOnly: true });
       }
+      await models.Tombstone.findOneAndUpdate({ id }, { id, modelName, deletedAt: Date.now() }, { upsert: true });
       console.log(`[EXPLICIT DELETE] User ${employeeId} deleted own ${modelName} ${id}`);
       return res.json({ success: true });
     }
     
     if (modelName === 'Chat') {
       await Model.deleteMany({ id });
+      await models.Tombstone.findOneAndUpdate({ id }, { id, modelName, deletedAt: Date.now() }, { upsert: true });
       console.log(`[EXPLICIT DELETE] User ${employeeId} deleted chat ${id}`);
       return res.json({ success: true });
     }
