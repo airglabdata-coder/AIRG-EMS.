@@ -431,6 +431,22 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
   }
   stateObj.schools = finalSchools;
 
+  // 6. Merge CustomChatGroups to ensure no group created by any member is overwritten
+  const existingGroups = await models.CustomChatGroup.find({}).lean();
+  const groupMap = new Map(existingGroups.map(g => [g.id, g]));
+  (stateObj.customChatGroups || []).forEach(incomingGrp => {
+    if (incomingGrp && incomingGrp.id) {
+      const existing = groupMap.get(incomingGrp.id);
+      if (existing) {
+        const mergedMembers = Array.from(new Set([...(existing.members || []), ...(incomingGrp.members || [])]));
+        groupMap.set(incomingGrp.id, { ...existing, ...incomingGrp, members: mergedMembers });
+      } else {
+        groupMap.set(incomingGrp.id, incomingGrp);
+      }
+    }
+  });
+  stateObj.customChatGroups = Array.from(groupMap.values());
+
   // Omission-based deletion block completely removed to prevent data loss.
   // All deletions now happen exclusively through the explicit /api/delete-record endpoint.
 

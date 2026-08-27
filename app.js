@@ -276,9 +276,21 @@ async function fetchCentralizedState() {
         state.tickets = s.tickets;
         safeOriginalSetItem('ems_tickets', JSON.stringify(s.tickets));
       }
-      if (s.customChatGroups) {
-        state.customChatGroups = s.customChatGroups;
-        safeOriginalSetItem('ems_custom_chat_groups', JSON.stringify(s.customChatGroups));
+      if (Array.isArray(s.customChatGroups)) {
+        const grpMap = new Map((state.customChatGroups || []).map(g => [g.id, g]));
+        s.customChatGroups.forEach(g => {
+          if (g && g.id) {
+            const existing = grpMap.get(g.id);
+            if (existing) {
+              const mergedMembers = Array.from(new Set([...(existing.members || []), ...(g.members || [])]));
+              grpMap.set(g.id, { ...existing, ...g, members: mergedMembers });
+            } else {
+              grpMap.set(g.id, g);
+            }
+          }
+        });
+        state.customChatGroups = Array.from(grpMap.values());
+        safeOriginalSetItem('ems_custom_chat_groups', JSON.stringify(state.customChatGroups));
       }
       if (Array.isArray(s.trainerReports)) {
         state.trainerReports = s.trainerReports;
@@ -7197,12 +7209,14 @@ function renderCommSidebar() {
     convList.push({ type: 'group', latestTime: groupTime });
 
     // 1.5 Custom Chat Groups
-    const userEmpId = state.currentUser ? state.currentUser.id : '';
-    const userEmail = state.currentUser ? (state.currentUser.email || '').toLowerCase() : '';
+    const userIdentifiers = getEmployeeAllIdentifiers(state.currentUser);
 
     (state.customChatGroups || []).forEach(grp => {
-      const isMember = grp.createdBy === userEmpId ||
-        (grp.members && grp.members.some(m => m === userEmpId || (typeof m === 'string' && m.toLowerCase() === userEmail)));
+      const isMember = (grp.members || []).some(m => {
+        if (!m) return false;
+        const cleanM = String(m).toLowerCase().trim();
+        return userIdentifiers.has(m) || userIdentifiers.has(cleanM);
+      }) || (grp.createdBy && (userIdentifiers.has(grp.createdBy) || userIdentifiers.has(String(grp.createdBy).toLowerCase())));
 
       if (isMember) {
         let grpTime = new Date(grp.createdAt || 0).getTime();
@@ -15401,16 +15415,34 @@ async function handleCreateChatGroupSubmit(e) {
   }
 
   const selectedBoxes = document.querySelectorAll('.chat-group-member-checkbox:checked');
-  const selectedMemberIds = Array.from(selectedBoxes).map(cb => cb.value);
+  const rawMemberIds = Array.from(selectedBoxes).map(cb => cb.value);
 
-  if (state.currentUser && !selectedMemberIds.includes(state.currentUser.id)) {
-    selectedMemberIds.push(state.currentUser.id);
+  if (state.currentUser && !rawMemberIds.includes(state.currentUser.id)) {
+    rawMemberIds.push(state.currentUser.id);
   }
 
-  if (selectedMemberIds.length < 2) {
+  if (rawMemberIds.length < 2) {
     showToast('Please select at least one other member for the group.', 'error');
     return;
   }
+
+  // Expand ALL identifier aliases for each selected member so any login matches 100%
+  const selectedMemberIds = [];
+  rawMemberIds.forEach(id => {
+    if (!selectedMemberIds.includes(id)) selectedMemberIds.push(id);
+    const empObj = (state.employees || []).find(e => e.id === id || (e.email && e.email.toLowerCase() === id.toLowerCase()));
+    if (empObj) {
+      const aliases = getEmployeeAllIdentifiers(empObj);
+      aliases.forEach(a => {
+        if (!selectedMemberIds.includes(a)) selectedMemberIds.push(a);
+      });
+    }
+  });
+
+  const displayNames = Array.from(new Set(rawMemberIds.map(id => {
+    const emp = (state.employees || []).find(e => e.id === id || (e.email && e.email.toLowerCase() === id.toLowerCase()));
+    return emp ? emp.name : id;
+  })));
 
   const groupId = `GRP_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
   const newGroup = {
@@ -15433,10 +15465,7 @@ async function handleCreateChatGroupSubmit(e) {
     senderId: state.currentUser ? state.currentUser.id : 'system',
     senderName: state.currentUser ? state.currentUser.name : 'System',
     receiverId: groupId,
-    content: `🎉 Group "${groupName}" created! Members: ${selectedMemberIds.map(id => {
-      const emp = state.employees.find(e => e.id === id);
-      return emp ? emp.name : id;
-    }).join(', ')}.`,
+    content: `🎉 Group "${groupName}" created! Members: ${displayNames.join(', ')}.`,
     timestamp: new Date().toISOString()
   };
 
