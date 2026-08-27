@@ -725,15 +725,17 @@ app.get('/api/sync-timestamp', async (req, res) => {
 app.get('/api/chats-only', async (req, res) => {
   try {
     await connectDB();
-    const [chats, announcements, notices] = await Promise.all([
+    const [chats, announcements, notices, tombstones] = await Promise.all([
       models.Chat.find({}).lean(),
       models.Announcement.find({}).lean(),
-      models.Notice.find({}).lean()
+      models.Notice.find({}).lean(),
+      models.Tombstone.find({ modelName: 'Chat' }).lean()
     ]);
+    const deletedChatIds = tombstones.map(t => t.id);
     let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' });
     const timestamp = meta ? meta.timestamp : Date.now();
     const activeUsers = await trackAndGetActiveUsers(req.query.employeeId, null);
-    return res.json({ chats, announcements, notices, timestamp, activeUsers });
+    return res.json({ chats, announcements, notices, deletedChatIds, timestamp, activeUsers });
   } catch (err) {
     console.error('❌ Failed to read chats-only:', err.message);
     return res.status(500).json({ error: 'Database read failed.' });
@@ -749,6 +751,12 @@ app.post('/api/chats-only', async (req, res) => {
 
   try {
     await connectDB();
+    // Block upsert if message was deleted (Tombstoned)
+    const isDeleted = await models.Tombstone.findOne({ id: chat.id }).lean();
+    if (isDeleted) {
+      return res.json({ success: true, tombstoned: true });
+    }
+
     await models.Chat.findOneAndUpdate(
       { id: chat.id },
       { $set: chat },
@@ -819,6 +827,37 @@ app.post('/api/update-employee-role', async (req, res) => {
     return res.json({ success: true, targetEmployeeId, role, timestamp });
   } catch (err) {
     console.error('❌ Failed to update employee role:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Dedicated API endpoint for instant posting of announcements
+app.post('/api/post-announcement', async (req, res) => {
+  const { announcement } = req.body;
+  if (!announcement || !announcement.id || !announcement.title) {
+    return res.status(400).json({ error: 'Missing announcement data' });
+  }
+
+  try {
+    await connectDB();
+    await models.Announcement.findOneAndUpdate(
+      { id: announcement.id },
+      { $set: announcement },
+      { upsert: true, new: true }
+    );
+
+    console.log(`[ANNOUNCEMENT] Posted new announcement: "${announcement.title}" by ${announcement.senderName}`);
+
+    const timestamp = Date.now();
+    await models.SystemMetadata.findOneAndUpdate(
+      { key: 'lastUpdated' },
+      { timestamp },
+      { upsert: true }
+    );
+
+    return res.json({ success: true, timestamp, announcement });
+  } catch (err) {
+    console.error('❌ Failed to post announcement:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

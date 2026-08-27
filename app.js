@@ -353,6 +353,12 @@ function initSyncPolling() {
       const chatData = await chatRes.json();
       if (!chatData || !chatData.chats) return;
 
+      // Filter out deleted/tombstoned chat IDs from local state
+      if (chatData.deletedChatIds && Array.isArray(chatData.deletedChatIds)) {
+        const deadSet = new Set(chatData.deletedChatIds);
+        state.chats = (state.chats || []).filter(m => !deadSet.has(m.id));
+      }
+
       // Merge incoming server chats with local chats (so freshly typed messages never disappear)
       const serverChatIds = new Set(chatData.chats.map(m => m.id));
       const unsyncedLocalChats = (state.chats || []).filter(m => !serverChatIds.has(m.id));
@@ -7685,7 +7691,13 @@ function renderAnnouncements() {
   feedList.innerHTML = '';
 
   // Show post button to HR and Admin roles
-  if (state.currentRole === 'hr' || state.currentRole === 'admin') {
+  const isHROrAdmin = (state.currentRole === 'hr' || state.currentRole === 'admin') ||
+    (state.currentUser && (
+      (state.currentUser.role || '').toLowerCase().includes('hr') ||
+      (state.currentUser.role || '').toLowerCase().includes('admin')
+    ));
+
+  if (isHROrAdmin) {
     if (btnPost) btnPost.style.display = 'block';
   } else {
     if (btnPost) btnPost.style.display = 'none';
@@ -7709,8 +7721,7 @@ function renderAnnouncements() {
     const dateStr = formatDate(ann.timestamp);
 
     const attachmentsHtml = renderAttachmentsHTML(ann.images || [], ann.id);
-    const canDeleteAnn = (state.currentRole === 'hr' || state.currentRole === 'admin') &&
-      state.currentUser && ann.senderName === state.currentUser.name;
+    const canDeleteAnn = isHROrAdmin || (state.currentUser && ann.senderName === state.currentUser.name);
     const deleteAnnBtn = canDeleteAnn ? `
       <button onclick="deleteAnnouncement('${ann.id}')" title="Delete announcement"
         style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:4px 6px; font-size:0.85rem; border-radius:4px;"
@@ -7735,7 +7746,7 @@ function renderAnnouncements() {
   });
 }
 
-function handleAnnouncementSubmit(e) {
+async function handleAnnouncementSubmit(e) {
   e.preventDefault();
   const titleInput = document.getElementById('announcement-title');
   const contentInput = document.getElementById('announcement-content');
@@ -7750,21 +7761,32 @@ function handleAnnouncementSubmit(e) {
   }
 
   const newAnn = {
-    id: `ANN${String(state.announcements.length + 1).padStart(3, '0')}`,
+    id: `ANN_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     title: title,
     content: content,
     images: [...currentAttachedImagesAnnouncement],
-    senderName: state.currentUser.name,
+    senderName: state.currentUser ? state.currentUser.name : 'HR Manager',
     timestamp: new Date().toISOString()
   };
 
   state.announcements.unshift(newAnn);
   localStorage.setItem('ems_announcements', JSON.stringify(state.announcements));
-  triggerBackendSync(); // [AUTO-ADDED] persist ems_announcements to server
+
+  try {
+    await fetch('/api/post-announcement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ announcement: newAnn })
+    });
+  } catch (err) {
+    console.error('Failed to post announcement to server directly:', err);
+  }
+
+  triggerBackendSync();
 
   // Trigger SMS notifications for all employees (excluding sender)
   state.employees.forEach(emp => {
-    if (emp.phone && emp.id !== state.currentUser.id) {
+    if (emp.phone && state.currentUser && emp.id !== state.currentUser.id) {
       triggerSMSNotification(
         emp.phone,
         `New Announcement: "${newAnn.title}" - ${newAnn.content.substring(0, 100)}${newAnn.content.length > 100 ? '...' : ''}`,
