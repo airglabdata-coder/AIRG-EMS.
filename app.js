@@ -5165,9 +5165,9 @@ function createProjectCard(proj, isMyProject) {
 
   let dueDateDisplay = `
     <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px; margin-top: 4px; background: var(--bg-tertiary); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color);">
-      <div>🏥 ICU Deadline: <strong style="color: var(--text-primary);">${icuDl}</strong></div>
-      <div>🫁 Ventilator Deadline: <strong style="color: var(--text-primary);">${ventDl}</strong></div>
-      <div>🏁 Final Delivery: <strong style="color: var(--primary);">${finalDl}</strong></div>
+      <div>🏁 Final Deadline: <strong style="color: var(--text-primary);">${icuDl}</strong></div>
+      <div>🏥 ICU Deadline: <strong style="color: var(--text-primary);">${ventDl}</strong></div>
+      <div>💀 Dead Deadline: <strong style="color: var(--primary);">${finalDl}</strong></div>
     </div>
   `;
 
@@ -14645,9 +14645,9 @@ function renderProjDashTabContent() {
   // Default milestones if missing
   if (!proj.milestones || proj.milestones.length === 0) {
     proj.milestones = [
-      { id: 'M1', name: 'ICU Deadline', deadline: proj.icuDeadline || proj.dueDate || '2026-09-10', progress: proj.progress || 0, status: 'In Progress' },
-      { id: 'M2', name: 'Ventilator Deadline', deadline: proj.ventilatorDeadline || '2026-09-25', progress: 0, status: 'Not Started' },
-      { id: 'M3', name: 'Final Delivery Deadline', deadline: proj.finalDeadline || proj.dueDate || '2026-10-15', progress: 0, status: 'Pending' }
+      { id: 'M1', name: 'Final Deadline', deadline: proj.icuDeadline || proj.dueDate || '2026-09-10', progress: proj.progress || 0, status: 'In Progress' },
+      { id: 'M2', name: 'ICU Deadline', deadline: proj.ventilatorDeadline || '2026-09-25', progress: 0, status: 'Not Started' },
+      { id: 'M3', name: 'Dead Deadline', deadline: proj.finalDeadline || proj.dueDate || '2026-10-15', progress: 0, status: 'Pending' }
     ];
   }
 
@@ -15015,9 +15015,9 @@ async function handleCreateProjectSubmit(e) {
     employeeIds: selectedMemberIds,
     teamMembers: teamMembers,
     milestones: [
-      { id: 'M1', name: 'ICU Deadline', deadline: icuDeadline, progress: 0, status: 'In Progress' },
-      { id: 'M2', name: 'Ventilator Deadline', deadline: ventilatorDeadline, progress: 0, status: 'Not Started' },
-      { id: 'M3', name: 'Final Delivery Deadline', deadline: finalDeadline, progress: 0, status: 'Pending' }
+      { id: 'M1', name: 'Final Deadline', deadline: icuDeadline, progress: 0, status: 'In Progress' },
+      { id: 'M2', name: 'ICU Deadline', deadline: ventilatorDeadline, progress: 0, status: 'Not Started' },
+      { id: 'M3', name: 'Dead Deadline', deadline: finalDeadline, progress: 0, status: 'Pending' }
     ],
     dailyWorkUpdates: [],
     activityLogs: [

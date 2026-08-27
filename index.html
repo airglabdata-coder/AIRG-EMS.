@@ -3458,15 +3458,15 @@
           </div>
           
           <div class="form-group">
-            <label for="proj-create-icu-dl" style="font-weight: 600;">🏥 ICU Deadline *</label>
+            <label for="proj-create-icu-dl" style="font-weight: 600;">🏁 Final Deadline *</label>
             <input type="date" id="proj-create-icu-dl" required>
           </div>
           <div class="form-group">
-            <label for="proj-create-vent-dl" style="font-weight: 600;">🫁 Ventilator Deadline *</label>
+            <label for="proj-create-vent-dl" style="font-weight: 600;">🏥 ICU Deadline *</label>
             <input type="date" id="proj-create-vent-dl" required>
           </div>
           <div class="form-group" style="grid-column: span 2;">
-            <label for="proj-create-final-dl" style="font-weight: 600;">🏁 Final Delivery Deadline *</label>
+            <label for="proj-create-final-dl" style="font-weight: 600;">💀 Dead Deadline *</label>
             <input type="date" id="proj-create-final-dl" required>
           </div>
 
@@ -3535,9 +3535,9 @@
           <div class="form-group">
             <label style="font-weight: 600;">Milestone *</label>
             <select id="proj-work-milestone" required>
+              <option value="Final Deadline">🏁 Final Deadline</option>
               <option value="ICU Deadline">🏥 ICU Deadline</option>
-              <option value="Ventilator Deadline">🫁 Ventilator Deadline</option>
-              <option value="Final Delivery Deadline">🏁 Final Delivery Deadline</option>
+              <option value="Dead Deadline">💀 Dead Deadline</option>
             </select>
           </div>
           <div class="form-group" style="grid-column: span 2;">
