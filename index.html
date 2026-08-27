@@ -2100,6 +2100,7 @@
             Instructor</button>
           <button class="btn btn-danger btn-sm" onclick="openRemoveInstructorModal()">- Remove Instructor</button>
           <button class="btn btn-secondary btn-sm" onclick="openReassignSchoolModal()">+ Reassign School</button>
+          <button id="btn-add-school-lead" class="btn btn-secondary btn-sm" onclick="openAddTechLeadToSchoolModal()" style="display: none;">+ Add Tech Lead</button>
         </div>
       </div>
 
@@ -2747,6 +2748,33 @@
   </div>
 
   <!-- Add School Modal Overlay -->
+  <!-- Add Tech Lead to School Management Modal -->
+  <div id="add-school-lead-modal-overlay" class="modal-overlay">
+    <div class="modal" style="max-width: 480px; width: 95%;">
+      <div class="modal-header">
+        <h3>➕ Add Tech Lead to School Management</h3>
+        <button type="button" onclick="closeAddTechLeadToSchoolModal()"
+          style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.5rem; line-height:1;">×</button>
+      </div>
+      <form id="add-school-lead-form" onsubmit="handleAddTechLeadToSchoolSubmit(event)">
+        <div class="modal-body" style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Select an existing Tech Lead from your organization to add to the School Management dashboard. Once added, you can assign schools to them using the <strong>Reassign School</strong> option.</p>
+          <div class="form-group">
+            <label for="add-school-lead-select">Select Tech Lead</label>
+            <select id="add-school-lead-select" required>
+              <option value="" disabled selected>Select a Tech Lead...</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; display: flex; justify-content: flex-end; gap: 12px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeAddTechLeadToSchoolModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add to School Management</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="add-school-modal-overlay" class="modal-overlay">
     <div class="modal" style="max-width: 500px; width: 95%;">
       <div class="modal-header">

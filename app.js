@@ -2129,8 +2129,16 @@ async function init() {
     if (!state.schools) state.schools = [];
   }
   if (state.schools.length === 0) {
+    // Static school seed data (fallback only - normally loaded from server)
+    const SEED_SCHOOLS = {
+      "Shravani": ["Sheron English School", "Shri Shivaji Vidyalay, Dehu Road", "Shri Mhalsakant Vidyalaya, Akurdi"],
+      "Prasad": ["Lonkar Vidyalay, Mundhwa", "Sakharwadi Vidyalay", "Sant Tukaram, Lohegaon", "Gurudev Datta Vidyalaya Savindane", "Charoli English / Marathi", "Eon Gyankur, Kharadi", "Bhairavnath Vidyalaya, Karde", "MalikArjun Vidyalaya, Nhaware", "Aditya Birla School"],
+      "Rajendra Sir": ["Shahaji High School, Supe", "Kshitij School, Sangli", "Shaurya Sainiki, phaltan Golewadi", "YC, Venutai – Phaltan", "Ketkeshwar Vidyalaya, Nimgaon Ketki", "Swami Ramanand Bharti High School, Sangli", "Kahiti School, Sangli", "Rajendra Vidyalay, Khandala"],
+      "Suyash": ["Koteshwar , Gove", "Aditya Birla School", "Mudhoji School, Phaltan", "Shivtej School, Aare", "Holy Convent School", "Vishnuji Shekuji Satav, Wagholi"],
+      "Atharva Durgavale": ["Pirangut School", "Pirungut English School"]
+    };
     let idCounter = 1;
-    Object.entries(SCHOOLS_DATA).forEach(([manager, schools]) => {
+    Object.entries(SEED_SCHOOLS).forEach(([manager, schools]) => {
       schools.forEach(schoolName => {
         state.schools.push({
           id: `SCH${String(idCounter++).padStart(5, '0')}`,
@@ -2141,7 +2149,19 @@ async function init() {
       });
     });
     localStorage.setItem('ems_schools', JSON.stringify(state.schools));
-    triggerBackendSync(); // [AUTO-ADDED] persist ems_schools to server
+    triggerBackendSync();
+  }
+
+  // Load schoolManagementLeads from localStorage (explicit Tech Leads added to school mgmt)
+  try {
+    state.schoolManagementLeads = JSON.parse(localStorage.getItem('ems_school_mgmt_leads') || '[]');
+  } catch (e) {
+    state.schoolManagementLeads = [];
+  }
+  // Always ensure Atharva Durgavale is in school management leads since he has schools
+  if (!state.schoolManagementLeads.includes('Atharva Durgavale')) {
+    state.schoolManagementLeads.push('Atharva Durgavale');
+    localStorage.setItem('ems_school_mgmt_leads', JSON.stringify(state.schoolManagementLeads));
   }
 
   // Self-heal employee roles on startup
@@ -3301,6 +3321,13 @@ function switchView(viewName) {
     if (titleLabel) titleLabel.textContent = 'School Management';
 
     renderSchoolManagement();
+
+    // Show "+ Add Tech Lead" button only to HR and Admin
+    const addLeadBtn = document.getElementById('btn-add-school-lead');
+    if (addLeadBtn) {
+      const userRole = (state.currentRole || '').toLowerCase();
+      addLeadBtn.style.display = (userRole === 'hr' || userRole === 'admin') ? 'inline-flex' : 'none';
+    }
   } else if (viewName === 'emp-details') {
     const userRole = (state.currentUser && state.currentUser.role || '').toLowerCase();
     const isHROrAdmin = userRole.includes('hr') || userRole.includes('admin');
@@ -12613,51 +12640,26 @@ window.setupPushSubscription = setupPushSubscription;
 window.updateNotificationButtonState = updateNotificationButtonState;
 window.toggleProfilePasswordVisibility = toggleProfilePasswordVisibility;
 
-const SCHOOLS_DATA = {
-  "Shravani": [
-    "Holy Convent School",
-    "Sakharwadi Vidyalay",
-    "Sheron English School",
-    "PDEA English School, Akurdi / Mahalsakant",
-    "Lonkar Vidyalay, Mundhwa"
-  ],
-  "Prasad": [
-    "Eon Gyankur, Kharadi",
-    "Sant Tukaram, Lohegaon",
-    "Sharadabai Pawar (SP), Kharadi",
-    "MalikArjun Vidyalaya, Nhaware",
-    "Gurudev Datta Vidyalaya Savindane",
-    "Bhairavnath Vidyalaya, Karde",
-    "Charoli English / Marathi"
-  ],
-  "Rajendra Sir": [
-    "YC, Venutai – Phaltan",
-    "Rajendra Vidyalay, Khandala",
-    "Shaurya Sainiki, phaltan Golewadi",
-    "Shahaji High School, Supe",
-    "New English, Wanewadi",
-    "Ketkeshwar Vidyalaya, Nimgaon Ketki",
-    "Swami Ramanand Bharti High School, Sangli",
-    "Kshitij School, Sangli"
-  ],
-  "Suyash": [
-    "Shri Shivaji Vidyalay, Dehu Road",
-    "Koteshwar , Gove",
-    "Shivtej School, Aare",
-    "Pirangut School",
-    "Aditya Birla School",
-    "Vishnuji Shekuji Satav, Wagholi",
-    "Mudhoji School, Phaltan",
-    "SS Nikam"
-  ]
-};
+// Avatar color palette for dynamically added managers
+const MANAGER_AVATAR_COLORS = [
+  "linear-gradient(135deg, #ec4899, #f43f5e)",
+  "linear-gradient(135deg, #3b82f6, #06b6d4)",
+  "linear-gradient(135deg, #10b981, #059669)",
+  "linear-gradient(135deg, #f59e0b, #d97706)",
+  "linear-gradient(135deg, #8b5cf6, #6d28d9)",
+  "linear-gradient(135deg, #ef4444, #dc2626)",
+  "linear-gradient(135deg, #14b8a6, #0d9488)",
+  "linear-gradient(135deg, #f97316, #ea580c)"
+];
 
-const MANAGER_THEMES = {
-  "Shravani": { bg: "linear-gradient(135deg, #ec4899, #f43f5e)", avatar: "SK", designation: "HR" },
-  "Prasad": { bg: "linear-gradient(135deg, #3b82f6, #06b6d4)", avatar: "PS", designation: "Tech Lead, Manager" },
-  "Rajendra Sir": { bg: "linear-gradient(135deg, #10b981, #059669)", avatar: "RS", designation: "Manager" },
-  "Suyash": { bg: "linear-gradient(135deg, #f59e0b, #d97706)", avatar: "SP", designation: "Tech Lead, Manager" }
-};
+function getManagerTheme(managerName, index) {
+  // Try to find the actual employee for designation
+  const emp = state.employees.find(e => e.name === managerName || e.name.split(' ')[0] === managerName);
+  const designation = emp ? (emp.role || 'Manager') : 'Manager';
+  const initials = managerName.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+  const bg = MANAGER_AVATAR_COLORS[index % MANAGER_AVATAR_COLORS.length];
+  return { bg, avatar: initials, designation };
+}
 
 function renderSchoolManagement() {
   const grid = document.getElementById('schools-grid');
@@ -12665,10 +12667,24 @@ function renderSchoolManagement() {
 
   grid.innerHTML = '';
 
-  const managers = Object.keys(SCHOOLS_DATA);
-  managers.forEach(manager => {
-    const theme = MANAGER_THEMES[manager] || { bg: "var(--primary-gradient)", avatar: manager.substring(0, 2).toUpperCase(), designation: "Manager" };
-    const managerSchools = (state.schools || []).filter(sch => sch.managerName === manager);
+  // Dynamically find all unique manager names from the schools data
+  const allSchools = state.schools || [];
+  const managerNamesInSchools = [...new Set(allSchools.map(s => s.managerName).filter(Boolean))];
+
+  // Also include managers from schoolManagementLeads state (explicitly added via "Add Tech Lead")
+  const explicitLeads = state.schoolManagementLeads || [];
+  explicitLeads.forEach(name => {
+    if (!managerNamesInSchools.includes(name)) managerNamesInSchools.push(name);
+  });
+
+  if (managerNamesInSchools.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1; padding: 24px;"><div class="empty-state-title">No managers in school management yet</div><p>Add schools or add a tech lead to get started.</p></div>`;
+    return;
+  }
+
+  managerNamesInSchools.forEach((manager, managerIndex) => {
+    const theme = getManagerTheme(manager, managerIndex);
+    const managerSchools = allSchools.filter(sch => sch.managerName === manager);
 
     const card = document.createElement('div');
     card.className = 'project-card';
@@ -12682,7 +12698,7 @@ function renderSchoolManagement() {
     card.style.borderRadius = 'var(--border-radius)';
     card.style.transition = 'transform 0.3s ease, box-shadow 0.3s ease';
 
-    const schoolsListHtml = managerSchools.map((sch, index) => {
+    const schoolsListHtml = managerSchools.length > 0 ? managerSchools.map((sch, index) => {
       const instructorsList = (sch.instructors || []).map(instId => {
         const emp = state.employees.find(e => e.id === instId);
         return emp ? emp.name : instId;
@@ -12720,7 +12736,7 @@ function renderSchoolManagement() {
           </div>
         </div>
       `;
-    }).join('');
+    }).join('') : `<div style="font-size: 0.8rem; color: var(--text-muted); font-style: italic; padding: 16px 0;">No schools assigned yet. Use "Reassign School" to add schools to this tech lead.</div>`;
 
     card.innerHTML = `
       <!-- Card Header -->
@@ -13033,6 +13049,85 @@ window.closeAssignExistingInstructorModal = closeAssignExistingInstructorModal;
 window.handleAssignExistingInstructorSubmit = handleAssignExistingInstructorSubmit;
 
 window.renderSchoolManagement = renderSchoolManagement;
+
+// ============================================================
+// ADD TECH LEAD TO SCHOOL MANAGEMENT (HR / Admin Only)
+// ============================================================
+function openAddTechLeadToSchoolModal() {
+  const role = (state.currentRole || '').toLowerCase();
+  if (role !== 'hr' && role !== 'admin') {
+    showToast('Only HR and Admin can add Tech Leads to School Management.', 'error');
+    return;
+  }
+
+  const select = document.getElementById('add-school-lead-select');
+  if (!select) return;
+
+  select.innerHTML = '<option value="" disabled selected>Select a Tech Lead...</option>';
+
+  // Already-present manager names in school management (from schools + explicit leads)
+  const allSchools = state.schools || [];
+  const presentManagers = new Set([
+    ...allSchools.map(s => s.managerName).filter(Boolean),
+    ...(state.schoolManagementLeads || [])
+  ]);
+
+  // Filter employees who are Tech Leads / Managers and not already in school mgmt
+  const eligibleLeads = state.employees.filter(emp => {
+    if (isPratap(emp) || emp.isDeleted || emp.status === 'pending_approval') return false;
+    const roleStr = (emp.role || '').toLowerCase();
+    const isTechLead = roleStr.includes('tech lead') || roleStr.includes('techlead') || roleStr.includes('manager');
+    if (!isTechLead) return false;
+    // Check if already in school mgmt by name or first name
+    const firstName = emp.name.split(' ')[0];
+    return !presentManagers.has(emp.name) && !presentManagers.has(firstName);
+  });
+
+  if (eligibleLeads.length === 0) {
+    showToast('All Tech Leads are already added to School Management.', 'info');
+    return;
+  }
+
+  eligibleLeads.forEach(emp => {
+    const opt = document.createElement('option');
+    opt.value = emp.name;
+    opt.textContent = `${emp.name} (${emp.role})`;
+    select.appendChild(opt);
+  });
+
+  document.getElementById('add-school-lead-modal-overlay').classList.add('active');
+}
+
+function closeAddTechLeadToSchoolModal() {
+  document.getElementById('add-school-lead-modal-overlay').classList.remove('active');
+}
+
+function handleAddTechLeadToSchoolSubmit(e) {
+  e.preventDefault();
+  const select = document.getElementById('add-school-lead-select');
+  const leadName = select.value;
+  if (!leadName) {
+    showToast('Please select a Tech Lead.', 'error');
+    return;
+  }
+
+  if (!state.schoolManagementLeads) state.schoolManagementLeads = [];
+  if (!state.schoolManagementLeads.includes(leadName)) {
+    state.schoolManagementLeads.push(leadName);
+  }
+
+  // Persist in localStorage
+  localStorage.setItem('ems_school_mgmt_leads', JSON.stringify(state.schoolManagementLeads));
+  triggerBackendSync();
+
+  renderSchoolManagement();
+  closeAddTechLeadToSchoolModal();
+  showToast(`${leadName} has been added to School Management. You can now assign schools to them using "Reassign School".`, 'success');
+}
+
+window.openAddTechLeadToSchoolModal = openAddTechLeadToSchoolModal;
+window.closeAddTechLeadToSchoolModal = closeAddTechLeadToSchoolModal;
+window.handleAddTechLeadToSchoolSubmit = handleAddTechLeadToSchoolSubmit;
 
 function openFillDetailsModal() {
   if (!state.currentUser) return;
@@ -14020,9 +14115,9 @@ function populateManagerDropdowns() {
   reassignManagerSelect.innerHTML = defaultHtml;
 
   const managers = state.employees.filter(emp => {
-    if (isPratap(emp) || emp.isDeleted || emp.status === 'pending_approval') return false; // Hide Pratap, Deleted & Pending
+    if (isPratap(emp) || emp.isDeleted || emp.status === 'pending_approval') return false;
     const roleStr = (emp.role || '').toLowerCase();
-    return roleStr.includes('manager') || roleStr.includes('hr');
+    return roleStr.includes('manager') || roleStr.includes('hr') || roleStr.includes('tech lead') || roleStr.includes('techlead');
   });
 
   const getManagerShortName = (fullName) => {
@@ -14030,6 +14125,7 @@ function populateManagerDropdowns() {
     if (fullName.includes('Prasad')) return 'Prasad';
     if (fullName.includes('Rajendra')) return 'Rajendra Sir';
     if (fullName.includes('Suyash')) return 'Suyash';
+    if (fullName.includes('Atharva Durgavale') || fullName.includes('Atharva Durgawale')) return 'Atharva Durgavale';
     return fullName;
   };
 
