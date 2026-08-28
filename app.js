@@ -14946,12 +14946,24 @@ function renderProjDashTabContent() {
                 <th>Work Done</th>
                 <th>Hours</th>
                 <th>Progress Added</th>
+                <th>Attachments</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              ${updates.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No daily work updates submitted yet.</td></tr>` :
-                [...updates].sort((a, b) => new Date(b.submittedAt || b.date) - new Date(a.submittedAt || a.date)).map(u => `
+              ${updates.length === 0 ? `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">No daily work updates submitted yet.</td></tr>` :
+                [...updates].sort((a, b) => new Date(b.submittedAt || b.date) - new Date(a.submittedAt || a.date)).map(u => {
+                  const photosHtml = (u.photos || []).map((p, i) =>
+                    `<img src="${p.data}" title="${escapeHTML(p.name)}" onclick="window.open(this.src,'_blank')" style="width:36px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border-color);margin-right:3px;">`
+                  ).join('');
+                  const filesHtml = (u.files || []).map(f =>
+                    `<a href="${f.data}" download="${escapeHTML(f.name)}" style="font-size:0.7rem;color:var(--primary);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px;" title="${escapeHTML(f.name)}">📄 ${escapeHTML(f.name)}</a>`
+                  ).join('');
+                  const driveLinkHtml = u.driveLink ? `<a href="${escapeHTML(u.driveLink)}" target="_blank" style="font-size:0.7rem;color:var(--primary);display:block;">🔗 Drive Link</a>` : '';
+                  const attachHtml = photosHtml || filesHtml || driveLinkHtml
+                    ? `<div style="display:flex;flex-direction:column;gap:3px;">${photosHtml ? `<div style="display:flex;flex-wrap:wrap;gap:2px;">${photosHtml}</div>` : ''}${filesHtml}${driveLinkHtml}</div>`
+                    : `<span style="color:var(--text-muted);font-size:0.7rem;">—</span>`;
+                  return `
                   <tr>
                     <td>${u.date}</td>
                     <td><strong>${escapeHTML(u.employeeName)}</strong></td>
@@ -14959,11 +14971,12 @@ function renderProjDashTabContent() {
                     <td>${escapeHTML(u.workDone)}</td>
                     <td>${u.hours} hrs</td>
                     <td><strong style="color: var(--success);">+${u.progressAdded}%</strong></td>
+                    <td>${attachHtml}</td>
                     <td>
                       <span class="badge badge-${(u.status || 'pending').toLowerCase()}">${u.status || 'Pending'}</span>
                     </td>
                   </tr>
-                `).join('')
+                `}).join('')
               }
             </tbody>
           </table>
@@ -14996,9 +15009,17 @@ function renderProjDashTabContent() {
                     <strong>Task:</strong> ${escapeHTML(u.task)}<br>
                     <strong>Work Done:</strong> ${escapeHTML(u.workDone)}
                   </div>
-                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
                     Hours: ${u.hours} hrs | Progress Requested: <strong style="color: var(--success);">+${u.progressAdded}%</strong>
+                    ${u.remarks ? `<br><strong>Remarks:</strong> ${escapeHTML(u.remarks)}` : ''}
                   </div>
+                  ${(u.photos && u.photos.length > 0) || (u.files && u.files.length > 0) || u.driveLink ? `
+                  <div style="margin-bottom: 10px; padding: 8px; background: var(--bg-tertiary); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">📎 Attachments</div>
+                    ${u.photos && u.photos.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">${u.photos.map(p => `<img src="${p.data}" title="${escapeHTML(p.name)}" onclick="window.open(this.src,'_blank')" style="width:56px;height:56px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border-color);">`).join('')}</div>` : ''}
+                    ${u.files && u.files.length > 0 ? `<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:4px;">${u.files.map(f => `<a href="${f.data}" download="${escapeHTML(f.name)}" style="font-size:0.75rem;color:var(--primary);">📄 ${escapeHTML(f.name)}</a>`).join('')}</div>` : ''}
+                    ${u.driveLink ? `<a href="${escapeHTML(u.driveLink)}" target="_blank" style="font-size:0.75rem;color:var(--primary);">🔗 View Drive Link</a>` : ''}
+                  </div>` : ''}
                   ${isTechLeadOrAdmin ? `
                     <div style="display: flex; gap: 10px;">
                       <button class="btn btn-success btn-xs" onclick="approveProjectWork('${proj.id}', '${u.id}')" style="flex: 1;">Approve Progress (+${u.progressAdded}%)</button>
@@ -15212,6 +15233,52 @@ function openAddProjectDailyWorkModal(projectId) {
   document.getElementById('proj-work-project-id').value = projectId;
   document.getElementById('proj-work-date').value = new Date().toISOString().split('T')[0];
 
+  // Reset attachments
+  const photosInput = document.getElementById('proj-work-photos');
+  const filesInput = document.getElementById('proj-work-files');
+  const driveLinkInput = document.getElementById('proj-work-drive-link');
+  const photosPreview = document.getElementById('proj-work-photos-preview');
+  const filesPreview = document.getElementById('proj-work-files-preview');
+  if (photosInput) photosInput.value = '';
+  if (filesInput) filesInput.value = '';
+  if (driveLinkInput) driveLinkInput.value = '';
+  if (photosPreview) photosPreview.innerHTML = '';
+  if (filesPreview) filesPreview.innerHTML = '';
+
+  // Photo preview listener
+  if (photosInput) {
+    photosInput.onchange = function() {
+      if (!photosPreview) return;
+      photosPreview.innerHTML = '';
+      Array.from(photosInput.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = document.createElement('img');
+          img.src = ev.target.result;
+          img.style.cssText = 'width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer;';
+          img.title = file.name;
+          img.onclick = () => window.open(ev.target.result, '_blank');
+          photosPreview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+  }
+
+  // File list preview listener
+  if (filesInput) {
+    filesInput.onchange = function() {
+      if (!filesPreview) return;
+      filesPreview.innerHTML = '';
+      Array.from(filesInput.files).forEach(file => {
+        const item = document.createElement('div');
+        item.style.cssText = 'font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;';
+        item.innerHTML = `📄 <span>${escapeHTML(file.name)}</span> <span style="color:var(--text-muted);font-size:0.72rem;">(${(file.size/1024).toFixed(1)} KB)</span>`;
+        filesPreview.appendChild(item);
+      });
+    };
+  }
+
   const modal = document.getElementById('modal-add-project-daily-work');
   if (modal) modal.classList.add('active');
 }
@@ -15232,9 +15299,67 @@ async function handleProjectDailyWorkSubmit(e) {
   const hours = Number(document.getElementById('proj-work-hours').value);
   const progressAdded = Number(document.getElementById('proj-work-progress-added').value);
   const remarks = document.getElementById('proj-work-remarks').value.trim();
+  const driveLink = (document.getElementById('proj-work-drive-link') || {}).value || '';
 
   const proj = state.projects.find(p => p.id === projectId);
   if (!proj) return;
+
+  // Lock submit button
+  const submitBtn = document.getElementById('proj-work-submit-btn');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting...'; }
+
+  // Helper to read file as base64
+  function readFileBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = ev => resolve({ name: file.name, type: file.type, size: file.size, data: ev.target.result });
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Compress image before storing
+  function compressWorkImage(base64, maxW, maxH, quality) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > maxW) { height = Math.round(height * maxW / width); width = maxW; }
+        if (height > maxH) { width = Math.round(width * maxH / height); height = maxH; }
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => resolve(base64);
+      img.src = base64;
+    });
+  }
+
+  // Read photos (compressed)
+  const photoAttachments = [];
+  const photosInput = document.getElementById('proj-work-photos');
+  if (photosInput && photosInput.files.length > 0) {
+    for (const file of Array.from(photosInput.files)) {
+      const raw = await readFileBase64(file);
+      const compressed = await compressWorkImage(raw.data, 1024, 1024, 0.7);
+      photoAttachments.push({ name: file.name, type: file.type, data: compressed });
+    }
+  }
+
+  // Read files (PDFs, docs — stored as base64)
+  const fileAttachments = [];
+  const filesInput = document.getElementById('proj-work-files');
+  if (filesInput && filesInput.files.length > 0) {
+    for (const file of Array.from(filesInput.files)) {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast(`File "${file.name}" is too large (max 5MB). Skipped.`, 'error');
+        continue;
+      }
+      const raw = await readFileBase64(file);
+      fileAttachments.push({ name: file.name, type: file.type, data: raw.data });
+    }
+  }
 
   if (!proj.dailyWorkUpdates) proj.dailyWorkUpdates = [];
 
@@ -15250,6 +15375,9 @@ async function handleProjectDailyWorkSubmit(e) {
     hours: hours,
     progressAdded: progressAdded,
     remarks: remarks,
+    driveLink: driveLink || '',
+    photos: photoAttachments,
+    files: fileAttachments,
     status: 'Pending',
     submittedAt: new Date().toISOString()
   };
@@ -15259,7 +15387,7 @@ async function handleProjectDailyWorkSubmit(e) {
   if (!proj.activityLogs) proj.activityLogs = [];
   proj.activityLogs.push({
     timestamp: new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }),
-    message: `${state.currentUser.name} submitted daily work update (+${progressAdded}% requested for ${milestone}).`,
+    message: `${state.currentUser.name} submitted daily work update (+${progressAdded}% requested for ${milestone})${photoAttachments.length > 0 ? ` with ${photoAttachments.length} photo(s)` : ''}${fileAttachments.length > 0 ? ` and ${fileAttachments.length} file(s)` : ''}.`,
     authorId: state.currentUser.id
   });
 
@@ -15278,6 +15406,8 @@ async function handleProjectDailyWorkSubmit(e) {
   } catch (err) {
     console.error('Failed to sync daily work update to server:', err);
   }
+
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Daily Work'; }
 
   triggerBackendSync();
   closeAddProjectDailyWorkModal();

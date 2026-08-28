@@ -3577,10 +3577,33 @@
             <label style="font-weight: 600;">Remarks / Next Steps</label>
             <input type="text" id="proj-work-remarks" placeholder="e.g. Unit tests remaining for tomorrow">
           </div>
+          <!-- ATTACHMENTS SECTION -->
+          <div class="form-group" style="grid-column: span 2; border: 1px dashed var(--border-color); border-radius: 8px; padding: 12px; background: var(--bg-tertiary);">
+            <label style="font-weight: 600; margin-bottom: 10px; display: block;">📎 Attachments (Optional)</label>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Photos / Images -->
+              <div>
+                <label style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; display: block;">🖼️ Photos / Images</label>
+                <input type="file" id="proj-work-photos" multiple accept="image/*" style="font-size: 0.8rem; color: var(--text-primary); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px; width: 100%; cursor: pointer;">
+                <div id="proj-work-photos-preview" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;"></div>
+              </div>
+              <!-- PDF / Files -->
+              <div>
+                <label style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; display: block;">📄 PDF / Documents / Files</label>
+                <input type="file" id="proj-work-files" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar" style="font-size: 0.8rem; color: var(--text-primary); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px; width: 100%; cursor: pointer;">
+                <div id="proj-work-files-preview" style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px;"></div>
+              </div>
+              <!-- Google Drive / External Link -->
+              <div>
+                <label style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; display: block;">🔗 Google Drive / External Link</label>
+                <input type="url" id="proj-work-drive-link" placeholder="https://drive.google.com/..." style="font-size: 0.85rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px; width: 100%; color: var(--text-primary); box-sizing: border-box;">
+              </div>
+            </div>
+          </div>
         </div>
         <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px;">
           <button type="button" class="btn btn-secondary" onclick="closeAddProjectDailyWorkModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary">Submit Daily Work</button>
+          <button type="submit" id="proj-work-submit-btn" class="btn btn-primary">Submit Daily Work</button>
         </div>
       </form>
     </div>
