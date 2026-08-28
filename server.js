@@ -419,20 +419,34 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
   }
   stateObj.projects = finalProjects;
 
-  // 5. Smart merge incoming Schools with existing DB Schools
+  // 5. Smart merge & deduplicate incoming Schools by lowercased name with existing DB Schools
   const existingSchools = await models.School.find({}).lean();
-  const schoolMap = new Map(existingSchools.map(s => [s.id, s]));
+  const schoolMap = new Map();
+  existingSchools.forEach(s => {
+    if (s && s.name) {
+      schoolMap.set(s.name.trim().toLowerCase(), s);
+    }
+  });
+
   (stateObj.schools || []).forEach(incomingSch => {
-    if (incomingSch && incomingSch.id) {
-      const existing = schoolMap.get(incomingSch.id);
+    if (incomingSch && incomingSch.name) {
+      const key = incomingSch.name.trim().toLowerCase();
+      const existing = schoolMap.get(key);
       if (existing) {
-        schoolMap.set(incomingSch.id, { ...existing, ...incomingSch });
+        schoolMap.set(key, { ...existing, ...incomingSch, name: incomingSch.name.trim() });
       } else {
-        schoolMap.set(incomingSch.id, incomingSch);
+        schoolMap.set(key, { ...incomingSch, name: incomingSch.name.trim() });
       }
     }
   });
-  stateObj.schools = Array.from(schoolMap.values());
+  const deduppedSchools = Array.from(schoolMap.values());
+  stateObj.schools = deduppedSchools;
+
+  // Purge duplicate school documents from DB and insert clean list
+  await models.School.deleteMany({});
+  if (deduppedSchools.length > 0) {
+    await models.School.insertMany(deduppedSchools);
+  }
 
   // 6. Merge CustomChatGroups to ensure no group created by any member is overwritten
   const existingGroups = await models.CustomChatGroup.find({}).lean();
@@ -744,22 +758,23 @@ app.get('/api/sync-timestamp', async (req, res) => {
   }
 });
 
-// Lightweight chat-only endpoint for instant real-time chat updates without full state sync
+// Lightweight chat-only endpoint for instant real-time chat & school updates without full state sync
 app.get('/api/chats-only', async (req, res) => {
   try {
     await connectDB();
-    const [chats, announcements, notices, tombstones, customChatGroups] = await Promise.all([
+    const [chats, announcements, notices, tombstones, customChatGroups, schools] = await Promise.all([
       models.Chat.find({}).lean(),
       models.Announcement.find({}).lean(),
       models.Notice.find({}).lean(),
       models.Tombstone.find({ modelName: 'Chat' }).lean(),
-      models.CustomChatGroup.find({}).lean()
+      models.CustomChatGroup.find({}).lean(),
+      models.School.find({}).lean()
     ]);
     const deletedChatIds = tombstones.map(t => t.id);
     let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' });
     const timestamp = meta ? meta.timestamp : Date.now();
     const activeUsers = await trackAndGetActiveUsers(req.query.employeeId, null);
-    return res.json({ chats, announcements, notices, customChatGroups, deletedChatIds, timestamp, activeUsers });
+    return res.json({ chats, announcements, notices, customChatGroups, schools, deletedChatIds, timestamp, activeUsers });
   } catch (err) {
     console.error('❌ Failed to read chats-only:', err.message);
     return res.status(500).json({ error: 'Database read failed.' });
@@ -1467,23 +1482,56 @@ app.post('/api/super-admin-recovery', async (req, res) => {
   }
 });
 
-// Atomic School Reassignment & Update Endpoint (Direct Instant Server Persistence)
+// Atomic School Reassignment & Update Endpoint (Direct Instant Server Persistence & Deduplication)
 app.post('/api/update-school', async (req, res) => {
   try {
     await connectDB();
     const { school } = req.body;
-    if (!school || !school.id) {
+    if (!school || (!school.id && !school.name)) {
       return res.status(400).json({ error: 'Missing school object' });
     }
-    const updated = await models.School.findOneAndUpdate(
-      { id: school.id },
-      { $set: school },
-      { upsert: true, new: true }
-    );
+
+    const cleanName = school.name ? school.name.trim() : '';
+    const nameRegex = cleanName ? new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') : null;
+
+    // Find any existing matches by ID or Name
+    const query = nameRegex ? { $or: [{ id: school.id }, { name: nameRegex }] } : { id: school.id };
+    const matches = await models.School.find(query);
+
+    if (matches.length > 0) {
+      const primaryDoc = matches[0];
+      // Update primary document
+      await models.School.findByIdAndUpdate(primaryDoc._id, { $set: { ...school, name: cleanName || school.name } });
+      // Delete any duplicate documents matching the same school name
+      if (matches.length > 1) {
+        const dupIds = matches.slice(1).map(m => m._id);
+        await models.School.deleteMany({ _id: { $in: dupIds } });
+      }
+    } else {
+      await models.School.create({ ...school, name: cleanName || school.name });
+    }
+
+    // Global cleanup check across collection to eliminate any orphan duplicates
+    const allSchools = await models.School.find({}).lean();
+    const seenNames = new Map();
+    const orphanIdsToDelete = [];
+    allSchools.forEach(s => {
+      if (!s || !s.name) return;
+      const key = s.name.trim().toLowerCase();
+      if (seenNames.has(key)) {
+        orphanIdsToDelete.push(s._id);
+      } else {
+        seenNames.set(key, s);
+      }
+    });
+    if (orphanIdsToDelete.length > 0) {
+      await models.School.deleteMany({ _id: { $in: orphanIdsToDelete } });
+    }
+
     const timestamp = Date.now();
     await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp }, { upsert: true });
-    console.log(`[SCHOOL UPDATE] Instant updated school "${school.name}" manager to: ${school.managerName}`);
-    return res.json({ success: true, timestamp, school: updated.toJSON() });
+    console.log(`[SCHOOL UPDATE] Reassigned & deduplicated school "${cleanName}" manager to: ${school.managerName}`);
+    return res.json({ success: true, timestamp });
   } catch (err) {
     console.error('Error updating school directly:', err);
     return res.status(500).json({ error: err.message });

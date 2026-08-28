@@ -14,6 +14,32 @@ function getTodayDateString() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
+function deduplicateSchools(schools) {
+  if (!Array.isArray(schools)) return [];
+  const nameMap = new Map();
+  schools.forEach(sch => {
+    if (!sch || !sch.name) return;
+    const cleanName = sch.name.trim();
+    const key = cleanName.toLowerCase();
+    const existing = nameMap.get(key);
+    if (!existing) {
+      nameMap.set(key, { ...sch, name: cleanName });
+    } else {
+      const managerName = (sch.managerName && sch.managerName !== 'Unassigned') ? sch.managerName : (existing.managerName || sch.managerName || '');
+      const mergedInstructors = Array.from(new Set([...(existing.instructors || []), ...(sch.instructors || [])]));
+      nameMap.set(key, {
+        ...existing,
+        ...sch,
+        id: existing.id || sch.id,
+        name: cleanName,
+        managerName: managerName,
+        instructors: mergedInstructors
+      });
+    }
+  });
+  return Array.from(nameMap.values());
+}
+
 // --- Central Database Sync Layer ---
 const originalSetItem = localStorage.setItem;
 let isSyncingToServer = false;
@@ -323,8 +349,8 @@ async function fetchCentralizedState() {
           });
         }
 
-        state.schools = s.schools;
-        safeOriginalSetItem('ems_schools', JSON.stringify(s.schools));
+        state.schools = deduplicateSchools(s.schools);
+        safeOriginalSetItem('ems_schools', JSON.stringify(state.schools));
       }
       if (s.nationalHolidays) {
         state.nationalHolidays = s.nationalHolidays;
@@ -431,6 +457,20 @@ function initSyncPolling() {
         });
         state.customChatGroups = Array.from(grpMap.values());
         safeOriginalSetItem('ems_custom_chat_groups', JSON.stringify(state.customChatGroups));
+      }
+
+      // Fast real-time sync for Schools (<600ms)
+      if (Array.isArray(chatData.schools)) {
+        const dedupped = deduplicateSchools(chatData.schools);
+        const schoolSig = dedupped.map(s => `${s.id}_${s.managerName}_${(s.instructors || []).join(',')}`).join('|');
+        if (window.lastSchoolSignature !== schoolSig) {
+          window.lastSchoolSignature = schoolSig;
+          state.schools = dedupped;
+          safeOriginalSetItem('ems_schools', JSON.stringify(dedupped));
+          if (activeView === 'schools' || state.currentView === 'schools') {
+            renderSchoolManagement();
+          }
+        }
       }
     } catch (err) {
       // Silent fail — chat poll errors shouldn't disrupt the user
@@ -2171,10 +2211,10 @@ async function init() {
   if (state.schools.length === 0) {
     // Static school seed data (fallback only - normally loaded from server)
     const SEED_SCHOOLS = {
-      "Shravani": ["Sheron English School", "Shri Shivaji Vidyalay, Dehu Road", "Shri Mhalsakant Vidyalaya, Akurdi"],
-      "Prasad": ["Lonkar Vidyalay, Mundhwa", "Sakharwadi Vidyalay", "Sant Tukaram, Lohegaon", "Gurudev Datta Vidyalaya Savindane", "Charoli English / Marathi", "Eon Gyankur, Kharadi", "Bhairavnath Vidyalaya, Karde", "MalikArjun Vidyalaya, Nhaware", "Aditya Birla School"],
+      "Shravani": ["Sheron English School", "Shri Shivaji Vidyalay, Dehu Road", "Shri Mhalsakant Vidyalaya, Akurdi", "PDEA English school, akurdi"],
+      "Prasad": ["Lonkar Vidyalay, Mundhwa", "Sakharwadi Vidyalay", "Sant Tukaram, Lohegaon", "Gurudev Datta Vidyalaya Savindane", "Charoli English / Marathi", "Eon Gyankur, Kharadi", "Bhairavnath Vidyalaya, Karde", "MalikArjun Vidyalaya, Nhaware"],
       "Rajendra Sir": ["Shahaji High School, Supe", "Kshitij School, Sangli", "Shaurya Sainiki, phaltan Golewadi", "YC, Venutai – Phaltan", "Ketkeshwar Vidyalaya, Nimgaon Ketki", "Swami Ramanand Bharti High School, Sangli", "Kahiti School, Sangli", "Rajendra Vidyalay, Khandala"],
-      "Suyash": ["Koteshwar , Gove", "Aditya Birla School", "Mudhoji School, Phaltan", "Shivtej School, Aare", "Holy Convent School", "Vishnuji Shekuji Satav, Wagholi"],
+      "Suyash": ["Koteshwar , Gove", "Aditya Birla School", "Mudhoji School, Phaltan", "Shivtej School, Aare", "Holy Convent School", "Vishnuji Shekuji Satav, Wagholi", "Yashwant Grampanchayat, Dhamner"],
       "Atharva Durgavale": ["Pirangut School", "Pirungut English School"]
     };
     let idCounter = 1;
@@ -13783,12 +13823,15 @@ function openReassignSchoolModal(schoolId) {
   populateManagerDropdowns();
   document.getElementById('reassign-school-form').reset();
 
+  // Deduplicate schools list first so every school appears EXACTLY ONCE
+  state.schools = deduplicateSchools(state.schools);
+
   const schoolSelect = document.getElementById('reassign-school-select');
   schoolSelect.innerHTML = '<option value="" disabled selected>Select school...</option>';
   state.schools.forEach(sch => {
     const opt = document.createElement('option');
     opt.value = sch.id;
-    opt.textContent = `${sch.name} (${sch.managerName})`;
+    opt.textContent = `${sch.name} (${sch.managerName || 'Unassigned'})`;
     schoolSelect.appendChild(opt);
   });
 
@@ -13819,14 +13862,26 @@ async function handleReassignSchoolSubmit(e) {
 
   const sch = state.schools.find(s => s.id === schoolId);
   if (sch) {
-    sch.managerName = managerName;
-    localStorage.setItem('ems_schools', JSON.stringify(state.schools));
+    const targetNameKey = sch.name.trim().toLowerCase();
+
+    // Update ALL matching school entries with this name to the new managerName
+    state.schools.forEach(s => {
+      if (s && s.name && s.name.trim().toLowerCase() === targetNameKey) {
+        s.managerName = managerName;
+      }
+    });
+
+    // Deduplicate state.schools into a clean 1-school-per-name list
+    state.schools = deduplicateSchools(state.schools);
+    safeOriginalSetItem('ems_schools', JSON.stringify(state.schools));
+
+    const updatedSchoolObj = state.schools.find(s => s.name.trim().toLowerCase() === targetNameKey) || sch;
 
     try {
       await fetch('/api/update-school', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ school: sch })
+        body: JSON.stringify({ school: updatedSchoolObj })
       });
     } catch (err) {
       console.error('Failed to update school directly:', err);
