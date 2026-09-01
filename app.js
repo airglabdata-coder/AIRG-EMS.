@@ -11966,6 +11966,11 @@ async function handleLoginSubmit(e) {
         return true;
       }
 
+      // Handle email alias for Sujit (sujitgurujiair@gmail.com <-> sujit@gurujiair.com)
+      if (inputVal.includes('sujit') && (empEmail.includes('sujit') || empName.includes('sujit') || empId === 'airg00053')) {
+        return true;
+      }
+
       return false;
     });
   };
