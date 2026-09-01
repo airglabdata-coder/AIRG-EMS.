@@ -4969,10 +4969,25 @@ function renderEmployeeTasksAndProjects() {
                       </div>
                     </div>
                   ` : `
+                    ${task.status === 'Needs Revision' ? `
+                      <div style="padding: 10px 14px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.35); border-radius: 6px; color: #ef4444; font-size: 0.85rem; margin-bottom: 12px;" onclick="event.stopPropagation()">
+                        <div style="font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                          <span>⚠️ Rejection Feedback (From ${escapeHTML(task.rejectedBy || 'Manager')}):</span>
+                        </div>
+                        <div style="margin-top: 4px; font-weight: 500; color: var(--text-primary); background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 4px; border-left: 3px solid #ef4444;">
+                          "${escapeHTML(task.rejectionReason || 'Please review and fix before resubmitting.')}"
+                        </div>
+                      </div>
+                    ` : ''}
                     <div style="font-weight: 500; color: var(--text-secondary); white-space: pre-wrap; word-break: break-word;">${task.details || 'No details provided.'}</div>
                     ${renderAttachmentsHTML(task.images, task.id, task.driveLinks)}
-                    <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 10px;" onclick="event.stopPropagation()">
                       <button class="btn btn-secondary btn-sm" onclick="startEditTask('${task.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px;">Edit Description & Photos</button>
+                      ${task.status === 'Needs Revision' ? `
+                        <button class="btn btn-warning btn-sm" onclick="submitTaskForReview('${task.id}', event)" style="padding: 4px 12px; font-size: 0.75rem; border-radius: 6px; font-weight: 700;">📤 Resubmit Work for Review</button>
+                      ` : (task.status === 'Not Completed' ? `
+                        <button class="btn btn-primary btn-sm" onclick="submitTaskForReview('${task.id}', event)" style="padding: 4px 12px; font-size: 0.75rem; border-radius: 6px; font-weight: 700;">📤 Submit Work for Review</button>
+                      ` : '')}
                     </div>
                   `}
                 </div>
@@ -4981,7 +4996,7 @@ function renderEmployeeTasksAndProjects() {
             <td>${task.projectName || 'Personal'}</td>
             <td><span class="badge badge-${task.priority.toLowerCase()}">${task.priority}</span></td>
             <td>${task.startDate ? formatDate(task.startDate) + ' to ' : ''}${formatDate(task.dueDate)}</td>
-            <td><span class="badge badge-${task.status.replace(' ', '-').toLowerCase()}">${task.status}</span></td>
+            <td>${getTaskStatusBadgeHtml(task.status, task.rejectionReason)}</td>
           `;
         } else {
           // Read-only row for teammates' tasks
@@ -5184,48 +5199,150 @@ function cycleTaskStatus(taskId) {
   showToast(`Task status updated to "${task.status}"`, 'success');
 }
 
-function toggleTaskCompletion(taskId) {
-  const taskIdx = state.tasks.findIndex(t => t.id === taskId);
-  if (taskIdx === -1) return;
+function getTaskStatusBadgeHtml(status, rejectionReason = '') {
+  if (status === 'Completed') {
+    return `<span class="badge" style="background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); font-weight: 700;">✅ Completed</span>`;
+  }
+  if (status === 'Pending Review') {
+    return `<span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); font-weight: 700;" title="Submitted by employee, awaiting lead/manager review">⏳ Pending Review</span>`;
+  }
+  if (status === 'Needs Revision') {
+    return `<span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); font-weight: 700;" title="${rejectionReason ? 'Reason: ' + escapeHTML(rejectionReason) : 'Needs revision'}">⚠️ Needs Revision</span>`;
+  }
+  return `<span class="badge" style="background: rgba(148,163,184,0.15); color: var(--text-muted); border: 1px solid rgba(148,163,184,0.3);">Not Completed</span>`;
+}
 
-  const task = state.tasks[taskIdx];
-  const prevStatus = task.status;
+function submitTaskForReview(taskId, event) {
+  if (event) event.stopPropagation();
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
 
-  if (task.status !== 'Completed') {
-    const detailsText = (task.details || '').trim();
-    const words = detailsText.split(/\s+/).filter(w => w.length > 0);
-    if (words.length < 10) {
-      showToast('Please type a minimum of 10 words in "edit description & photos" before completing this task.', 'error');
-      if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
-        renderHRTasksAndProjects();
-      } else {
-        renderEmployeeTasksAndProjects();
-      }
-      return;
+  const detailsText = (task.details || '').trim();
+  const words = detailsText.split(/\s+/).filter(w => w.length > 0);
+  if (words.length < 10) {
+    showToast('Please type a minimum of 10 words in "Edit Description & Photos" describing your completed work before submitting for review.', 'error');
+    if (!state.expandedTaskIds) state.expandedTaskIds = new Set();
+    state.expandedTaskIds.add(taskId);
+    state.editingTaskId = taskId;
+    if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
+      renderHRTasksAndProjects();
+    } else {
+      renderEmployeeTasksAndProjects();
     }
+    return;
   }
 
-  if (task.status === 'Completed') {
-    task.status = 'Not Completed';
-  } else {
-    task.status = 'Completed';
-  }
+  const prevStatus = task.status;
+  task.status = 'Pending Review';
+  task.submittedAt = new Date().toISOString();
 
   if (!safeSaveTasks()) {
     task.status = prevStatus;
     return;
   }
 
+  showToast(`Task "${task.desc}" submitted to Tech Lead / Manager for review!`, 'info');
+
   if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
     renderHRTasksAndProjects();
   } else {
     renderEmployeeTasksAndProjects();
   }
-  showToast(`Task marked as ${task.status.toLowerCase()}`, 'success');
+}
 
-  if (task.status === 'Completed') {
-    state.lastCompletedTaskId = taskId;
-    openDailyReportReminder();
+function approveTaskByLead(taskId, event) {
+  if (event) event.stopPropagation();
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  const prevStatus = task.status;
+  task.status = 'Completed';
+  task.approvedBy = state.currentUser ? state.currentUser.name : 'Manager';
+  task.approvedAt = new Date().toISOString();
+
+  if (!safeSaveTasks()) {
+    task.status = prevStatus;
+    return;
+  }
+
+  showToast(`Task "${task.desc}" approved and marked as Completed!`, 'success');
+
+  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
+    renderHRTasksAndProjects();
+  } else {
+    renderEmployeeTasksAndProjects();
+  }
+
+  state.lastCompletedTaskId = taskId;
+  openDailyReportReminder();
+}
+
+function rejectTaskByLeadModal(taskId, event) {
+  if (event) event.stopPropagation();
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  const reason = prompt(`Enter reason why task "${task.desc}" is incomplete / needs revision:`);
+  if (reason === null) return;
+  if (!reason.trim()) {
+    showToast('Rejection reason cannot be empty. Please state why the task needs revision.', 'error');
+    return;
+  }
+
+  const prevStatus = task.status;
+  task.status = 'Needs Revision';
+  task.rejectionReason = reason.trim();
+  task.rejectedBy = state.currentUser ? state.currentUser.name : 'Manager';
+  task.rejectedAt = new Date().toISOString();
+
+  if (!safeSaveTasks()) {
+    task.status = prevStatus;
+    return;
+  }
+
+  showToast(`Task "${task.desc}" sent back to employee for revision with feedback.`, 'info');
+
+  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
+    renderHRTasksAndProjects();
+  } else {
+    renderEmployeeTasksAndProjects();
+  }
+}
+
+function toggleTaskCompletion(taskId) {
+  const taskIdx = state.tasks.findIndex(t => t.id === taskId);
+  if (taskIdx === -1) return;
+
+  const task = state.tasks[taskIdx];
+  const user = state.currentUser;
+
+  const isPersonal = isMyPersonalTask(task, user ? user.id : null, user ? user.name : null);
+  const isLeadOrAdmin = state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin';
+
+  if (isLeadOrAdmin || isPersonal) {
+    const prevStatus = task.status;
+    task.status = (task.status === 'Completed') ? 'Not Completed' : 'Completed';
+    if (!safeSaveTasks()) {
+      task.status = prevStatus;
+      return;
+    }
+  } else {
+    if (task.status === 'Completed') {
+      task.status = 'Not Completed';
+      safeSaveTasks();
+    } else if (task.status === 'Pending Review') {
+      showToast('Task is pending review by Tech Lead / Manager.', 'info');
+      return;
+    } else {
+      submitTaskForReview(taskId);
+      return;
+    }
+  }
+
+  if (state.currentRole === 'hr' || state.currentRole === 'techlead' || state.currentRole === 'manager' || state.currentRole === 'admin') {
+    renderHRTasksAndProjects();
+  } else {
+    renderEmployeeTasksAndProjects();
   }
 }
 
@@ -5888,9 +6005,19 @@ function renderHRTasksAndProjects() {
                       </div>
                     </div>
                   ` : `
+                    ${task.status === 'Needs Revision' ? `
+                      <div style="padding: 10px 14px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.35); border-radius: 6px; color: #ef4444; font-size: 0.85rem; margin-bottom: 12px;" onclick="event.stopPropagation()">
+                        <div style="font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                          <span>⚠️ Rejection Feedback (From ${escapeHTML(task.rejectedBy || 'Manager')}):</span>
+                        </div>
+                        <div style="margin-top: 4px; font-weight: 500; color: var(--text-primary); background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 4px; border-left: 3px solid #ef4444;">
+                          "${escapeHTML(task.rejectionReason || 'Please review and fix before resubmitting.')}"
+                        </div>
+                      </div>
+                    ` : ''}
                     <div style="font-weight: 500; color: var(--text-secondary); white-space: pre-wrap; word-break: break-word;">${task.details || 'No details provided.'}</div>
                     ${renderAttachmentsHTML(task.images, task.id, task.driveLinks)}
-                    <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 10px;" onclick="event.stopPropagation()">
                       <button class="btn btn-secondary btn-sm" onclick="startEditTask('${task.id}', event)" style="padding: 4px 10px; font-size: 0.75rem; border-radius: 6px;">Edit Description & Photos</button>
                     </div>
                   `}
@@ -5906,9 +6033,15 @@ function renderHRTasksAndProjects() {
               <span class="badge badge-${task.priority.toLowerCase()}">${task.priority}</span>
             </td>
             <td>${task.startDate ? formatDate(task.startDate) + ' to ' : ''}${formatDate(task.dueDate)}</td>
-            <td><span class="badge badge-${task.status.replace(' ', '-').toLowerCase()}">${task.status}</span></td>
+            <td>${getTaskStatusBadgeHtml(task.status, task.rejectionReason)}</td>
             <td>
-              <button class="btn btn-danger btn-sm" onclick="deleteTask('${task.id}')">Delete</button>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                ${task.status !== 'Completed' ? `
+                  <button class="btn btn-success btn-xs" onclick="approveTaskByLead('${task.id}', event)" style="padding: 4px 8px; font-size: 0.72rem; font-weight: 700;" title="Approve Task">✅ Approve</button>
+                  <button class="btn btn-danger btn-xs" onclick="rejectTaskByLeadModal('${task.id}', event)" style="padding: 4px 8px; font-size: 0.72rem; font-weight: 700;" title="Reject Task with Reason">❌ Reject</button>
+                ` : ''}
+                <button class="btn btn-secondary btn-xs" onclick="deleteTask('${task.id}')" style="padding: 4px 6px; font-size: 0.72rem; opacity: 0.7;" title="Delete Task">🗑️</button>
+              </div>
             </td>
           `;
           tr.className = task.status === 'Completed' ? 'completed-task-row' : '';
@@ -10808,6 +10941,10 @@ window.reviewTrainerReport = reviewTrainerReport;
 
 window.cycleTaskStatus = cycleTaskStatus;
 window.toggleTaskCompletion = toggleTaskCompletion;
+window.submitTaskForReview = submitTaskForReview;
+window.approveTaskByLead = approveTaskByLead;
+window.rejectTaskByLeadModal = rejectTaskByLeadModal;
+window.getTaskStatusBadgeHtml = getTaskStatusBadgeHtml;
 window.deleteTask = deleteTask;
 window.openAssignTaskModal = openAssignTaskModal;
 window.hideTaskModal = hideTaskModal;
@@ -15086,18 +15223,32 @@ function renderProjDashTabContent() {
                 <th>Priority</th>
                 <th>Status</th>
                 <th>Due Date</th>
+                ${isTechLeadOrAdmin ? `<th>Actions</th>` : ''}
               </tr>
             </thead>
             <tbody>
-              ${projTasks.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No tasks assigned under this project yet.</td></tr>` : 
+              ${projTasks.length === 0 ? `<tr><td colspan="${isTechLeadOrAdmin ? '7' : '6'}" style="text-align: center; color: var(--text-muted);">No tasks assigned under this project yet.</td></tr>` : 
                 projTasks.map(t => `
                   <tr>
                     <td><strong>${t.id}</strong></td>
-                    <td>${escapeHTML(t.desc)}</td>
+                    <td>
+                      <strong>${escapeHTML(t.desc)}</strong>
+                      ${t.rejectionReason ? `<div style="font-size:0.7rem; color:#ef4444; margin-top:2px;">⚠️ Feedback: ${escapeHTML(t.rejectionReason)}</div>` : ''}
+                    </td>
                     <td>${t.assigneeName || 'Unassigned'}</td>
                     <td><span class="badge ${getPriorityBadgeClass(t.priority)}">${t.priority}</span></td>
-                    <td><span class="badge badge-${t.status.toLowerCase().replace(' ', '')}">${t.status}</span></td>
+                    <td>${getTaskStatusBadgeHtml(t.status, t.rejectionReason)}</td>
                     <td>${t.dueDate || '—'}</td>
+                    ${isTechLeadOrAdmin ? `
+                      <td>
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                          ${t.status !== 'Completed' ? `
+                            <button class="btn btn-success btn-xs" onclick="approveTaskByLead('${t.id}', event)" style="padding: 3px 6px; font-size: 0.7rem; font-weight:700;" title="Approve">✅ Approve</button>
+                            <button class="btn btn-danger btn-xs" onclick="rejectTaskByLeadModal('${t.id}', event)" style="padding: 3px 6px; font-size: 0.7rem; font-weight:700;" title="Reject">❌ Reject</button>
+                          ` : '<span style="font-size:0.7rem; color:#22c55e; font-weight:600;">Approved</span>'}
+                        </div>
+                      </td>
+                    ` : ''}
                   </tr>
                 `).join('')
               }
