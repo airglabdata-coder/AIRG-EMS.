@@ -1538,6 +1538,56 @@ app.post('/api/update-school', async (req, res) => {
   }
 });
 
+// Atomic Registration Approval Endpoint
+app.post('/api/approve-registration', async (req, res) => {
+  try {
+    await connectDB();
+    const { empId } = req.body;
+    if (!empId) return res.status(400).json({ error: 'Missing empId' });
+
+    await models.Employee.findOneAndUpdate(
+      { id: empId },
+      { $set: { status: 'approved' } }
+    );
+    const timestamp = Date.now();
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp }, { upsert: true });
+    console.log(`[REGISTRATION] Approved employee registration for ID: ${empId}`);
+    return res.json({ success: true, timestamp });
+  } catch (err) {
+    console.error('Error approving registration:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Atomic Registration Rejection & Permanent Deletion Endpoint (With Tombstone)
+app.post('/api/delete-employee-registration', async (req, res) => {
+  try {
+    await connectDB();
+    const { empId, email } = req.body;
+    if (!empId && !email) return res.status(400).json({ error: 'Missing empId or email' });
+
+    await models.Employee.deleteMany({
+      $or: [{ id: empId }, { email: email }]
+    });
+
+    if (empId) {
+      await models.Tombstone.findOneAndUpdate(
+        { modelName: 'Employee', id: empId },
+        { modelName: 'Employee', id: empId, deletedAt: new Date().toISOString() },
+        { upsert: true }
+      );
+    }
+
+    const timestamp = Date.now();
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp }, { upsert: true });
+    console.log(`[REGISTRATION] Rejected & tombstoned employee registration for ID: ${empId} (${email})`);
+    return res.json({ success: true, timestamp });
+  } catch (err) {
+    console.error('Error deleting registration:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Atomic Leave Request Endpoints (Direct Instant Server Persistence)
 app.post('/api/submit-leave-request', async (req, res) => {
   try {
