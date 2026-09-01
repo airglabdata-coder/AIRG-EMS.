@@ -6493,6 +6493,65 @@ function handleDeptCreationSubmit(e) {
   showToast(`Department "${name}" created successfully!`, 'success');
 }
 
+function getNextEmployeeId() {
+  const employees = state.employees || [];
+  let maxNum = 0;
+  employees.forEach(emp => {
+    if (!emp || !emp.id) return;
+    const match = emp.id.match(/\d+/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (num > maxNum) maxNum = num;
+    }
+  });
+  const nextNum = maxNum + 1;
+  return `AIRG${String(nextNum).padStart(5, '0')}`;
+}
+
+function applySuggestedEmpId() {
+  const suggestedId = getNextEmployeeId();
+  const idInput = document.getElementById('new-emp-id');
+  if (idInput) {
+    idInput.value = suggestedId;
+    checkEmpIdAvailability();
+  }
+}
+
+function checkEmpIdAvailability() {
+  const idInput = document.getElementById('new-emp-id');
+  const statusEl = document.getElementById('new-emp-id-status');
+  const btnEl = document.getElementById('use-suggested-id-btn');
+  if (!idInput || !statusEl) return;
+
+  const val = idInput.value.trim();
+  if (!val) {
+    statusEl.style.display = 'none';
+    if (btnEl) btnEl.style.display = 'none';
+    return;
+  }
+
+  const existingEmp = (state.employees || []).find(emp => emp.id.toLowerCase() === val.toLowerCase());
+  if (existingEmp) {
+    statusEl.style.display = 'block';
+    statusEl.style.background = 'rgba(239, 68, 68, 0.15)';
+    statusEl.style.color = '#ef4444';
+    statusEl.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+    statusEl.innerHTML = `⚠️ <strong>Employee ID "${escapeHTML(val)}" is already registered</strong> to ${escapeHTML(existingEmp.name)}. Please use a unique ID card number or click Auto-fill above.`;
+    if (btnEl) btnEl.style.display = 'inline-block';
+  } else {
+    statusEl.style.display = 'block';
+    statusEl.style.background = 'rgba(16, 185, 129, 0.15)';
+    statusEl.style.color = '#10b981';
+    statusEl.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+    statusEl.innerHTML = `✅ <strong>Employee ID "${escapeHTML(val)}" is available!</strong>`;
+    if (btnEl) btnEl.style.display = 'none';
+  }
+}
+
+window.getNextEmployeeId = getNextEmployeeId;
+window.applySuggestedEmpId = applySuggestedEmpId;
+window.checkEmpIdAvailability = checkEmpIdAvailability;
+
 let autoAssignToProjectAfterCreate = null;
 
 // Employee creation modal triggers
@@ -6517,7 +6576,14 @@ function openCreateEmployeeModal() {
   const photoImg = document.getElementById('new-emp-photo-img');
   if (photoImg) photoImg.src = '';
 
-
+  // Auto-suggest next unique Employee ID & attach live validation listener
+  const suggestedId = getNextEmployeeId();
+  const idInput = document.getElementById('new-emp-id');
+  if (idInput) {
+    idInput.value = suggestedId;
+    idInput.oninput = checkEmpIdAvailability;
+  }
+  checkEmpIdAvailability();
 
   // Populate dynamic role options based on current user role privilege
   const roleSelect = document.getElementById('new-emp-role');
@@ -6552,7 +6618,12 @@ function hideEmployeeModal() {
 function handleEmployeeCreationSubmit(e) {
   e.preventDefault();
   const idEl = document.getElementById('new-emp-id');
-  const id = idEl ? idEl.value.trim() : '';
+  let id = idEl ? idEl.value.trim() : '';
+  if (!id) {
+    id = getNextEmployeeId();
+    if (idEl) idEl.value = id;
+  }
+
   const name = document.getElementById('new-emp-name').value.trim();
   const email = document.getElementById('new-emp-email').value.trim();
   const deptEl = document.getElementById('new-emp-dept');
@@ -6570,7 +6641,6 @@ function handleEmployeeCreationSubmit(e) {
   const dob = dobEl ? dobEl.value : '';
   const joinDateEl = document.getElementById('new-emp-joindate');
   const joinDate = joinDateEl ? joinDateEl.value : '';
-
 
   const passwordEl = document.getElementById('new-emp-password');
   const password = passwordEl ? passwordEl.value.trim() : '';
@@ -6595,10 +6665,14 @@ function handleEmployeeCreationSubmit(e) {
     return;
   }
 
-  // Check if Employee ID already exists
+  // Check if Employee ID already exists (Front & Center Validation)
   const idExists = state.employees.some(emp => emp.id.toLowerCase() === id.toLowerCase());
   if (idExists) {
-    showToast(`Employee ID "${id}" already exists. Please choose a unique ID.`, 'error');
+    checkEmpIdAvailability();
+    const modalBody = document.querySelector('#employee-creation-form .modal-body');
+    if (modalBody) modalBody.scrollTop = 0;
+    if (idEl) idEl.focus();
+    showToast(`Employee ID "${id}" is already registered. Please enter a unique ID or use suggested ID.`, 'error');
     return;
   }
   

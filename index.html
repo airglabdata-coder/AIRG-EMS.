@@ -2348,8 +2348,12 @@
       <form id="employee-creation-form">
         <div class="modal-body">
           <div class="form-group" style="margin-bottom: 12px;">
-            <label for="new-emp-id">Employee ID</label>
-            <input type="text" id="new-emp-id" placeholder="e.g. EMP016" required>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label for="new-emp-id" style="margin-bottom: 0; font-weight: 600;">Employee ID *</label>
+              <button type="button" id="use-suggested-id-btn" style="display: none; background: none; border: none; color: var(--primary); font-size: 0.75rem; font-weight: 600; cursor: pointer; text-decoration: underline;" onclick="applySuggestedEmpId()">✨ Auto-fill Suggested ID</button>
+            </div>
+            <input type="text" id="new-emp-id" placeholder="e.g. AIRG00036 (or enter your ID Card No)" required style="width: 100%; box-sizing: border-box;">
+            <div id="new-emp-id-status" style="font-size: 0.78rem; margin-top: 5px; padding: 4px 8px; border-radius: 4px; display: none;"></div>
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
             <label for="new-emp-name">Full Name</label>
