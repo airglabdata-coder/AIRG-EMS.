@@ -6036,10 +6036,16 @@ function renderHRTasksAndProjects() {
             <td>${getTaskStatusBadgeHtml(task.status, task.rejectionReason)}</td>
             <td>
               <div style="display: flex; align-items: center; gap: 6px;">
-                ${task.status !== 'Completed' ? `
+                ${task.status === 'Pending Review' ? `
                   <button class="btn btn-success btn-xs" onclick="approveTaskByLead('${task.id}', event)" style="padding: 4px 8px; font-size: 0.72rem; font-weight: 700;" title="Approve Task">✅ Approve</button>
                   <button class="btn btn-danger btn-xs" onclick="rejectTaskByLeadModal('${task.id}', event)" style="padding: 4px 8px; font-size: 0.72rem; font-weight: 700;" title="Reject Task with Reason">❌ Reject</button>
-                ` : ''}
+                ` : (task.status === 'Needs Revision' ? `
+                  <span style="font-size: 0.75rem; color: #ef4444; font-weight: 600;" title="Reason: ${escapeHTML(task.rejectionReason || '')}">⚠️ Feedback Sent</span>
+                ` : (task.status === 'Completed' ? `
+                  <span style="font-size: 0.75rem; color: #22c55e; font-weight: 600;">✅ Approved</span>
+                ` : `
+                  <span style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">In Progress</span>
+                `))}
                 <button class="btn btn-secondary btn-xs" onclick="deleteTask('${task.id}')" style="padding: 4px 6px; font-size: 0.72rem; opacity: 0.7;" title="Delete Task">🗑️</button>
               </div>
             </td>
@@ -15242,10 +15248,16 @@ function renderProjDashTabContent() {
                     ${isTechLeadOrAdmin ? `
                       <td>
                         <div style="display: flex; gap: 4px; align-items: center;">
-                          ${t.status !== 'Completed' ? `
+                          ${t.status === 'Pending Review' ? `
                             <button class="btn btn-success btn-xs" onclick="approveTaskByLead('${t.id}', event)" style="padding: 3px 6px; font-size: 0.7rem; font-weight:700;" title="Approve">✅ Approve</button>
                             <button class="btn btn-danger btn-xs" onclick="rejectTaskByLeadModal('${t.id}', event)" style="padding: 3px 6px; font-size: 0.7rem; font-weight:700;" title="Reject">❌ Reject</button>
-                          ` : '<span style="font-size:0.7rem; color:#22c55e; font-weight:600;">Approved</span>'}
+                          ` : (t.status === 'Needs Revision' ? `
+                            <span style="font-size:0.7rem; color:#ef4444; font-weight:600;">Feedback Sent</span>
+                          ` : (t.status === 'Completed' ? `
+                            <span style="font-size:0.7rem; color:#22c55e; font-weight:600;">Approved</span>
+                          ` : `
+                            <span style="font-size:0.7rem; color:var(--text-muted); font-style:italic;">In Progress</span>
+                          `))}
                         </div>
                       </td>
                     ` : ''}
