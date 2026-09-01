@@ -4755,8 +4755,24 @@ function showToast(message, type = 'success') {
 // --- Text/Formatting Helpers ---
 function formatDate(dateStr) {
   if (!dateStr) return '';
+  if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
+    const parts = dateStr.trim().split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[month]} ${day}, ${year}`;
+  }
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '—';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return formatDate(dateStr);
+  return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 function truncateText(text, length) {
@@ -8909,7 +8925,13 @@ function renderEmployeeReports() {
     tr.onclick = (e) => toggleReportDetailsExpand(report.id, e);
 
     tr.innerHTML = `
-      <td><strong>${formatDate(report.date)}</strong></td>
+      <td>
+        <strong style="color: var(--text-primary); font-size: 0.9rem;">📅 ${formatDate(report.date)}</strong>
+        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; display: flex; align-items: center; gap: 4px;">
+          <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span>Submitted: ${formatDateTime(report.submittedAt || report.createdAt)}</span>
+        </div>
+      </td>
       <td><span style="font-weight: 600; color: var(--primary);">${report.projectName || '—'}</span></td>
       <td>
         <div style="display: flex; align-items: center; gap: 8px;">
@@ -9268,7 +9290,13 @@ function renderHRReports() {
       tr.onclick = (e) => toggleReportDetailsExpand(report.id, e);
 
       tr.innerHTML = `
-        <td><strong>${formatDate(report.date)}</strong></td>
+        <td>
+          <strong style="color: var(--text-primary); font-size: 0.9rem;">📅 ${formatDate(report.date)}</strong>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; display: flex; align-items: center; gap: 4px;">
+            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span>Sub: ${formatDateTime(report.submittedAt || report.createdAt)}</span>
+          </div>
+        </td>
         <td>
           <div style="display: flex; align-items: center; gap: 8px;">
             <div class="avatar" style="width: 28px; height: 28px; font-size: 0.75rem;">
@@ -9458,6 +9486,7 @@ async function handleDailyReportSubmit(e) {
       projectId: projectIdVal,
       projectName: projectNameVal,
       date: dateVal,
+      submittedAt: new Date().toISOString(),
       details: detailsVal,
       images: [...currentAttachedImagesReport],
       remarks: '',
@@ -10230,6 +10259,7 @@ async function handleTrainerReportSubmit(event) {
     trainerDept: state.currentUser.dept || 'Instructor',
     school: schoolVal,
     date: dateVal,
+    submittedAt: new Date().toISOString(),
     sessions: JSON.parse(JSON.stringify(state.currentTrainerSessions)),
     summary: summaryVal,
     reportingManagerId: managerIdVal,
@@ -10439,7 +10469,10 @@ function renderTrainerReportsHistory() {
           <span style="font-size: 0.8rem; color: var(--text-muted);">👔 Manager: ${report.reportingManagerName || 'Assigned Manager'}</span>
         </div>
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-          <span style="font-weight: 700; font-size: 0.9rem; color: var(--primary);">📅 Date: ${formatDate(report.date)}</span>
+          <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <span style="font-weight: 700; font-size: 0.9rem; color: var(--primary);">📅 Work Date: ${formatDate(report.date)}</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">🕒 Submitted: ${formatDateTime(report.submittedAt || report.createdAt)}</span>
+          </div>
           ${statusBadgeHtml}
         </div>
       </div>
@@ -10651,7 +10684,10 @@ function renderTrainerReportsReviewList() {
           <span style="padding: 3px 8px; border-radius: 4px; background: var(--bg-tertiary); border: 1px solid var(--border-color); font-size: 0.8rem; font-weight: 600;">🏫 ${report.school || 'School'}</span>
         </div>
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-          <span style="font-weight: 700; font-size: 0.9rem; color: var(--primary);">📅 Date: ${formatDate(report.date)}</span>
+          <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <span style="font-weight: 700; font-size: 0.9rem; color: var(--primary);">📅 Work Date: ${formatDate(report.date)}</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">🕒 Submitted: ${formatDateTime(report.submittedAt || report.createdAt)}</span>
+          </div>
           ${statusBadgeHtml}
         </div>
       </div>
