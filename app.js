@@ -3979,14 +3979,6 @@ function renderEmployeeRoster() {
                           isPratap(emp);
     return !isSystemAdmin;
   });
-  if ((state.currentRole === 'techlead' || state.currentRole === 'manager') && state.currentUser) {
-    employeesToRender = employeesToRender.filter(emp => {
-      if (!emp.dept) return false;
-      const leadDepts = (state.currentUser.dept || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
-      const empDepts = emp.dept.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
-      return empDepts.some(d => leadDepts.includes(d));
-    });
-  }
 
   employeesToRender.forEach(emp => {
     // Use dynamic accrual-based balance (1.5/month, max 18/year)
@@ -8816,19 +8808,12 @@ function canUserStarReport(currentUserRole, reporterRole) {
 
 function safeSaveReports() {
   try {
-    localStorage.setItem('ems_reports', JSON.stringify(state.dailyReports));
-    triggerBackendSync(); // [AUTO-ADDED] persist ems_reports to server
-    return true;
+    safeOriginalSetItem('ems_reports', JSON.stringify(state.dailyReports));
   } catch (error) {
-    console.error('Failed to save reports to localStorage:', error);
-    showToast('Storage quota exceeded! Attached screenshots may be too large.', 'error');
-    try {
-      state.dailyReports = JSON.parse(localStorage.getItem('ems_reports') || '[]');
-    } catch (e) {
-      // ignore
-    }
-    return false;
+    console.warn('LocalStorage limit reached for ems_reports. Report preserved in memory & backend sync.');
   }
+  triggerBackendSync();
+  return true;
 }
 
 function renderDailyReports() {
@@ -9491,6 +9476,17 @@ async function handleDailyReportSubmit(e) {
         submitBtn.innerHTML = originalBtnHtml;
       }
       return;
+    }
+
+    // Directly submit report to MongoDB Atlas via atomic server endpoint
+    try {
+      await fetch('/api/submit-daily-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report: newReport })
+      });
+    } catch (err) {
+      console.error('Failed direct submit-daily-report:', err);
     }
 
     // Force an immediate server sync to avoid data loss on reload

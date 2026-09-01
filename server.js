@@ -1588,6 +1588,31 @@ app.post('/api/register-employee', async (req, res) => {
   }
 });
 
+// Dedicated Direct Daily Report Submission Endpoint
+app.post('/api/submit-daily-report', async (req, res) => {
+  try {
+    await connectDB();
+    const { report } = req.body;
+    if (!report || !report.id) {
+      return res.status(400).json({ error: 'Missing report payload' });
+    }
+
+    const updated = await models.DailyReport.findOneAndUpdate(
+      { id: report.id },
+      { $set: report },
+      { upsert: true, new: true }
+    );
+
+    const timestamp = Date.now();
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp }, { upsert: true });
+    console.log(`[DAILY REPORT] Submitted report "${report.id}" for employee: ${report.employeeName}`);
+    return res.json({ success: true, timestamp, report: updated.toJSON() });
+  } catch (err) {
+    console.error('Error in submit-daily-report:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Atomic Registration Approval Endpoint
 app.post('/api/approve-registration', async (req, res) => {
   try {
