@@ -366,6 +366,14 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
         }
       }
     });
+
+    // Ensure any existing pending_approval employees in DB are NEVER dropped during background sync
+    const finalIds = new Set(finalEmployees.map(e => e.id));
+    existingEmployees.forEach(e => {
+      if (e && e.status === 'pending_approval' && !finalIds.has(e.id)) {
+        finalEmployees.push(e.toJSON());
+      }
+    });
   }
 
   // Assign the sanitized employees array back to the stateObj so syncCollection saves it
@@ -1534,6 +1542,48 @@ app.post('/api/update-school', async (req, res) => {
     return res.json({ success: true, timestamp });
   } catch (err) {
     console.error('Error updating school directly:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Dedicated Direct Registration Submission Endpoint
+app.post('/api/register-employee', async (req, res) => {
+  try {
+    await connectDB();
+    const newEmp = req.body;
+    if (!newEmp || !newEmp.id || !newEmp.email) {
+      return res.status(400).json({ error: 'Missing employee registration payload' });
+    }
+
+    if (!req.body.isPortalAdminCreate) {
+      newEmp.status = 'pending_approval';
+    }
+
+    const existing = await models.Employee.findOne({
+      $or: [{ id: newEmp.id }, { email: newEmp.email }]
+    });
+
+    if (existing) {
+      if (existing.id === newEmp.id) {
+        return res.status(409).json({ error: `Employee ID "${newEmp.id}" is already taken.` });
+      }
+      if (existing.email.toLowerCase() === newEmp.email.toLowerCase()) {
+        return res.status(409).json({ error: `Email "${newEmp.email}" is already registered.` });
+      }
+    }
+
+    const created = await models.Employee.findOneAndUpdate(
+      { id: newEmp.id },
+      { $set: newEmp },
+      { upsert: true, new: true }
+    );
+
+    const timestamp = Date.now();
+    await models.SystemMetadata.findOneAndUpdate({ key: 'lastUpdated' }, { timestamp }, { upsert: true });
+    console.log(`[REGISTRATION] New employee registered & sent to HR queue: ${newEmp.name} (${newEmp.id})`);
+    return res.json({ success: true, timestamp, employee: created.toJSON() });
+  } catch (err) {
+    console.error('Error in register-employee:', err);
     return res.status(500).json({ error: err.message });
   }
 });

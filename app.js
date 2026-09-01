@@ -6713,6 +6713,16 @@ function handleEmployeeCreationSubmit(e) {
 
   state.employees.push(newEmp);
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
+  
+  // Call direct atomic registration endpoint to ensure registration is saved to MongoDB Atlas instantly!
+  try {
+    fetch('/api/register-employee', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...newEmp, isPortalAdminCreate: !isPending })
+    }).catch(err => console.error('Failed to post register-employee:', err));
+  } catch (err) {}
+
   triggerBackendSync(); // persist new employee to server
 
   // Reset photo upload state
