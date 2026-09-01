@@ -2940,7 +2940,8 @@ function updateHeaderAvatar(user) {
     if (user && user.photo) {
       avatarEl.innerHTML = `<img src="${user.photo}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`;
     } else if (user) {
-      avatarEl.innerHTML = user.avatar;
+      const initials = user.avatar || (user.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U');
+      avatarEl.textContent = initials;
     }
   }
 }
@@ -4850,9 +4851,10 @@ function renderEmployeeTasksAndProjects() {
     .map(t => t.projectId);
 
   const activeProjects = state.projects.filter(p => {
-    const isDeptMember = user.dept && p.dept && user.dept.split(',').map(d => d.trim().toLowerCase()).includes(p.dept.toLowerCase());
     const isMember = p.employeeIds && (p.employeeIds.includes(user.id) || p.employeeIds.includes(user.email));
-    return isDeptMember || p.techLeadId === user.id || p.techLeadId === user.email || userTaskProjectIds.includes(p.id) || isMember;
+    const isTechLead = p.techLeadId && (p.techLeadId === user.id || p.techLeadId === user.email);
+    const hasTask = userTaskProjectIds.includes(p.id);
+    return isMember || isTechLead || hasTask;
   });
 
   // Render Projects (filtered by employee's department OR projects they are assigned tasks in)
