@@ -9648,19 +9648,19 @@ async function handleDailyReportSubmit(e) {
       return;
     }
 
-    // Directly submit report to MongoDB Atlas via atomic server endpoint
+    // Directly submit report to MongoDB Atlas via atomic server endpoint asynchronously
     try {
-      await fetch('/api/submit-daily-report', {
+      fetch('/api/submit-daily-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ report: newReport })
-      });
+      }).catch(err => console.error('Failed direct submit-daily-report:', err));
     } catch (err) {
       console.error('Failed direct submit-daily-report:', err);
     }
 
-    // Force an immediate server sync to avoid data loss on reload
-    await syncStateNow();
+    // Trigger non-blocking background sync so UI never hangs on slow internet connection
+    syncStateNow().catch(err => console.error('Background syncStateNow error:', err));
 
     // Find project recipient for daily report routing
     const proj = state.projects.find(p => p.id === projectIdVal);
@@ -9706,7 +9706,8 @@ async function handleDailyReportSubmit(e) {
     const drivePreview = document.getElementById('report-drive-links-preview');
     if (drivePreview) drivePreview.innerHTML = '';
 
-    document.getElementById('daily-report-form').reset();
+    const formElem = document.getElementById('daily-report-form');
+    if (formElem) formElem.reset();
     setTodayReportDate();
 
     renderDailyReports();
