@@ -46,9 +46,18 @@ let isSyncingToServer = false;
 let syncTimeout = null;
 let wasStateFetchedFromServer = false;
 
+function stripBase64FromStorageValue(str) {
+  if (typeof str !== 'string') return str;
+  if (str.length > 30000 && str.includes('data:image/')) {
+    return str.replace(/data:image\/[a-zA-Z]+;base64,[^"'\s]+/g, '[cached_image]');
+  }
+  return str;
+}
+
 function safeOriginalSetItem(key, value) {
   try {
-    originalSetItem.call(localStorage, key, value);
+    const cleanVal = stripBase64FromStorageValue(value);
+    originalSetItem.call(localStorage, key, cleanVal);
   } catch (e) {
     if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
       console.warn(`LocalStorage quota exceeded for key "${key}"! Data saved in memory only.`);
@@ -60,11 +69,11 @@ function safeOriginalSetItem(key, value) {
 
 localStorage.setItem = function (key, value) {
   try {
-    originalSetItem.call(localStorage, key, value);
+    const cleanVal = stripBase64FromStorageValue(value);
+    originalSetItem.call(localStorage, key, cleanVal);
   } catch (e) {
     if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
       console.warn('LocalStorage quota exceeded! Data saved in memory for this session.', e);
-      showToast('Warning: Browser local storage is full. Files/attachments might not be saved locally, but they are being synced to the server database.', 'warning');
     } else {
       throw e;
     }
@@ -73,6 +82,7 @@ localStorage.setItem = function (key, value) {
     triggerBackendSync();
   }
 };
+
 
 async function executeServerDelete(modelName, id) {
   try {
@@ -4528,6 +4538,7 @@ function hideModal() {
 }
 
 function showProfileModal() {
+  if (!state.currentUser) return;
   const emp = state.employees.find(e => e.id === state.currentUser.id) || state.currentUser;
   if (!emp) return;
 
