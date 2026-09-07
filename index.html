@@ -222,14 +222,7 @@
               style="position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background-color: var(--danger); display: none;"></span>
           </button>
 
-          <!-- Logout Button -->
-          <button id="header-logout-btn" class="icon-btn" title="Sign Out" onclick="logout()"
-            style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2); background-color: rgba(239, 68, 68, 0.05);">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 20px; height: 20px;">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
+
 
           <!-- Interactive Role Selector (Now in middle next to action icons) -->
           <div class="role-switcher-container" style="display: none;">
@@ -255,12 +248,21 @@
         </div>
 
         <!-- User Profile Widget (Now at Far Right Edge) -->
-        <div class="profile-widget">
+        <div class="profile-widget" style="display: flex; align-items: center; gap: 10px;">
           <div id="header-avatar" class="avatar">SJ</div>
           <div class="profile-info">
             <div id="header-name" class="profile-name">Sarah Jenkins</div>
             <div id="header-role" class="profile-role">Human Resources</div>
           </div>
+          <!-- Sign Out Button (fixed next to profile) -->
+          <button id="header-logout-btn" onclick="logout()" title="Sign Out"
+            style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(239,68,68,0.25); background: rgba(239,68,68,0.07); color: var(--danger); cursor: pointer; font-size: 0.78rem; font-weight: 600; white-space: nowrap; flex-shrink: 0; transition: background 0.2s;">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 15px; height: 15px;">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Sign Out
+          </button>
         </div>
       </div>
     </header>

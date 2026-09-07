@@ -4626,12 +4626,21 @@ function handleProfileSave(e) {
 
   emp.email = document.getElementById('profile-edit-email').value.trim() || emp.email;
   emp.phone = document.getElementById('profile-edit-phone').value.trim() || emp.phone;
-  emp.password = document.getElementById('profile-edit-password').value || emp.password || 'password123';
+  const newPassword = document.getElementById('profile-edit-password').value.trim();
+  emp.password = newPassword || emp.password || 'password123';
   emp.photo = tempProfilePhoto || emp.photo;
 
   localStorage.setItem('ems_employees', JSON.stringify(state.employees));
   state.currentUser = emp;
   localStorage.setItem('ems_logged_in_user', JSON.stringify(emp));
+
+  // Directly persist password change to MongoDB Atlas so it survives page refresh
+  fetch('/api/update-employee-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ employeeId: emp.id, newPassword: emp.password })
+  }).catch(err => console.error('Direct password update error:', err));
+
   triggerBackendSync();
   syncStateNow();
 
@@ -8932,6 +8941,12 @@ function isReportReviewerFor(reviewerId, reviewerRole, report) {
     return true;
   }
 
+  // Handle direct person-to-person report (employee selected a Tech Lead / Manager directly)
+  if (report.projectId && typeof report.projectId === 'string' && report.projectId.startsWith('person_')) {
+    const targetPersonId = report.projectId.replace('person_', '');
+    return reviewerId === targetPersonId;
+  }
+
   const proj = state.projects.find(p => p.id === report.projectId);
   if (!proj || !proj.techLeadId) {
     return canUserSeeReport(reviewerRole, getReportReporterRole(report));
@@ -8954,7 +8969,11 @@ function canUserReviewReport(currentUserRole, reporterRole) {
 function canUserStarReport(currentUserRole, reporterRole) {
   // Admin can star anyone whose reports they can see
   if (currentUserRole === 'admin') {
-    return ['techlead', 'manager', 'hr'].includes(reporterRole);
+    return ['techlead', 'manager', 'hr', 'employee'].includes(reporterRole);
+  }
+  // HR can star all employee & tech lead reports
+  if (currentUserRole === 'hr') {
+    return ['employee', 'techlead', 'manager'].includes(reporterRole);
   }
   // Tech lead and Manager can star employees
   if (currentUserRole === 'techlead' || currentUserRole === 'manager') {
@@ -9191,22 +9210,54 @@ function getMonthYearStr(dateStr) {
 }
 
 function populateDailyReportDropdowns() {
-  // 1. Submit Form Project Select
+  // 1. Submit Form Project Select — grouped: My Projects + Tech Leads/Managers + General HR
   const submitProjectSelect = document.getElementById('report-project');
   if (submitProjectSelect) {
     const currentVal = submitProjectSelect.value;
-    submitProjectSelect.innerHTML = `
-      <option value="" disabled selected>Select project...</option>
-      <option value="general">General / Direct to HR & Management (No Project)</option>
-    `;
-    state.projects.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.name;
-      submitProjectSelect.appendChild(opt);
+    submitProjectSelect.innerHTML = '<option value="" disabled selected>Select project or recipient...</option>';
+
+    // Group 1: Projects
+    if (state.projects && state.projects.length > 0) {
+      const projGroup = document.createElement('optgroup');
+      projGroup.label = '📁 My Projects';
+      state.projects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        projGroup.appendChild(opt);
+      });
+      submitProjectSelect.appendChild(projGroup);
+    }
+
+    // Group 2: Tech Leads & Managers
+    const leads = (state.employees || []).filter(emp => {
+      const r = (emp.role || '').toLowerCase();
+      return (r.includes('tech lead') || r.includes('manager')) && emp.id !== (state.currentUser && state.currentUser.id);
     });
+    if (leads.length > 0) {
+      const leadGroup = document.createElement('optgroup');
+      leadGroup.label = '👔 Tech Leads & Managers';
+      leads.forEach(emp => {
+        const opt = document.createElement('option');
+        opt.value = 'person_' + emp.id;
+        opt.textContent = emp.name + ' (' + emp.role + ')';
+        leadGroup.appendChild(opt);
+      });
+      submitProjectSelect.appendChild(leadGroup);
+    }
+
+    // Group 3: General / HR
+    const genGroup = document.createElement('optgroup');
+    genGroup.label = '📋 General';
+    const genOpt = document.createElement('option');
+    genOpt.value = 'general';
+    genOpt.textContent = 'General / Direct to HR & Management';
+    genGroup.appendChild(genOpt);
+    submitProjectSelect.appendChild(genGroup);
+
     if (currentVal) submitProjectSelect.value = currentVal;
   }
+
 
   // 2. Employee Past Reports Project Filter
   const empProjectSelect = document.getElementById('emp-filter-report-project');
@@ -9599,10 +9650,18 @@ async function handleDailyReportSubmit(e) {
 
   const dateVal = reportDateInput.value;
   const detailsVal = reportDetailsInput.value.trim();
-  const projectIdVal = reportProjectSelect ? reportProjectSelect.value : '';
+  const rawProjectVal = reportProjectSelect ? reportProjectSelect.value : '';
   const projectNameVal = reportProjectSelect && reportProjectSelect.selectedIndex >= 0 ? reportProjectSelect.options[reportProjectSelect.selectedIndex].text : '';
 
-  if (!dateVal || !detailsVal || !projectIdVal) {
+  // Detect if the employee selected a Tech Lead / Manager directly (person_ prefix)
+  let projectIdVal = rawProjectVal;
+  let recipientPersonId = null;
+  if (rawProjectVal && rawProjectVal.startsWith('person_')) {
+    recipientPersonId = rawProjectVal.replace('person_', '');
+    projectIdVal = 'general'; // treat as general for project routing
+  }
+
+  if (!dateVal || !detailsVal || !rawProjectVal) {
     showToast('Please fill out all required fields.', 'error');
     return;
   }
@@ -9622,7 +9681,7 @@ async function handleDailyReportSubmit(e) {
       employeeName: state.currentUser.name,
       employeeRole: state.currentUser.role,
       dept: state.currentUser.dept,
-      projectId: projectIdVal,
+      projectId: rawProjectVal,
       projectName: projectNameVal,
       date: dateVal,
       submittedAt: new Date().toISOString(),
@@ -9666,7 +9725,10 @@ async function handleDailyReportSubmit(e) {
     const proj = state.projects.find(p => p.id === projectIdVal);
     let recipientIds = [];
 
-    if (proj && proj.techLeadId) {
+    if (recipientPersonId) {
+      // Employee directly addressed a specific Tech Lead / Manager
+      recipientIds = [recipientPersonId];
+    } else if (proj && proj.techLeadId) {
       if (state.currentUser.id === proj.techLeadId) {
         state.employees.forEach(emp => {
           const roleLower = (emp.role || '').toLowerCase();

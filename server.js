@@ -1490,6 +1490,32 @@ app.post('/api/super-admin-recovery', async (req, res) => {
   }
 });
 
+// Direct Employee Password Update (from Profile Edit modal — atomic MongoDB save)
+app.post('/api/update-employee-password', async (req, res) => {
+  try {
+    await connectDB();
+    const { employeeId, newPassword } = req.body;
+    if (!employeeId || !newPassword) {
+      return res.status(400).json({ error: 'Missing employeeId or newPassword' });
+    }
+    const emp = await models.Employee.findOne({ id: employeeId });
+    if (!emp) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+    emp.password = newPassword;
+    await emp.save();
+    await models.SystemMetadata.findOneAndUpdate(
+      { key: 'lastUpdated' },
+      { timestamp: Date.now() },
+      { upsert: true }
+    );
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (err) {
+    console.error('Error in update-employee-password:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Atomic School Reassignment & Update Endpoint (Direct Instant Server Persistence & Deduplication)
 app.post('/api/update-school', async (req, res) => {
   try {
