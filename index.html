@@ -203,7 +203,10 @@
           </div>
         </div>
 
-        <div class="header-action-icons">
+      </div>
+
+      <div class="header-controls" style="display: flex; align-items: center; gap: 15px;">
+        <div class="header-action-icons" style="display: flex; align-items: center; gap: 10px;">
           <!-- Theme Toggle -->
           <button id="theme-toggle" class="icon-btn" title="Toggle Dark/Light Mode">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -232,9 +235,6 @@
             <button id="btn-role-admin" class="role-btn" title="Switch to Admin view">Admin</button>
           </div>
         </div>
-      </div>
-
-      <div class="header-controls">
         <!-- Employee Selector Dropdown (visible in Employee Mode) -->
         <div id="employee-selector-wrapper" class="employee-select-container"
           style="display: none; align-items: center; gap: 8px;">
@@ -1072,8 +1072,8 @@
                       d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                   </svg>
                 </button>
-                <input type="text" id="chat-input-message" placeholder="Type a message..." required autocomplete="off"
-                  style="flex: 1; margin: 0;">
+                <textarea id="chat-input-message" placeholder="Type a message... (Shift+Enter for new line)" required 
+                  style="flex: 1; margin: 0; min-height: 44px; max-height: 120px; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); font-family: inherit; resize: vertical; line-height: 1.4;"></textarea>
                 <button type="submit" class="btn btn-primary btn-sm"
                   style="padding: 10px 20px; flex-shrink: 0;">Send</button>
               </form>
@@ -3306,7 +3306,7 @@
   <!-- jsPDF & AutoTable for client-side Trainer Report PDF generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <script src="app.js?v=25"></script>
+  <script src="app.js?v=31"></script>
   <script src="mobile.js"></script>
   <script>
     // Password Visibility Toggle Logic

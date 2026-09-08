@@ -218,8 +218,11 @@ async function syncStateNow() {
 
 async function fetchCentralizedState() {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
     const url = state.currentUser ? `/api/sync?employeeId=${state.currentUser.id}` : '/api/sync';
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
 
     // If server returned an error, do NOT overwrite local state with stale/empty data
     if (!res.ok) {
@@ -251,8 +254,15 @@ async function fetchCentralizedState() {
         }
       }
       if (s.projects) {
-        state.projects = s.projects;
-        safeOriginalSetItem('ems_projects', JSON.stringify(s.projects));
+        const serverProjects = s.projects || [];
+        const serverProjIds = new Set(serverProjects.map(p => p.id));
+        const localProjects = JSON.parse(localStorage.getItem('ems_projects') || '[]');
+        const unsyncedLocalProjs = localProjects.filter(p => !serverProjIds.has(p.id));
+        state.projects = [...serverProjects, ...unsyncedLocalProjs];
+        safeOriginalSetItem('ems_projects', JSON.stringify(state.projects));
+        if (unsyncedLocalProjs.length > 0) {
+          triggerBackendSync();
+        }
       }
       if (s.tasks) {
         cleanBloatedAttachments(s.tasks);
@@ -427,22 +437,22 @@ function initSyncPolling() {
         lastChatSignature = newSignature;
         state.chats = mergedChats;
         safeOriginalSetItem('ems_chats', JSON.stringify(state.chats));
-      }
 
-      // Re-render chat UI & online dots immediately if currently viewing communications
-      const activeMenuItem = document.querySelector('.menu-item.active');
-      const activeView = state.currentView || (activeMenuItem ? activeMenuItem.getAttribute('data-view') : '');
-      if (activeView === 'communications' || state.currentView === 'communications') {
-        if (state.activeCommTab === 'chats') {
-          renderChatRoom();
-          renderCommSidebar();
-        } else if (state.activeCommTab === 'notices') {
-          renderNotices();
-        } else if (state.activeCommTab === 'announcements') {
-          renderAnnouncements();
+        // Re-render chat UI & online dots immediately when chat data changes
+        const activeMenuItem = document.querySelector('.menu-item.active');
+        const activeView = state.currentView || (activeMenuItem ? activeMenuItem.getAttribute('data-view') : '');
+        if (activeView === 'communications' || state.currentView === 'communications') {
+          if (state.activeCommTab === 'chats') {
+            renderChatRoom();
+            renderCommSidebar();
+          } else if (state.activeCommTab === 'notices') {
+            renderNotices();
+          } else if (state.activeCommTab === 'announcements') {
+            renderAnnouncements();
+          }
         }
+        updateAllMenuBadges();
       }
-      updateAllMenuBadges();
 
       if (chatData.announcements) {
         state.announcements = chatData.announcements;
@@ -1822,7 +1832,8 @@ function compressImage(dataUrl, maxWidth, maxHeight, quality, callback) {
 
 // --- Initialization ---
 async function init() {
-  await fetchCentralizedState();
+  // Start background sync without blocking initial local UI rendering
+  const syncPromise = fetchCentralizedState().catch(err => console.warn('Background sync warning:', err));
 
   const CURRENT_SEED_VERSION = 'v15_credentials_v2';
   if (localStorage.getItem('ems_seed_version') !== CURRENT_SEED_VERSION) {
@@ -2418,6 +2429,34 @@ async function init() {
   if (chatForm) {
     chatForm.addEventListener('submit', handleChatMessageSubmit);
   }
+  
+  const chatInputMessage = document.getElementById('chat-input-message');
+  if (chatInputMessage && chatForm) {
+    chatInputMessage.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      }
+    });
+    chatInputMessage.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(Math.max(this.scrollHeight, 44), 160) + 'px';
+    });
+    chatInputMessage.addEventListener('paste', (e) => {
+      const clipboardData = e.clipboardData || window.clipboardData;
+      if (!clipboardData) return;
+      const plainText = clipboardData.getData('text/plain');
+      if (plainText) {
+        e.preventDefault();
+        const start = chatInputMessage.selectionStart;
+        const end = chatInputMessage.selectionEnd;
+        chatInputMessage.value = chatInputMessage.value.substring(0, start) + plainText + chatInputMessage.value.substring(end);
+        chatInputMessage.selectionStart = chatInputMessage.selectionEnd = start + plainText.length;
+        chatInputMessage.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+  }
+
   const annForm = document.getElementById('announcement-creation-form');
   if (annForm) {
     annForm.addEventListener('submit', handleAnnouncementSubmit);
@@ -5774,7 +5813,19 @@ function updateProjectProgress(projId, val) {
       proj.status = 'Active';
     }
     localStorage.setItem('ems_projects', JSON.stringify(state.projects));
-    triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
+    
+    // Persist immediately via atomic endpoint
+    fetch('/api/update-project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: proj.id,
+        progress: proj.progress,
+        status: proj.status
+      })
+    }).catch(err => console.error('Failed to sync project progress:', err));
+    
+    triggerBackendSync(); // Still triggers bulk sync for OTHER entities
     showToast(`Project "${proj.name}" progress updated to ${val}%`, 'success');
 
     // Refresh grids to update status badges and values
@@ -5795,7 +5846,18 @@ function saveProjectDescription(projId) {
   if (proj) {
     proj.description = newDesc;
     localStorage.setItem('ems_projects', JSON.stringify(state.projects));
-    triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
+    
+    // Persist immediately via atomic endpoint
+    fetch('/api/update-project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: proj.id,
+        description: proj.description
+      })
+    }).catch(err => console.error('Failed to sync project description:', err));
+    
+    triggerBackendSync(); // Still triggers bulk sync for OTHER entities
     showToast('Project description saved successfully!', 'success');
     populateTaskModalOptions();
     if (state.currentRole === 'hr' || state.currentRole === 'admin') {
@@ -5843,10 +5905,24 @@ async function deleteProjectFile(projId, fileIndex) {
     if (proj.files && proj.files[fileIndex]) {
       const fileName = proj.files[fileIndex].name;
       // We don't have a dedicated API for project files, it's part of the project object.
-      // So we just update the project locally and trigger sync, since project sync is upsert.
+      // So we just update the project locally and sync it atomically.
       proj.files.splice(fileIndex, 1);
       localStorage.setItem('ems_projects', JSON.stringify(state.projects));
-      triggerBackendSync(); // [AUTO-ADDED] persist ems_projects to server
+      
+      try {
+        await fetch('/api/update-project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: proj.id,
+            files: proj.files
+          })
+        });
+      } catch (err) {
+        console.error('Failed to sync file deletion:', err);
+      }
+      
+      triggerBackendSync(); // Still triggers bulk sync for OTHER entities
       showToast(`File "${fileName}" deleted!`, 'info');
       if (state.currentRole === 'hr' || state.currentRole === 'admin') {
         renderHRTasksAndProjects();
@@ -7719,6 +7795,10 @@ function renderChatRoom() {
     setTimeout(updateAllMenuBadges, 100);
   }
 
+  // Save scroll state before replacing DOM
+  const isAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 50;
+  const oldScrollTop = messagesContainer.scrollTop;
+
   messagesContainer.innerHTML = '';
 
   let filteredMessages = [];
@@ -7848,9 +7928,6 @@ function renderChatRoom() {
       (msg.senderName && msg.senderName === state.currentUser.name)
     );
 
-    const row = document.createElement('div');
-    row.className = `message-row ${isSent ? 'sent' : 'received'}`;
-
     let fileHtml = '';
     if (msg.file) {
       const f = msg.file;
@@ -7875,25 +7952,62 @@ function renderChatRoom() {
       }
     }
 
-    const deleteMsgBtn = isSent ? `
-      <button onclick="deleteChatMessage('${msg.id}')" title="Delete message" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:0 4px; font-size:0.85rem; line-height:1; opacity:0.6;" onmouseover="this.style.opacity='1'; this.style.color='var(--danger)'" onmouseout="this.style.opacity='0.6'; this.style.color='var(--text-muted)'">🗑</button>
-    ` : '';
-    row.innerHTML = `
-      ${(!isSent && (state.activeChatType === 'group' || state.activeChatType === 'custom_group')) ? `<div class="message-sender-name">${msg.senderName}</div>` : ''}
-      <div class="message-bubble">
-        <div>${msg.content}</div>
-        ${fileHtml}
-      </div>
-      <div style="display:flex; align-items:center; gap:4px;">
-        <div class="message-time">${timeStr}</div>
-        ${deleteMsgBtn}
-      </div>
-    `;
+    const row = document.createElement('div');
+    row.className = `message-row ${isSent ? 'sent' : 'received'}`;
+
+    if (!isSent && (state.activeChatType === 'group' || state.activeChatType === 'custom_group')) {
+      const senderDiv = document.createElement('div');
+      senderDiv.className = 'message-sender-name';
+      senderDiv.textContent = msg.senderName || '';
+      row.appendChild(senderDiv);
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = 'message-bubble';
+    bubble.style.whiteSpace = 'pre-wrap';
+    bubble.style.wordBreak = 'break-word';
+
+    const textDiv = document.createElement('div');
+    textDiv.textContent = msg.content || '';
+    bubble.appendChild(textDiv);
+
+    if (fileHtml) {
+      const fileContainer = document.createElement('div');
+      fileContainer.innerHTML = fileHtml;
+      bubble.appendChild(fileContainer);
+    }
+    row.appendChild(bubble);
+
+    const timeDiv = document.createElement('div');
+    timeDiv.style.display = 'flex';
+    timeDiv.style.alignItems = 'center';
+    timeDiv.style.gap = '4px';
+
+    const timeSpan = document.createElement('div');
+    timeSpan.className = 'message-time';
+    timeSpan.textContent = timeStr;
+    timeDiv.appendChild(timeSpan);
+
+    if (isSent) {
+      const delBtn = document.createElement('button');
+      delBtn.title = 'Delete message';
+      delBtn.style.cssText = 'background:none; border:none; color:var(--text-muted); cursor:pointer; padding:0 4px; font-size:0.85rem; line-height:1; opacity:0.6;';
+      delBtn.textContent = '🗑';
+      delBtn.onmouseover = () => { delBtn.style.opacity = '1'; delBtn.style.color = 'var(--danger)'; };
+      delBtn.onmouseout = () => { delBtn.style.opacity = '0.6'; delBtn.style.color = 'var(--text-muted)'; };
+      delBtn.onclick = () => deleteChatMessage(msg.id);
+      timeDiv.appendChild(delBtn);
+    }
+    row.appendChild(timeDiv);
     messagesContainer.appendChild(row);
   });
 
-  // Scroll to bottom
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  // Restore scroll state
+  if (isAtBottom) {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  } else {
+    messagesContainer.scrollTop = oldScrollTop;
+  }
 }
 
 async function handleChatMessageSubmit(e) {
@@ -7915,7 +8029,15 @@ async function handleChatMessageSubmit(e) {
   state.chats.push(newMsg);
   localStorage.setItem('ems_chats', JSON.stringify(state.chats));
   input.value = '';
+  input.style.height = '44px';
   renderChatRoom();
+  
+  // Force scroll to bottom after sending a message
+  const messagesContainer = document.getElementById('chat-messages-container');
+  if (messagesContainer) {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+  
   triggerChatNotification(newMsg);
 
   // Lightweight <30ms chat save to MongoDB Atlas & instant full state sync
@@ -7954,6 +8076,12 @@ function handleChatFileSelected(input) {
       localStorage.setItem('ems_chats', JSON.stringify(state.chats));
       input.value = '';
       renderChatRoom();
+      
+      const messagesContainer = document.getElementById('chat-messages-container');
+      if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+      
       triggerChatNotification(newMsg);
 
       fetch('/api/chats-only', {

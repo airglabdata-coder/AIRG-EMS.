@@ -22,7 +22,13 @@ const activeUsers = {};
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Support base64 image uploads
-app.use(express.static(__dirname)); // Serve static files (index.html, app.js, styles.css)
+app.use(express.static(__dirname, {
+  setHeaders: (res, path) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+})); // Serve static files with instant no-cache validation
 
 // Database connection Setup — MongoDB Atlas is REQUIRED
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -67,7 +73,7 @@ async function connectDB() {
   }
 }
 
-// Helper to pull entire state from MongoDB
+// Helper to pull entire state from MongoDB (optimized with .lean() for ultra-fast load times)
 async function getMongoDBState() {
   await connectDB();
   const [
@@ -87,47 +93,48 @@ async function getMongoDBState() {
     trainerReports,
     customChatGroups
   ] = await Promise.all([
-    models.Employee.find({}),
-    models.LeaveRequest.find({}),
-    models.Project.find({}),
-    models.Task.find({}),
-    models.Chat.find({}),
-    models.DailyReport.find({}),
-    models.Announcement.find({}),
-    models.Notice.find({}),
-    models.Reimbursement.find({}),
-    models.Ticket.find({}),
-    models.NationalHoliday.find({}),
-    models.CelebrationDay.find({}),
-    models.School.find({}),
-    models.TrainerReport.find({}),
-    models.CustomChatGroup.find({})
+    models.Employee.find({}).lean(),
+    models.LeaveRequest.find({}).lean(),
+    models.Project.find({}).lean(),
+    models.Task.find({}).lean(),
+    models.Chat.find({}).lean(),
+    models.DailyReport.find({}).lean(),
+    models.Announcement.find({}).lean(),
+    models.Notice.find({}).lean(),
+    models.Reimbursement.find({}).lean(),
+    models.Ticket.find({}).lean(),
+    models.NationalHoliday.find({}).lean(),
+    models.CelebrationDay.find({}).lean(),
+    models.School.find({}).lean(),
+    models.TrainerReport.find({}).lean(),
+    models.CustomChatGroup.find({}).lean()
   ]);
 
-  let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' });
+  let meta = await models.SystemMetadata.findOne({ key: 'lastUpdated' }).lean();
   if (!meta) {
-    meta = await models.SystemMetadata.create({ key: 'lastUpdated', timestamp: Date.now() });
+    const newMeta = await models.SystemMetadata.create({ key: 'lastUpdated', timestamp: Date.now() });
+    meta = newMeta.toJSON();
   }
 
   return {
     state: {
-      employees: employees.map(x => x.toJSON()),
-      requests: requests.map(x => x.toJSON()),
-      projects: projects.map(x => x.toJSON()),
-      tasks: tasks.map(x => x.toJSON()),
-      chats: chats.map(x => x.toJSON()),
-      dailyReports: dailyReports.map(x => x.toJSON()),
-      announcements: announcements.map(x => x.toJSON()),
-      notices: notices.map(x => x.toJSON()),
-      reimbursements: reimbursements.map(x => x.toJSON()),
-      tickets: tickets.map(x => x.toJSON()),
-      nationalHolidays: nationalHolidays.map(x => x.toJSON()),
-      celebrationDays: celebrationDays.map(x => x.toJSON()),
-      schools: schools.map(x => x.toJSON()),
-      trainerReports: trainerReports.map(x => x.toJSON()),
-      customChatGroups: customChatGroups.map(x => x.toJSON())
+      employees: employees || [],
+      requests: requests || [],
+      projects: projects || [],
+      tasks: tasks || [],
+      chats: chats || [],
+      dailyReports: dailyReports || [],
+      announcements: announcements || [],
+      notices: notices || [],
+      reimbursements: reimbursements || [],
+      tickets: tickets || [],
+      nationalHolidays: nationalHolidays || [],
+      celebrationDays: celebrationDays || [],
+      schools: schools || [],
+      trainerReports: trainerReports || [],
+      customChatGroups: customChatGroups || []
     },
-    timestamp: meta.timestamp
+    timestamp: meta ? meta.timestamp : Date.now()
   };
 }
 
@@ -379,53 +386,8 @@ async function saveMongoDBState(stateObj, syncingEmployeeId) {
   // Assign the sanitized employees array back to the stateObj so syncCollection saves it
   stateObj.employees = finalEmployees;
 
-  // 4. Validate and sanitize incoming Projects
-  let finalProjects = [];
-  const existingProjects = await models.Project.find({});
-  const existingProjectsMap = new Map(existingProjects.map(p => [p.id, p]));
-  const syncingUser = syncingEmployeeId ? existingMap.get(syncingEmployeeId) : null;
-  const syncingUserRole = syncingUser ? (syncingUser.role || '').toLowerCase() : '';
-  const isHRorAdmin = (
-    syncingUserRole.includes('admin') ||
-    syncingUserRole.includes('hr') ||
-    syncingUserRole.includes('manager') ||
-    syncingUserRole.includes('tech lead') ||
-    syncingUserRole.includes('techlead')
-  );
-
-  if (isHRorAdmin) {
-    // Admin and HR can modify any projects
-    finalProjects = stateObj.projects || [];
-  } else {
-    // If not HR/Admin, start with the existing database projects as the base
-    finalProjects = existingProjects.map(p => p.toJSON());
-    const finalProjectsMap = new Map(finalProjects.map(p => [p.id, p]));
-
-    const incomingProjects = stateObj.projects || [];
-    incomingProjects.forEach(incoming => {
-      if (!incoming || !incoming.id) return;
-
-      const existing = finalProjectsMap.get(incoming.id);
-      if (existing) {
-        // Check if the syncing user is the Tech Lead of this project
-        const isTechLead = syncingEmployeeId && existing.techLeadId === syncingEmployeeId;
-        if (isTechLead) {
-          // Tech Lead can update this project!
-          const idx = finalProjects.findIndex(p => p.id === incoming.id);
-          if (idx !== -1) {
-            finalProjects[idx] = incoming;
-          }
-        }
-      } else {
-        // This is a new project! Allow it if the syncing user is the Tech Lead of this new project
-        const isTechLead = syncingEmployeeId && incoming.techLeadId === syncingEmployeeId;
-        if (isTechLead) {
-          finalProjects.push(incoming);
-        }
-      }
-    });
-  }
-  stateObj.projects = finalProjects;
+  // Disabled bulk project syncing to prevent race conditions. All updates must use atomic endpoints.
+  stateObj.projects = [];
 
   // 5. Smart merge & deduplicate incoming Schools by lowercased name with existing DB Schools
   const existingSchools = await models.School.find({}).lean();
