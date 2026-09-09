@@ -7773,10 +7773,37 @@ function renderCommMainContent() {
   } else if (state.activeCommTab === 'announcements') {
     annPane.style.display = 'flex';
     renderAnnouncements();
-  } else if (state.activeCommTab === 'notices') {
-    noticePane.style.display = 'flex';
-    renderNotices();
   }
+}
+
+function formatChatMessage(rawText) {
+  if (!rawText) return '';
+  let safe = escapeHTML(rawText);
+  safe = safe.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline;">$1</a>');
+  safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+  const lines = safe.split('\n');
+  const formattedLines = lines.map(line => {
+    let trimmed = line.trim();
+    if (!trimmed) return '<div style="height: 6px;"></div>';
+
+    if (/^[•\-\*]\s+/.test(trimmed)) {
+      const content = trimmed.replace(/^[•\-\*]\s+/, '');
+      return `<div style="display: flex; gap: 8px; margin-top: 4px; margin-bottom: 4px; padding-left: 4px;"><span style="color: var(--primary); font-weight: bold; flex-shrink: 0;">•</span><div>${content}</div></div>`;
+    }
+
+    if (/^\d+\.\s*/.test(trimmed)) {
+      return `<div style="font-weight: 700; margin-top: 10px; margin-bottom: 4px; color: var(--text-primary); border-left: 3px solid var(--primary); padding-left: 8px;">${trimmed}</div>`;
+    }
+
+    if (/^(High Priority|Medium Priority|Low Priority|Deadline|Total Tasks|Completed Tasks|Pending Tasks):/i.test(trimmed)) {
+      return `<div style="font-weight: 700; margin-top: 8px; margin-bottom: 2px;">${trimmed}</div>`;
+    }
+
+    return `<div>${line}</div>`;
+  });
+
+  return formattedLines.join('');
 }
 
 function renderChatRoom() {
@@ -7962,13 +7989,14 @@ function renderChatRoom() {
       row.appendChild(senderDiv);
     }
 
+
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
     bubble.style.whiteSpace = 'pre-wrap';
     bubble.style.wordBreak = 'break-word';
 
     const textDiv = document.createElement('div');
-    textDiv.textContent = msg.content || '';
+    textDiv.innerHTML = formatChatMessage(msg.content || '');
     bubble.appendChild(textDiv);
 
     if (fileHtml) {
