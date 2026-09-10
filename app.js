@@ -7779,6 +7779,7 @@ function renderCommMainContent() {
 function formatChatMessage(rawText) {
   if (!rawText) return '';
   let safe = escapeHTML(rawText);
+  safe = safe.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   safe = safe.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline;">$1</a>');
   safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
